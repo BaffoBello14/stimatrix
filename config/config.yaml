@@ -1,0 +1,14 @@
+logging:
+  level: INFO
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  file: logs/ml_pipeline.log
+
+dataset_building:
+  filter_coherent_acts: true
+  estimate_prices: true
+  process_floor_features: true
+  remove_all_nan_columns: true
+
+data_paths:
+  raw: data/raw
+  processed: data/processed
