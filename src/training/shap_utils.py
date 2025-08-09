@@ -79,18 +79,28 @@ def compute_shap(
             except Exception:
                 # Fallback to kernel with predict function
                 X_bg = X.sample(n=min(len(X), background_size), random_state=42)
-                explainer = shap.Explainer(model.predict, X_bg)
-                shap_values = explainer(Xs)
+                explainer = shap.Explainer(model.predict, X_bg.values)
+                shap_values = explainer(Xs.values)
         else:
             # Generic fallback: kernel-like using function handle and background
             X_bg = X.sample(n=min(len(X), background_size), random_state=42)
-            explainer = shap.Explainer(model.predict, X_bg)
-            shap_values = explainer(Xs)
+            try:
+                explainer = shap.Explainer(model.predict, X_bg)
+                shap_values = explainer(Xs)
+            except Exception:
+                # Permutation fallback
+                explainer = shap.Explainer(model.predict, shap.maskers.Independent(X_bg))
+                shap_values = explainer(Xs)
     except Exception:
         # Final safety fallback to KernelExplainer style if anything above fails
         X_bg = X.sample(n=min(len(X), background_size), random_state=42)
-        explainer = shap.Explainer(getattr(model, "predict", model), X_bg)
-        shap_values = explainer(Xs)
+        try:
+            explainer = shap.Explainer(getattr(model, "predict", model), X_bg)
+            shap_values = explainer(Xs)
+        except Exception:
+            # Force value arrays to avoid feature-name mismatch warnings
+            explainer = shap.Explainer(getattr(model, "predict", model), X_bg.values)
+            shap_values = explainer(Xs.values)
 
     # Summary stats per feature
     try:

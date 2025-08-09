@@ -52,8 +52,12 @@ def default_params(model_key: str) -> Dict[str, Any]:
     mk = model_key.lower()
     if mk in {"linear"}:
         return {"n_jobs": -1}
-    if mk in {"ridge", "lasso", "elasticnet"}:
+    if mk == "ridge":
         return {"random_state": 42}
+    if mk == "lasso":
+        return {"random_state": 42, "max_iter": 20000}
+    if mk == "elasticnet":
+        return {"random_state": 42, "max_iter": 20000}
     if mk == "dt":
         return {"random_state": 42}
     if mk == "knn":
