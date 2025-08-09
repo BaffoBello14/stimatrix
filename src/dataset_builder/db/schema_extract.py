@@ -9,8 +9,17 @@ from typing import Dict, Any, Optional
 from sqlalchemy import inspect
 from sqlalchemy.exc import SAWarning
 
-from .connect import get_engine
-from ..utils.io import ensure_parent_dir
+# Supporto a esecuzione diretta del file (senza package parent): fallback agli import assoluti
+try:
+    from .connect import get_engine  # type: ignore
+    from ..utils.io import ensure_parent_dir  # type: ignore
+except Exception:
+    import sys as _sys
+    import pathlib as _pathlib
+
+    _sys.path.append(str(_pathlib.Path(__file__).resolve().parents[2] / "src"))
+    from dataset_builder.db.connect import get_engine  # type: ignore
+    from dataset_builder.utils.io import ensure_parent_dir  # type: ignore
 
 # Dizionario per raccogliere tipi personalizzati rilevati dai warning
 unrecognized_types: Dict[str, str] = defaultdict(str)
