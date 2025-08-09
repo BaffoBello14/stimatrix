@@ -24,7 +24,6 @@ database:
   use_ztl: true
   output_format: 'parquet'
   compression: 'snappy'
-  force_reload: false
 
 # Target configuration
 target:
