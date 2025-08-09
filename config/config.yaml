@@ -33,11 +33,13 @@ target:
 
 # Outlier detection
 outliers:
-  method: 'iqr'          # 'iqr' | 'zscore' | 'iso_forest'
+  method: 'ensemble'       # 'iqr' | 'zscore' | 'iso_forest' | 'ensemble'
   z_thresh: 4.0
   iqr_factor: 1.5
   iso_forest_contamination: 0.02
   group_by_col: 'AI_IdCategoriaCatastale'
+  min_group_size: 30       # minimum samples per group to apply group-wise outlier detection
+  fallback_strategy: 'global'  # 'skip' keeps all small groups; 'global' applies global detection
 
 # Missing value imputation
 imputation:
