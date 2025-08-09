@@ -1,4 +1,4 @@
-from dataset_builder.data.retrieval import build_select_clause_dual_omi
+from dataset_builder.retrieval import build_select_clause_dual_omi
 from utils.io import load_json
 
 

@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 from typing import List
 
-from .data.retrieval import retrieve_data
+from .retrieval import retrieve_data
 from .utils.logger import get_logger
 
 logger = get_logger(__name__)
