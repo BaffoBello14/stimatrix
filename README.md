@@ -37,6 +37,14 @@ Opzioni:
 - `--no-poi`: disabilita conteggi POI
 - `--no-ztl`: disabilita flag ZTL
 
+### Esporta schema DB
+Per esportare lo schema del database in JSON:
+```bash
+python -m dataset_builder.db.schema_extract \
+  --output schema/db_schema.json \
+  --schema dbo
+```
+
 ### Test
 Eseguire i test offline (non richiedono il DB):
 ```bash

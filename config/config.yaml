@@ -1,0 +1,23 @@
+# Configurazione Preprocessing Pipeline
+# =================================
+
+# Logging Configuration
+logging:
+  level: INFO
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  file: 'logs/preprocessing.log'
+
+# Paths Configuration
+paths:
+  raw_data: 'data/raw/'
+  processed_data: 'data/processed/'
+  schema: 'data/db_schema.json'
+
+# Database Configuration (for data retrieval)
+database:
+  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV']
+  use_poi: true
+  use_ztl: true
+  output_format: 'parquet'
+  compression: 'snappy'
+  force_reload: false
