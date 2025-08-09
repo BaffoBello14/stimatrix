@@ -30,8 +30,12 @@ class PCAConfig:
 class TemporalSplitConfig:
     year_col: str = "A_AnnoStipula"
     month_col: str = "A_MeseStipula"
+    # mode: 'date' uses fixed year/month threshold; 'fraction' uses time-ordered percentage
+    mode: str = "date"
     test_start_year: int = 2023
     test_start_month: int = 1
+    train_fraction: float = 0.8
+    valid_fraction: float = 0.0  # 0 means no validation split
 
 
 @dataclass
@@ -55,11 +59,59 @@ def temporal_split(
     df: pd.DataFrame,
     split_cfg: TemporalSplitConfig,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    if split_cfg.mode == "fraction":
+        key = temporal_key(df, split_cfg.year_col, split_cfg.month_col)
+        order = key.sort_values().index
+        n = len(order)
+        cut = int(np.floor(split_cfg.train_fraction * n))
+        train_idx = order[:cut]
+        test_idx = order[cut:]
+        return df.loc[train_idx].copy(), df.loc[test_idx].copy()
+
     key = temporal_key(df, split_cfg.year_col, split_cfg.month_col)
     threshold = split_cfg.test_start_year * 100 + split_cfg.test_start_month
     train_df = df[key < threshold].copy()
     test_df = df[key >= threshold].copy()
     return train_df, test_df
+
+
+def temporal_split_3way(
+    df: pd.DataFrame,
+    split_cfg: TemporalSplitConfig,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    if split_cfg.valid_fraction <= 0:
+        train_df, test_df = temporal_split(df, split_cfg)
+        return train_df, pd.DataFrame(columns=df.columns).astype(df.dtypes.to_dict()), test_df
+
+    key = temporal_key(df, split_cfg.year_col, split_cfg.month_col)
+
+    if split_cfg.mode == "fraction":
+        order = key.sort_values().index
+        n = len(order)
+        n_train = int(np.floor(split_cfg.train_fraction * n))
+        n_val = int(np.floor(split_cfg.valid_fraction * n))
+        n_train = max(1, min(n - 2, n_train))
+        n_val = max(1, min(n - n_train - 1, n_val))
+        train_idx = order[:n_train]
+        val_idx = order[n_train:n_train + n_val]
+        test_idx = order[n_train + n_val:]
+        return df.loc[train_idx].copy(), df.loc[val_idx].copy(), df.loc[test_idx].copy()
+
+    # mode == 'date' -> create validation immediately before test period (10% of train by default if valid_fraction==0 -> handled above)
+    threshold = split_cfg.test_start_year * 100 + split_cfg.test_start_month
+    pre_test = df[key < threshold].copy()
+    if pre_test.empty:
+        return pre_test, pre_test, df[key >= threshold].copy()
+    # take tail as validation according to valid_fraction
+    pre_key = temporal_key(pre_test, split_cfg.year_col, split_cfg.month_col)
+    order = pre_key.sort_values().index
+    n = len(order)
+    n_val = int(np.floor(split_cfg.valid_fraction * n))
+    n_val = max(1, min(n - 1, n_val))
+    val_idx = order[-n_val:]
+    train_idx = order[:-n_val]
+    test_df = df[key >= threshold].copy()
+    return pre_test.loc[train_idx].copy(), pre_test.loc[val_idx].copy(), test_df
 
 
 def scale_and_pca(

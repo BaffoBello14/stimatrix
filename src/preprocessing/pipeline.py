@@ -16,6 +16,7 @@ from preprocessing.transformers import (
     ScalingConfig,
     PCAConfig,
     temporal_split,
+    temporal_split_3way,
     scale_and_pca,
     remove_highly_correlated,
     drop_non_descriptive,
@@ -91,7 +92,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         test_start_year=int(split_cfg_dict.get("test_start_year", 2023)),
         test_start_month=int(split_cfg_dict.get("test_start_month", 1)),
     )
-    train_df, test_df = temporal_split(Xy_full, split_cfg)
+    # Use 3-way split (val optional if valid_fraction>0)
+    train_df, val_df, test_df = temporal_split_3way(Xy_full, split_cfg)
 
     # Outlier detection ONLY on train target (optionally per category)
     out_cfg_dict = config.get("outliers", {})
@@ -110,6 +112,11 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     y_test = test_df[target_col].astype(float)
     X_train = train_df.drop(columns=[target_col])
     X_test = test_df.drop(columns=[target_col])
+    X_val = None
+    y_val = None
+    if not val_df.empty:
+        y_val = val_df[target_col].astype(float)
+        X_val = val_df.drop(columns=[target_col])
 
     # Optional log-transform of target
     y_train, log_meta = apply_log_target_if(config, y_train)
@@ -127,11 +134,15 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     fitted_imputers = fit_imputers(X_train, imp_cfg)
     X_train = transform_with_imputers(X_train, fitted_imputers)
     X_test = transform_with_imputers(X_test, fitted_imputers)
+    if X_val is not None:
+        X_val = transform_with_imputers(X_val, fitted_imputers)
 
     # Encoding plan on train columns, fit on train and transform test
     plan = plan_encodings(X_train, max_ohe_cardinality=int(config.get("encoding", {}).get("max_ohe_cardinality", 12)))
     X_train, encoders, _ = fit_apply_encoders(X_train, plan)
     X_test = transform_with_encoders(X_test, encoders)
+    if X_val is not None:
+        X_val = transform_with_encoders(X_val, encoders)
 
     # Cast remaining object columns that look numeric (decide on train; apply to both)
     cols_to_coerce: List[str] = []
@@ -143,15 +154,23 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     for col in cols_to_coerce:
         if col in X_test.columns:
             X_test[col] = pd.to_numeric(X_test[col].astype(str).str.replace(",", "."), errors="coerce")
+        if X_val is not None and col in X_val.columns:
+            X_val[col] = pd.to_numeric(X_val[col].astype(str).str.replace(",", "."), errors="coerce")
 
     # Remove non-descriptive columns (train-based)
     X_train, removed_non_descr = drop_non_descriptive(X_train)
     X_test = X_test.drop(columns=[c for c in removed_non_descr if c in X_test.columns], errors="ignore")
+    if X_val is not None:
+        X_val = X_val.drop(columns=[c for c in removed_non_descr if c in X_val.columns], errors="ignore")
 
     # Prepare numeric matrices and align columns
     X_train_num = X_train.select_dtypes(include=[np.number]).fillna(0)
     X_test_num = X_test.select_dtypes(include=[np.number]).fillna(0)
     X_test_num = X_test_num.reindex(columns=X_train_num.columns, fill_value=0.0)
+    X_val_num = None
+    if X_val is not None:
+        X_val_num = X_val.select_dtypes(include=[np.number]).fillna(0)
+        X_val_num = X_val_num.reindex(columns=X_train_num.columns, fill_value=0.0)
 
     # Scaling and optional PCA (fit only on train)
     scaling_cfg = ScalingConfig()
@@ -162,16 +181,30 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         random_state=int(pca_cfg_dict.get("random_state", 42)),
     )
     X_train, X_test, fitted = scale_and_pca(X_train_num, X_test_num, scaling_cfg, pca_cfg)
+    if X_val_num is not None:
+        # Transform val using fitted scaler/pca
+        X_val_scaled = pd.DataFrame(fitted.scaler.transform(X_val_num), columns=X_val_num.columns, index=X_val_num.index)
+        if fitted.pca is not None:
+            X_val_pca = fitted.pca.transform(X_val_scaled)
+            X_val = pd.DataFrame(X_val_pca, columns=[f"PC{i+1}" for i in range(X_val_pca.shape[1])], index=X_val_num.index)
+        else:
+            X_val = X_val_scaled
 
     # Remove highly correlated columns (train-based)
     X_train, dropped_corr = remove_highly_correlated(X_train, threshold=float(config.get("correlation", {}).get("numeric_threshold", 0.98)))
     X_test = X_test.drop(columns=[c for c in dropped_corr if c in X_test.columns], errors="ignore")
+    if X_val is not None:
+        X_val = X_val.drop(columns=[c for c in dropped_corr if c in X_val.columns], errors="ignore")
 
     # Save outputs
     pre_filename = paths.get("preprocessed_filename", "preprocessed.parquet")
     out_path = pre_dir / pre_filename
     # For backward compatibility, keep combined preprocessed with features + target
-    combined = pd.concat([X_train.assign(**{target_col: y_train}), X_test.assign(**{target_col: y_test})], axis=0)
+    frames = [X_train.assign(**{target_col: y_train})]
+    if X_val is not None and y_val is not None:
+        frames.append(X_val.assign(**{target_col: y_val}))
+    frames.append(X_test.assign(**{target_col: y_test}))
+    combined = pd.concat(frames, axis=0)
     combined.to_parquet(out_path, index=False)
 
     # Also save split datasets for training convenience
@@ -183,6 +216,11 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     X_test.to_parquet(X_test_path, index=False)
     pd.DataFrame({target_col: y_train}).to_parquet(y_train_path, index=False)
     pd.DataFrame({target_col: y_test}).to_parquet(y_test_path, index=False)
+    if X_val is not None and y_val is not None:
+        X_val_path = pre_dir / "X_val.parquet"
+        y_val_path = pre_dir / "y_val.parquet"
+        X_val.to_parquet(X_val_path, index=False)
+        pd.DataFrame({target_col: y_val}).to_parquet(y_val_path, index=False)
 
     # Report
     save_report(

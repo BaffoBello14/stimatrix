@@ -55,8 +55,11 @@ encoding:
 temporal_split:
   year_col: 'A_AnnoStipula'
   month_col: 'A_MeseStipula'
-  test_start_year: 2023
-  test_start_month: 1
+  mode: 'fraction'      # 'date' | 'fraction'
+  train_fraction: 0.8   # fraction of time-ordered data for train
+  valid_fraction: 0.1   # fraction of time-ordered data for validation (0 disables val)
+  test_start_year: 2023 # used only if mode=='date'
+  test_start_month: 1   # used only if mode=='date'
 
 # PCA configuration
 pca:
