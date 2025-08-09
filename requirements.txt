@@ -1,0 +1,7 @@
+pandas>=2.2.0
+numpy>=1.26.0
+SQLAlchemy>=2.0.0
+pyodbc>=5.0.0
+python-dotenv>=1.0.0
+pyarrow>=16.0.0
+pytest>=8.0.0
