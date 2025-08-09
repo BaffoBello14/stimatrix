@@ -9,7 +9,7 @@ import optunahub
 from sklearn.base import RegressorMixin
 from sklearn.model_selection import train_test_split
 
-from .model_zoo import build_estimator, suggest_params
+from .model_zoo import build_estimator
 from .metrics import select_primary_value
 
 
@@ -18,6 +18,23 @@ class TuningResult:
     best_params: Dict[str, Any]
     best_value: float
     study: optuna.Study
+
+
+def _apply_suggestions(trial: optuna.Trial, space: Dict[str, Any], base: Dict[str, Any]) -> Dict[str, Any]:
+    params = base.copy()
+    for name, spec in (space or {}).items():
+        t = str(spec.get("type", "")).lower()
+        if t == "float":
+            params[name] = trial.suggest_float(name, float(spec["low"]), float(spec["high"]), log=bool(spec.get("log", False)))
+        elif t == "int":
+            params[name] = trial.suggest_int(name, int(spec["low"]), int(spec["high"]))
+        elif t == "categorical":
+            params[name] = trial.suggest_categorical(name, spec.get("choices", []))
+        else:
+            # Unknown type: ignore or pass-through fixed value
+            if "value" in spec:
+                params[name] = spec["value"]
+    return params
 
 
 def tune_model(
@@ -31,9 +48,11 @@ def tune_model(
     timeout: Optional[int],
     sampler_name: str,
     seed: int,
+    base_params: Dict[str, Any],
+    search_space: Optional[Dict[str, Any]] = None,
     cat_features: Optional[List[int]] = None,
 ) -> TuningResult:
-    direction = "maximize"  # always maximize as requested
+    direction = "maximize"
 
     if sampler_name == "auto":
         module = optunahub.load_module(package="samplers/auto_sampler")
@@ -44,14 +63,12 @@ def tune_model(
         sampler = optuna.samplers.TPESampler(seed=seed)
 
     def objective(trial: optuna.Trial) -> float:
-        params = suggest_params(model_key, trial)
+        params = _apply_suggestions(trial, search_space or {}, base_params or {})
         est: RegressorMixin = build_estimator(model_key, params)
         if model_key.lower() == "catboost" and cat_features is not None:
-            # catboost needs indices
             est.fit(X_train, y_train, cat_features=cat_features, verbose=False)
         else:
             est.fit(X_train, y_train)
-        # Evaluate on validation or a held-out split if val not provided
         if X_val is None or y_val is None:
             X_tr, X_va, y_tr, y_va = train_test_split(X_train, y_train, test_size=0.2, random_state=seed, shuffle=False)
             y_pred = est.predict(X_va)

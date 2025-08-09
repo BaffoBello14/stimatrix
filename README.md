@@ -95,12 +95,45 @@ Attualmente la pipeline genera un profilo numerico unico; è possibile estendere
 
 ### Training/Tuning/Evaluation
 - Configurazione (`config/config.yaml`):
-  - `training.models`: lista modelli da addestrare (es. `["ridge", "rf", "lightgbm", "xgboost", "catboost"]`).
+  - `training.models`: flag booleani per selezionare i modelli da addestrare (es. `ridge: true`, altri `false`).
   - `training.primary_metric`: metrica da massimizzare in tuning (supportate: `r2`, `neg_mean_squared_error`, `neg_root_mean_squared_error`, `neg_mean_absolute_error`, `neg_mean_absolute_percentage_error`).
   - `training.profile_map`: mappa modello→profilo dataset (es. `rf -> tree`, `ridge -> scaled`, `catboost -> catboost`). Assicurarsi che i profili siano abilitati in `profiles.*`.
   - `training.optuna`: `n_trials`, `timeout`, `sampler` (`auto` via OptunaHub o `tpe`), `seed`.
+  - `training.search_spaces`: spazio di ricerca per ciascun modello, con specifica generica:
+    - `type`: `float` | `int` | `categorical`
+    - `low`, `high`, `log` (per `float`/`int`), `choices` (per `categorical`)
   - `training.shap`: `enabled`, `sample_size`, `max_display`, `save_plots`, `save_values`.
   - `training.ensembles`: `voting` (top_n, tune_weights) e `stacking` (top_n, final_estimator, cv_folds).
+- Esempio minimale:
+  ```yaml
+  profiles:
+    scaled: { enabled: true }
+    tree:   { enabled: true }
+    catboost: { enabled: true }
+  training:
+    models:
+      ridge: true
+      rf: true
+      lightgbm: true
+      xgboost: true
+      catboost: true
+    primary_metric: r2
+    search_spaces:
+      ridge:
+        alpha: {type: float, low: 0.001, high: 100.0, log: true}
+      rf:
+        n_estimators: {type: int, low: 300, high: 1200}
+        max_depth: {type: int, low: 4, high: 40}
+      lightgbm:
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        num_leaves: {type: int, low: 15, high: 255}
+      xgboost:
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        max_depth: {type: int, low: 3, high: 12}
+      catboost:
+        depth: {type: int, low: 4, high: 10}
+        l2_leaf_reg: {type: float, low: 1.0, high: 15.0}
+  ```
 - Output:
   - Modello e meta per ciascun modello: `models/{model_key}/model.pkl`, `metrics.json`, `optuna_trials.csv`, eventuali `shap/*.png`.
   - Ensemble (se abilitati): `models/voting/*`, `models/stacking/*`.
@@ -108,19 +141,6 @@ Attualmente la pipeline genera un profilo numerico unico; è possibile estendere
 - Esecuzione:
   ```bash
   python /workspace/main.py --config config/config.yaml --steps preprocessing training
-  ```
-  Abilitare i profili coerenti con i modelli scelti, ad esempio:
-  ```yaml
-  profiles:
-    scaled:
-      enabled: true
-    tree:
-      enabled: true
-    catboost:
-      enabled: true
-  training:
-    models: ["ridge", "rf", "lightgbm", "xgboost", "catboost"]
-    primary_metric: "r2"
   ```
 
 ### Esecuzione

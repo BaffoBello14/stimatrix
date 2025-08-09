@@ -14,6 +14,7 @@ from .model_zoo import build_estimator
 from .metrics import regression_metrics, overfit_diagnostics
 from .ensembles import build_voting, build_stacking
 from .shap_utils import compute_shap, save_shap_plots
+from .model_zoo import default_params
 
 logger = get_logger(__name__)
 
@@ -72,7 +73,9 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
 
     shap_cfg = tr_cfg.get("shap", {"enabled": True})
 
-    selected_models: List[str] = tr_cfg.get("models", ["ridge", "rf", "lightgbm"])  # default
+    # Raccogli modelli abilitati tramite flag booleani
+    models_flags: Dict[str, Any] = tr_cfg.get("models", {"ridge": True})
+    selected_models: List[str] = [k for k, v in models_flags.items() if bool(v)]
 
     results: Dict[str, Any] = {"models": {}, "ensembles": {}}
 
@@ -94,6 +97,9 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                 cat_features = _catboost_cat_features(pre_dir, prefix, X_train)
 
         # Tuning
+        search_spaces_all = tr_cfg.get("search_spaces", {})
+        space = search_spaces_all.get(model_key, {})
+        base = default_params(model_key)
         tuning = tune_model(
             model_key=model_key,
             X_train=X_train.values if model_key != "catboost" else X_train,
@@ -105,6 +111,8 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             timeout=timeout,
             sampler_name=sampler_name,
             seed=seed,
+            base_params=base,
+            search_space=space,
             cat_features=cat_features,
         )
 
