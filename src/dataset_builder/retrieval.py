@@ -7,7 +7,7 @@ import pandas as pd
 
 from db.connect import get_engine, DatabaseConnector
 from utils.io import load_json, save_dataframe
-from dataset_builder.utils.logger import get_logger
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -393,8 +393,6 @@ def retrieve_data(
     include_ztl: bool = True,
     poi_categories: Optional[List[str]] = None,
 ) -> pd.DataFrame:
-    from utils.io import load_json
-    from config.config import CONFIG  # placeholder if needed
 
     # Read format and compression from config if available
     output_format = "parquet"

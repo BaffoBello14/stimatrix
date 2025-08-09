@@ -16,7 +16,7 @@ from db.schema_extract import main as schema_main
 from dataset_builder.retrieval import retrieve_data
 from preprocessing.pipeline import run_preprocessing
 from training.train import run_training
-from dataset_builder.utils.logger import setup_logger
+from utils.logger import setup_logger
 
 
 def parse_args() -> argparse.Namespace:

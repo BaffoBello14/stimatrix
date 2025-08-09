@@ -5,7 +5,7 @@ from typing import Dict, Any
 
 import pandas as pd
 
-from dataset_builder.utils.logger import get_logger
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 

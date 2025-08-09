@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-from dataset_builder.utils.logger import get_logger
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
