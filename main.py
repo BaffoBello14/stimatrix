@@ -40,9 +40,12 @@ def load_config(path: str):
 def run_schema(config) -> None:
     # Reuse CLI entry of schema module by setting args
     # Simpler: call function directly replicating defaults
-    from db.schema_extract import extract_schema
+    from db.schema_extract import extract_schema, catch_unrecognized_types
     from db.connect import get_engine
     from utils.io import ensure_parent_dir
+
+    # Attiva intercettazione SAWarning per tipi non riconosciuti
+    catch_unrecognized_types()
 
     out = config.get("paths", {}).get("schema", "data/db_schema.json")
     ensure_parent_dir(out)

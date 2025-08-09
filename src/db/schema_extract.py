@@ -27,38 +27,40 @@ def catch_unrecognized_types() -> None:
 
 
 def normalize_type(col_name: str, raw_type_str: str) -> str:
-    if col_name in unrecognized_types:
+    # Preferisci il tipo catturato dai warning per la colonna
+    if col_name in unrecognized_types and unrecognized_types[col_name]:
         return unrecognized_types[col_name]
 
-    raw = raw_type_str.upper()
+    raw = str(raw_type_str).upper()
+    if "GEOGRAPHY" in raw:
+        return "geography"
+    if "GEOMETRY" in raw:
+        return "geometry"
+    if raw == "SYSNAME":
+        return "varchar"
     if "INT" in raw:
         return "integer"
-    elif any(t in raw for t in ["FLOAT", "REAL", "DECIMAL", "NUMERIC"]):
+    if any(t in raw for t in ["FLOAT", "REAL", "DECIMAL", "NUMERIC"]):
         return "float"
-    elif "GEOMETRY" in raw:
-        return "geometry"
-    elif "GEOGRAPHY" in raw:
-        return "geography"
-    elif "NVARCHAR" in raw:
+    if "NVARCHAR" in raw:
         return "nvarchar"
-    elif "VARCHAR" in raw:
+    if "VARCHAR" in raw:
         return "varchar"
-    elif "CHAR" in raw:
+    if "CHAR" in raw:
         return "char"
-    elif "DATE" in raw or "TIME" in raw or "DATETIME" in raw:
+    if "DATE" in raw or "TIME" in raw or "DATETIME" in raw:
         return "datetime"
-    elif "MONEY" in raw:
+    if "MONEY" in raw:
         return "money"
-    elif "BINARY" in raw:
+    if "BINARY" in raw:
         return "binary"
-    elif "TEXT" in raw:
+    if "TEXT" in raw:
         return "text"
-    elif "BIT" in raw:
+    if "BIT" in raw:
         return "boolean"
-    elif "UNIQUEIDENTIFIER" in raw:
+    if "UNIQUEIDENTIFIER" in raw:
         return "uuid"
-    else:
-        return "unknown"
+    return "unknown"
 
 
 def generate_table_alias(table_name: str) -> str:
