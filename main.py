@@ -7,7 +7,7 @@ from typing import List
 import yaml
 
 from db.schema_extract import main as schema_main
-from dataset_builder.data.retrieval import retrieve_data
+from dataset_builder.retrieval import retrieve_data
 from preprocessing.pipeline import run_preprocessing
 from training.train import run_training
 

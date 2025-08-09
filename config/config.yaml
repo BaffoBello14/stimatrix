@@ -5,12 +5,12 @@
 logging:
   level: INFO
   format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-  file: 'logs/preprocessing.log'
+  file: 'logs/pipeline.log'
 
 # Paths Configuration
 paths:
-  raw_data: 'data/raw/'
-  processed_data: 'data/processed/'
+  raw_data: 'data/raw'
+  preprocessed_data: 'data/preprocessed'
   schema: 'data/db_schema.json'
 
 # Database Configuration (for data retrieval)

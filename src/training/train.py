@@ -12,18 +12,23 @@ logger = get_logger(__name__)
 
 def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     paths = config.get("paths", {})
-    processed_dir = Path(paths.get("processed_data", "data/processed"))
-    processed_path = processed_dir / "processed.parquet"
+    pre_dir = Path(paths.get("preprocessed_data", "data/preprocessed"))
+    models_dir = Path("models")
+    models_dir.mkdir(parents=True, exist_ok=True)
 
-    if not processed_path.exists():
-        raise FileNotFoundError(f"File processed non trovato: {processed_path}")
+    pre_path = pre_dir / "preprocessed.parquet"
+    if not pre_path.exists():
+        raise FileNotFoundError(f"File preprocessed non trovato: {pre_path}")
 
-    df = pd.read_parquet(processed_path)
+    df = pd.read_parquet(pre_path)
 
-    # Placeholder: calcolo metrica fittizia
+    # Placeholder: calcolo metrica fittizia e "salvataggio modello" dummy
     metrics = {
-        "num_rows": len(df),
-        "num_cols": len(df.columns),
+        "num_rows": int(len(df)),
+        "num_cols": int(len(df.columns)),
     }
-    logger.info(f"Training completato. Metrics: {metrics}")
+    model_path = models_dir / "model.info"
+    model_path.write_text(str(metrics), encoding="utf-8")
+
+    logger.info(f"Training completato. Metrics: {metrics}. Modello: {model_path}")
     return metrics

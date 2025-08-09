@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List
 
 from .retrieval import retrieve_data
-from .utils.logger import get_logger
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
