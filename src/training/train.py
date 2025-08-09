@@ -63,25 +63,28 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     tr_cfg = config.get("training", {})
     primary_metric: str = tr_cfg.get("primary_metric", "r2")
     report_metrics: List[str] = tr_cfg.get("report_metrics", ["r2", "rmse", "mse", "mae", "mape"])
-
-    opt_cfg = tr_cfg.get("optuna", {})
-    n_trials = int(opt_cfg.get("n_trials", 50))
-    timeout = opt_cfg.get("timeout", None)
-    timeout = None if timeout in (None, "null") else int(timeout)
-    sampler_name = opt_cfg.get("sampler", "auto")
-    seed = int(opt_cfg.get("seed", 42))
+    sampler_name = tr_cfg.get("sampler", "auto")
+    seed = int(tr_cfg.get("seed", 42))
 
     shap_cfg = tr_cfg.get("shap", {"enabled": True})
 
-    # Raccogli modelli abilitati tramite flag booleani
-    models_flags: Dict[str, Any] = tr_cfg.get("models", {"ridge": True})
-    selected_models: List[str] = [k for k, v in models_flags.items() if bool(v)]
+    # Raccogli definizioni per-modello
+    models_cfg: Dict[str, Any] = tr_cfg.get("models", {})
+    defaults = tr_cfg.get("defaults", {})
+    trials_simple = int(defaults.get("trials_simple", 50))
+    trials_advanced = int(defaults.get("trials_advanced", 100))
+    profile_map = defaults.get("profile_map", {})
+    # classifica modelli "avanzati"
+    advanced_models = {"rf", "gbr", "hgbt", "xgboost", "lightgbm", "catboost"}
+    selected_models: List[str] = [k for k, v in models_cfg.items() if bool(v.get("enabled", False))]
 
     results: Dict[str, Any] = {"models": {}, "ensembles": {}}
 
     # Per-model loop
     for model_key in selected_models:
-        prefix = _profile_for(model_key, config)
+        # Profilo preferito: specifico del modello o da defaults
+        model_entry = models_cfg.get(model_key, {})
+        prefix = model_entry.get("profile", None) or profile_map.get(model_key)
         try:
             X_train, y_train, X_val, y_val, X_test, y_test = _load_xy(pre_dir, prefix)
         except Exception as e:
@@ -97,9 +100,16 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                 cat_features = _catboost_cat_features(pre_dir, prefix, X_train)
 
         # Tuning
-        search_spaces_all = tr_cfg.get("search_spaces", {})
-        space = search_spaces_all.get(model_key, {})
+        space = model_entry.get("search_space", {})
         base = default_params(model_key)
+        # merge con base_params espliciti del modello
+        base.update(model_entry.get("base_params", {}) or {})
+        # trials: se specificato per modello, altrimenti in base alla categoria
+        if model_entry.get("trials") is not None:
+            n_trials = int(model_entry["trials"])
+        else:
+            n_trials = trials_advanced if model_key in advanced_models else trials_simple
+        timeout = None
         tuning = tune_model(
             model_key=model_key,
             X_train=X_train.values if model_key != "catboost" else X_train,
@@ -197,10 +207,6 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         key=lambda x: x[2],
         reverse=True,
     )
-
-    def load_for_inference(key: str):
-        from joblib import load
-        return load(models_dir / key / "model.pkl")
 
     # Voting
     if ens_cfg.get("voting", {}).get("enabled", False) and len(ranked) >= 2:

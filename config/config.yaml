@@ -123,115 +123,161 @@ profiles:
 
 # Training configuration
 training:
-  # Modelli da addestrare (flag booleani)
-  models:
-    linear: true
-    ridge: true
-    lasso: true
-    elasticnet: true
-    knn: true
-    svr: true
-    dt: true
-    rf: true
-    gbr: true
-    hgbt: true
-    xgboost: true
-    lightgbm: true
-    catboost: true
-
-  # Profilo dataset per famiglia di modelli (se non presente, fallback ai file senza suffisso)
-  profile_map:
-    linear: "scaled"
-    ridge: "scaled"
-    lasso: "scaled"
-    elasticnet: "scaled"
-    knn: "scaled"
-    svr: "scaled"
-    dt: "tree"
-    rf: "tree"
-    gbr: "tree"
-    hgbt: "tree"
-    xgboost: "tree"
-    lightgbm: "tree"
-    catboost: "catboost"
-
-  # Metrica primaria da massimizzare durante il tuning
+  # Opzioni globali
   primary_metric: "r2"
-
-  # Metrica per il report finale (sempre calcoliamo tutte queste positive); non influenza la direzione del tuning
   report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
+  sampler: "auto"   # auto (OptunaHub) | tpe
+  seed: 42
 
-  # Optuna/OptunaHub
-  optuna:
-    n_trials: 50
-    timeout: null
-    sampler: "auto"
-    seed: 42
+  # Defaults comuni
+  defaults:
+    trials_simple: 50
+    trials_advanced: 100
+    profile_map:
+      linear: "scaled"
+      ridge: "scaled"
+      lasso: "scaled"
+      elasticnet: "scaled"
+      knn: "scaled"
+      svr: "scaled"
+      dt: "tree"
+      rf: "tree"
+      gbr: "tree"
+      hgbt: "tree"
+      xgboost: "tree"
+      lightgbm: "tree"
+      catboost: "catboost"
 
-  # Spazio di ricerca per iperparametri (per ciascun modello)
-  search_spaces:
+  # Definizione per-modello
+  models:
+    linear:
+      enabled: false
+      profile: null     # usa defaults.profile_map se null
+      trials: null      # usa defaults.trials_simple
+      base_params: {}
+      search_space: {}
     ridge:
-      alpha: {type: float, low: 0.001, high: 100.0, log: true}
+      enabled: true
+      profile: null
+      trials: null
+      base_params: {}
+      search_space:
+        alpha: {type: float, low: 0.001, high: 100.0, log: true}
     lasso:
-      alpha: {type: float, low: 0.0001, high: 10.0, log: true}
+      enabled: false
+      profile: null
+      trials: null
+      base_params: {}
+      search_space:
+        alpha: {type: float, low: 0.0001, high: 10.0, log: true}
     elasticnet:
-      alpha: {type: float, low: 0.0001, high: 10.0, log: true}
-      l1_ratio: {type: float, low: 0.0, high: 1.0}
-    dt:
-      max_depth: {type: int, low: 3, high: 30}
-      min_samples_split: {type: int, low: 2, high: 20}
-      min_samples_leaf: {type: int, low: 1, high: 20}
+      enabled: false
+      profile: null
+      trials: null
+      base_params: {}
+      search_space:
+        alpha: {type: float, low: 0.0001, high: 10.0, log: true}
+        l1_ratio: {type: float, low: 0.0, high: 1.0}
     knn:
-      n_neighbors: {type: int, low: 3, high: 50}
-      weights: {type: categorical, choices: ["uniform", "distance"]}
-      p: {type: int, low: 1, high: 2}
+      enabled: false
+      profile: null
+      trials: null
+      base_params: {}
+      search_space:
+        n_neighbors: {type: int, low: 3, high: 50}
+        weights: {type: categorical, choices: ["uniform", "distance"]}
+        p: {type: int, low: 1, high: 2}
     svr:
-      kernel: {type: categorical, choices: ["rbf", "poly", "sigmoid"]}
-      C: {type: float, low: 0.01, high: 1000.0, log: true}
-      epsilon: {type: float, low: 0.001, high: 1.0, log: true}
-      gamma: {type: categorical, choices: ["scale", "auto"]}
-      degree: {type: int, low: 2, high: 5}
+      enabled: false
+      profile: null
+      trials: null
+      base_params: {}
+      search_space:
+        kernel: {type: categorical, choices: ["rbf", "poly", "sigmoid"]}
+        C: {type: float, low: 0.01, high: 1000.0, log: true}
+        epsilon: {type: float, low: 0.001, high: 1.0, log: true}
+        gamma: {type: categorical, choices: ["scale", "auto"]}
+        degree: {type: int, low: 2, high: 5}
+    dt:
+      enabled: false
+      profile: null
+      trials: null
+      base_params: {}
+      search_space:
+        max_depth: {type: int, low: 3, high: 30}
+        min_samples_split: {type: int, low: 2, high: 20}
+        min_samples_leaf: {type: int, low: 1, high: 20}
     rf:
-      n_estimators: {type: int, low: 200, high: 1200}
-      max_depth: {type: int, low: 4, high: 40}
-      min_samples_split: {type: int, low: 2, high: 20}
-      min_samples_leaf: {type: int, low: 1, high: 20}
-      max_features: {type: categorical, choices: ["sqrt", "log2", null]}
+      enabled: false
+      profile: null
+      trials: null    # usa defaults.trials_advanced
+      base_params: {}
+      search_space:
+        n_estimators: {type: int, low: 200, high: 1200}
+        max_depth: {type: int, low: 4, high: 40}
+        min_samples_split: {type: int, low: 2, high: 20}
+        min_samples_leaf: {type: int, low: 1, high: 20}
+        max_features: {type: categorical, choices: ["sqrt", "log2", null]}
     gbr:
-      learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-      n_estimators: {type: int, low: 200, high: 1500}
-      max_depth: {type: int, low: 2, high: 8}
-      subsample: {type: float, low: 0.5, high: 1.0}
-      min_samples_leaf: {type: int, low: 1, high: 20}
+      enabled: false
+      profile: null
+      trials: null
+      base_params: {}
+      search_space:
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        n_estimators: {type: int, low: 200, high: 1500}
+        max_depth: {type: int, low: 2, high: 8}
+        subsample: {type: float, low: 0.5, high: 1.0}
+        min_samples_leaf: {type: int, low: 1, high: 20}
     hgbt:
-      learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-      max_depth: {type: int, low: 2, high: 16}
-      max_leaf_nodes: {type: int, low: 7, high: 255}
-      l2_regularization: {type: float, low: 0.000001, high: 10.0, log: true}
+      enabled: false
+      profile: null
+      trials: null
+      base_params: {}
+      search_space:
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        max_depth: {type: int, low: 2, high: 16}
+        max_leaf_nodes: {type: int, low: 7, high: 255}
+        l2_regularization: {type: float, low: 0.000001, high: 10.0, log: true}
     xgboost:
-      n_estimators: {type: int, low: 300, high: 1500}
-      max_depth: {type: int, low: 3, high: 12}
-      learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-      subsample: {type: float, low: 0.5, high: 1.0}
-      colsample_bytree: {type: float, low: 0.5, high: 1.0}
-      min_child_weight: {type: float, low: 0.01, high: 20.0, log: true}
-      reg_alpha: {type: float, low: 1e-8, high: 10.0, log: true}
-      reg_lambda: {type: float, low: 1e-8, high: 10.0, log: true}
+      enabled: false
+      profile: null
+      trials: null
+      base_params: {}
+      search_space:
+        n_estimators: {type: int, low: 300, high: 1500}
+        max_depth: {type: int, low: 3, high: 12}
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        subsample: {type: float, low: 0.5, high: 1.0}
+        colsample_bytree: {type: float, low: 0.5, high: 1.0}
+        min_child_weight: {type: float, low: 0.01, high: 20.0, log: true}
+        reg_alpha: {type: float, low: 1e-8, high: 10.0, log: true}
+        reg_lambda: {type: float, low: 1e-8, high: 10.0, log: true}
     lightgbm:
-      n_estimators: {type: int, low: 300, high: 1500}
-      max_depth: {type: int, low: -1, high: 12}
-      learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-      num_leaves: {type: int, low: 15, high: 255}
-      subsample: {type: float, low: 0.5, high: 1.0}
-      colsample_bytree: {type: float, low: 0.5, high: 1.0}
-      reg_alpha: {type: float, low: 1e-8, high: 10.0, log: true}
-      reg_lambda: {type: float, low: 1e-8, high: 10.0, log: true}
+      enabled: false
+      profile: null
+      trials: null
+      base_params: {}
+      search_space:
+        n_estimators: {type: int, low: 300, high: 1500}
+        max_depth: {type: int, low: -1, high: 12}
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        num_leaves: {type: int, low: 15, high: 255}
+        subsample: {type: float, low: 0.5, high: 1.0}
+        colsample_bytree: {type: float, low: 0.5, high: 1.0}
+        reg_alpha: {type: float, low: 1e-8, high: 10.0, log: true}
+        reg_lambda: {type: float, low: 1e-8, high: 10.0, log: true}
     catboost:
-      depth: {type: int, low: 4, high: 10}
-      learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-      l2_leaf_reg: {type: float, low: 1.0, high: 15.0}
-      bagging_temperature: {type: float, low: 0.0, high: 5.0}
-      border_count: {type: int, low: 16, high: 255}
+      enabled: false
+      profile: null
+      trials: null
+      base_params: {}
+      search_space:
+        depth: {type: int, low: 4, high: 10}
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        l2_leaf_reg: {type: float, low: 1.0, high: 15.0}
+        bagging_temperature: {type: float, low: 0.0, high: 5.0}
+        border_count: {type: int, low: 16, high: 255}
 
   # SHAP feature importance
   shap:
