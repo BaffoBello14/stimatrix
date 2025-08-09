@@ -97,7 +97,7 @@ def extract_schema(engine, schema_name: Optional[str] = None) -> Dict[str, Any]:
                 {
                     "name": col.get("name"),
                     "type": normalized_type,
-                    "retrieve": False if normalized_type in ("geometry", "geography") else True,
+                    "retrieve": True,
                 }
             )
 
