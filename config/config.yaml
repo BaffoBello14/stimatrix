@@ -109,14 +109,14 @@ profiles:
     correlation:
       numeric_threshold: 0.98
   tree:
-    enabled: false
+    enabled: true
     output_prefix: 'tree'
     encoding:
       max_ohe_cardinality: 12
     correlation:
       numeric_threshold: 0.98
   catboost:
-    enabled: false
+    enabled: true
     output_prefix: 'catboost'
     correlation:
       numeric_threshold: 0.98
@@ -125,19 +125,19 @@ profiles:
 training:
   # Modelli da addestrare (flag booleani)
   models:
-    linear: false
+    linear: true
     ridge: true
-    lasso: false
-    elasticnet: false
-    knn: false
-    svr: false
-    dt: false
-    rf: false
-    gbr: false
-    hgbt: false
-    xgboost: false
-    lightgbm: false
-    catboost: false
+    lasso: true
+    elasticnet: true
+    knn: true
+    svr: true
+    dt: true
+    rf: true
+    gbr: true
+    hgbt: true
+    xgboost: true
+    lightgbm: true
+    catboost: true
 
   # Profilo dataset per famiglia di modelli (se non presente, fallback ai file senza suffisso)
   profile_map:
