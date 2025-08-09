@@ -25,3 +25,43 @@ database:
   output_format: 'parquet'
   compression: 'snappy'
   force_reload: false
+
+# Target configuration
+target:
+  column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo']
+  log_transform: false
+
+# Outlier detection
+outliers:
+  method: 'iqr'          # 'iqr' | 'zscore' | 'iso_forest'
+  z_thresh: 4.0
+  iqr_factor: 1.5
+  iso_forest_contamination: 0.02
+  group_by_col: 'AI_IdCategoriaCatastale'
+
+# Missing value imputation
+imputation:
+  numeric_strategy: 'median'      # 'median' | 'mean'
+  categorical_strategy: 'most_frequent'
+  group_by_col: 'AI_IdCategoriaCatastale'
+
+# Categorical encoding
+encoding:
+  max_ohe_cardinality: 12
+
+# Temporal split configuration
+temporal_split:
+  year_col: 'A_AnnoStipula'
+  month_col: 'A_MeseStipula'
+  test_start_year: 2023
+  test_start_month: 1
+
+# PCA configuration
+pca:
+  enabled: false
+  n_components: 0.95
+  random_state: 42
+
+# Correlation pruning
+correlation:
+  numeric_threshold: 0.98
