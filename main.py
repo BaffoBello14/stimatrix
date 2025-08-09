@@ -6,6 +6,12 @@ from typing import List
 
 import yaml
 
+# Ensure 'src' is on sys.path when running directly
+import sys as _sys
+_src_path = str(Path(__file__).resolve().parent / "src")
+if _src_path not in _sys.path:
+    _sys.path.append(_src_path)
+
 from db.schema_extract import main as schema_main
 from dataset_builder.retrieval import retrieve_data
 from preprocessing.pipeline import run_preprocessing
