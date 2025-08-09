@@ -149,117 +149,217 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_val = transform_with_imputers(X_val, fitted_imputers)
 
     # Encoding plan on train columns, fit on train and transform test
-    plan = plan_encodings(X_train, max_ohe_cardinality=int(config.get("encoding", {}).get("max_ohe_cardinality", 12)))
-    X_train, encoders, _ = fit_apply_encoders(X_train, plan)
-    X_test = transform_with_encoders(X_test, encoders)
-    if X_val is not None:
-        X_val = transform_with_encoders(X_val, encoders)
+    # Prepare base copies before per-profile transformations
+    base_train = X_train.copy()
+    base_test = X_test.copy()
+    base_val = X_val.copy() if X_val is not None else None
 
-    # Cast remaining object columns that look numeric (decide on train; apply to both)
-    cols_to_coerce: List[str] = []
-    for col in X_train.select_dtypes(include=["object"]).columns:
-        coerced = pd.to_numeric(X_train[col].astype(str).str.replace(",", "."), errors="coerce")
-        if coerced.notna().mean() > 0.8:
-            cols_to_coerce.append(col)
-            X_train[col] = coerced
-    for col in cols_to_coerce:
-        if col in X_test.columns:
-            X_test[col] = pd.to_numeric(X_test[col].astype(str).str.replace(",", "."), errors="coerce")
-        if X_val is not None and col in X_val.columns:
-            X_val[col] = pd.to_numeric(X_val[col].astype(str).str.replace(",", "."), errors="coerce")
+    profiles_cfg = config.get("profiles", {
+        "scaled": {"enabled": True, "output_prefix": "scaled"},
+        "tree": {"enabled": False, "output_prefix": "tree"},
+        "catboost": {"enabled": False, "output_prefix": "catboost"},
+    })
 
-    # Remove non-descriptive columns (train-based)
-    X_train, removed_non_descr = drop_non_descriptive(X_train)
-    X_test = X_test.drop(columns=[c for c in removed_non_descr if c in X_test.columns], errors="ignore")
-    if X_val is not None:
-        X_val = X_val.drop(columns=[c for c in removed_non_descr if c in X_val.columns], errors="ignore")
+    first_profile_saved = None
 
-    # Prepare numeric matrices and align columns
-    X_train_num = X_train.select_dtypes(include=[np.number]).fillna(0)
-    X_test_num = X_test.select_dtypes(include=[np.number]).fillna(0)
-    X_test_num = X_test_num.reindex(columns=X_train_num.columns, fill_value=0.0)
-    X_val_num = None
-    if X_val is not None:
-        X_val_num = X_val.select_dtypes(include=[np.number]).fillna(0)
-        X_val_num = X_val_num.reindex(columns=X_train_num.columns, fill_value=0.0)
+    def save_profile(X_tr: pd.DataFrame, X_te: pd.DataFrame, y_tr: pd.Series, y_te: pd.Series, X_va: pd.DataFrame | None, y_va: pd.Series | None, prefix: str):
+        X_tr.to_parquet(pre_dir / f"X_train_{prefix}.parquet", index=False)
+        X_te.to_parquet(pre_dir / f"X_test_{prefix}.parquet", index=False)
+        pd.DataFrame({target_col: y_tr}).to_parquet(pre_dir / f"y_train_{prefix}.parquet", index=False)
+        pd.DataFrame({target_col: y_te}).to_parquet(pre_dir / f"y_test_{prefix}.parquet", index=False)
+        if X_va is not None and y_va is not None:
+            X_va.to_parquet(pre_dir / f"X_val_{prefix}.parquet", index=False)
+            pd.DataFrame({target_col: y_va}).to_parquet(pre_dir / f"y_val_{prefix}.parquet", index=False)
 
-    # Optional winsorization (fit on train, apply to all)
-    wins_cfg_dict = config.get("winsorization", {})
-    from preprocessing.transformers import WinsorConfig
-    wins_cfg = WinsorConfig(
-        enabled=bool(wins_cfg_dict.get("enabled", False)),
-        lower_quantile=float(wins_cfg_dict.get("lower_quantile", 0.01)),
-        upper_quantile=float(wins_cfg_dict.get("upper_quantile", 0.99)),
-    )
-    winsorizer = fit_winsorizer(X_train_num, wins_cfg)
-    X_train_num = apply_winsorizer(X_train_num, winsorizer)
-    X_test_num = apply_winsorizer(X_test_num, winsorizer)
-    if X_val_num is not None:
-        X_val_num = apply_winsorizer(X_val_num, winsorizer)
+    # Helper: numeric coercion based on train
+    def coerce_numeric_like(train_df: pd.DataFrame, other_dfs: List[pd.DataFrame | None]) -> Tuple[pd.DataFrame, List[pd.DataFrame | None]]:
+        train = train_df.copy()
+        cols_to_coerce: List[str] = []
+        for col in train.select_dtypes(include=["object"]).columns:
+            coerced = pd.to_numeric(train[col].astype(str).str.replace(",", "."), errors="coerce")
+            if coerced.notna().mean() > 0.8:
+                cols_to_coerce.append(col)
+                train[col] = coerced
+        outs: List[pd.DataFrame | None] = []
+        for df_ in other_dfs:
+            if df_ is None:
+                outs.append(None)
+            else:
+                tmp = df_.copy()
+                for col in cols_to_coerce:
+                    if col in tmp.columns:
+                        tmp[col] = pd.to_numeric(tmp[col].astype(str).str.replace(",", "."), errors="coerce")
+                outs.append(tmp)
+        return train, outs
 
-    # Scaling and optional PCA (fit only on train)
-    scaling_cfg_dict = config.get("scaling", {})
-    scaling_cfg = ScalingConfig(
-        scaler_type=scaling_cfg_dict.get("scaler_type", "standard"),
-        with_mean=bool(scaling_cfg_dict.get("with_mean", True)),
-        with_std=bool(scaling_cfg_dict.get("with_std", True)),
-    )
-    pca_cfg_dict = config.get("pca", {})
-    pca_cfg = PCAConfig(
-        enabled=bool(pca_cfg_dict.get("enabled", False)),
-        n_components=pca_cfg_dict.get("n_components", 0.95),
-        random_state=int(pca_cfg_dict.get("random_state", 42)),
-    )
-    X_train, X_test, fitted = scale_and_pca(X_train_num, X_test_num, scaling_cfg, pca_cfg)
-    if X_val_num is not None:
-        # Transform val using fitted scaler/pca
-        X_val_scaled = pd.DataFrame(fitted.scaler.transform(X_val_num), columns=X_val_num.columns, index=X_val_num.index)
-        if fitted.pca is not None:
-            X_val_pca = fitted.pca.transform(X_val_scaled)
-            X_val = pd.DataFrame(X_val_pca, columns=[f"PC{i+1}" for i in range(X_val_pca.shape[1])], index=X_val_num.index)
+    # Profile: scaled
+    if profiles_cfg.get("scaled", {}).get("enabled", False):
+        enc_max = int(profiles_cfg.get("scaled", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
+        X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
+        plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
+        X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
+        X_te = transform_with_encoders(X_te, encoders)
+        if X_va is not None:
+            X_va = transform_with_encoders(X_va, encoders)
+        X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
+        X_tr, removed_nd = drop_non_descriptive(X_tr)
+        X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
+        if X_va is not None:
+            X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
+        # Align numeric and apply winsor/scaling/pca
+        X_tr_num = X_tr.select_dtypes(include=[np.number]).fillna(0)
+        X_te_num = X_te.select_dtypes(include=[np.number]).fillna(0).reindex(columns=X_tr_num.columns, fill_value=0)
+        X_va_num = None
+        if X_va is not None:
+            X_va_num = X_va.select_dtypes(include=[np.number]).fillna(0).reindex(columns=X_tr_num.columns, fill_value=0)
+        # Winsor
+        wins_cfg_dict = profiles_cfg.get("scaled", {}).get("winsorization", config.get("winsorization", {}))
+        from preprocessing.transformers import WinsorConfig
+        wins_cfg = WinsorConfig(
+            enabled=bool(wins_cfg_dict.get("enabled", False)),
+            lower_quantile=float(wins_cfg_dict.get("lower_quantile", 0.01)),
+            upper_quantile=float(wins_cfg_dict.get("upper_quantile", 0.99)),
+        )
+        winsorizer = fit_winsorizer(X_tr_num, wins_cfg)
+        X_tr_num = apply_winsorizer(X_tr_num, winsorizer)
+        X_te_num = apply_winsorizer(X_te_num, winsorizer)
+        if X_va_num is not None:
+            X_va_num = apply_winsorizer(X_va_num, winsorizer)
+        # Scaling/PCA
+        sc_dict = profiles_cfg.get("scaled", {}).get("scaling", config.get("scaling", {}))
+        scaling_cfg = ScalingConfig(
+            scaler_type=sc_dict.get("scaler_type", "standard"),
+            with_mean=bool(sc_dict.get("with_mean", True)),
+            with_std=bool(sc_dict.get("with_std", True)),
+        )
+        pca_dict = profiles_cfg.get("scaled", {}).get("pca", config.get("pca", {}))
+        pca_cfg = PCAConfig(
+            enabled=bool(pca_dict.get("enabled", False)),
+            n_components=pca_dict.get("n_components", 0.95),
+            random_state=int(pca_dict.get("random_state", 42)),
+        )
+        X_tr_f, X_te_f, fitted = scale_and_pca(X_tr_num, X_te_num, scaling_cfg, pca_cfg)
+        if X_va_num is not None:
+            X_va_scaled = pd.DataFrame(fitted.scaler.transform(X_va_num), columns=X_va_num.columns, index=X_va_num.index) if fitted.scaler is not None else X_va_num
+            if fitted.pca is not None:
+                vals = fitted.pca.transform(X_va_scaled)
+                X_va_f = pd.DataFrame(vals, columns=[f"PC{i+1}" for i in range(vals.shape[1])], index=X_va_scaled.index)
+            else:
+                X_va_f = X_va_scaled
         else:
-            X_val = X_val_scaled
+            X_va_f = None
+        # Correlation prune
+        corr_thr = float(profiles_cfg.get("scaled", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
+        X_tr_f, dropped_corr = remove_highly_correlated(X_tr_f, threshold=corr_thr)
+        X_te_f = X_te_f.drop(columns=[c for c in dropped_corr if c in X_te_f.columns], errors="ignore")
+        if X_va_f is not None:
+            X_va_f = X_va_f.drop(columns=[c for c in dropped_corr if c in X_va_f.columns], errors="ignore")
+        prefix = profiles_cfg.get("scaled", {}).get("output_prefix", "scaled")
+        save_profile(X_tr_f, X_te_f, y_train, y_test, X_va_f, y_val, prefix)
+        if first_profile_saved is None:
+            first_profile_saved = prefix
 
-    # Remove highly correlated columns (train-based)
-    X_train, dropped_corr = remove_highly_correlated(X_train, threshold=float(config.get("correlation", {}).get("numeric_threshold", 0.98)))
-    X_test = X_test.drop(columns=[c for c in dropped_corr if c in X_test.columns], errors="ignore")
-    if X_val is not None:
-        X_val = X_val.drop(columns=[c for c in dropped_corr if c in X_val.columns], errors="ignore")
+    # Profile: tree (no scaling/PCA)
+    if profiles_cfg.get("tree", {}).get("enabled", False):
+        enc_max = int(profiles_cfg.get("tree", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
+        X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
+        plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
+        X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
+        X_te = transform_with_encoders(X_te, encoders)
+        if X_va is not None:
+            X_va = transform_with_encoders(X_va, encoders)
+        X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
+        X_tr, removed_nd = drop_non_descriptive(X_tr)
+        X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
+        if X_va is not None:
+            X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
+        # Align columns (no scaling/pca)
+        cols = X_tr.columns
+        X_te = X_te.reindex(columns=cols, fill_value=0)
+        if X_va is not None:
+            X_va = X_va.reindex(columns=cols, fill_value=0)
+        # Optional numeric-only correlation prune
+        corr_thr = float(profiles_cfg.get("tree", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
+        X_tr_num = X_tr.select_dtypes(include=[np.number])
+        X_tr_num_pruned, dropped_corr = remove_highly_correlated(X_tr_num, threshold=corr_thr)
+        keep_cols = list(dropped_corr)
+        # Build mask of kept numeric columns
+        kept_num_cols = X_tr_num_pruned.columns
+        X_tr_final = pd.concat([X_tr[kept_num_cols], X_tr.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        X_te_final = pd.concat([X_te[kept_num_cols], X_te.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        if X_va is not None:
+            X_va_final = pd.concat([X_va[kept_num_cols], X_va.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        else:
+            X_va_final = None
+        prefix = profiles_cfg.get("tree", {}).get("output_prefix", "tree")
+        save_profile(X_tr_final, X_te_final, y_train, y_test, X_va_final, y_val, prefix)
+        if first_profile_saved is None:
+            first_profile_saved = prefix
 
-    # Save outputs
-    pre_filename = paths.get("preprocessed_filename", "preprocessed.parquet")
-    out_path = pre_dir / pre_filename
-    # For backward compatibility, keep combined preprocessed with features + target
-    frames = [X_train.assign(**{target_col: y_train})]
-    if X_val is not None and y_val is not None:
-        frames.append(X_val.assign(**{target_col: y_val}))
-    frames.append(X_test.assign(**{target_col: y_test}))
-    combined = pd.concat(frames, axis=0)
-    combined.to_parquet(out_path, index=False)
+    # Profile: catboost (preserve categoricals)
+    if profiles_cfg.get("catboost", {}).get("enabled", False):
+        X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
+        # Imputation already done; keep categoricals
+        # Coerce numeric-like strings to numeric
+        X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
+        # Drop non-descriptive
+        X_tr, removed_nd = drop_non_descriptive(X_tr)
+        X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
+        if X_va is not None:
+            X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
+        # Numeric-only correlation prune
+        corr_thr = float(profiles_cfg.get("catboost", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
+        X_tr_num = X_tr.select_dtypes(include=[np.number])
+        X_tr_num_pruned, dropped_corr = remove_highly_correlated(X_tr_num, threshold=corr_thr)
+        kept_num_cols = X_tr_num_pruned.columns
+        X_tr_final = pd.concat([X_tr[kept_num_cols], X_tr.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        X_te_final = pd.concat([X_te[kept_num_cols], X_te.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        if X_va is not None:
+            X_va_final = pd.concat([X_va[kept_num_cols], X_va.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        else:
+            X_va_final = None
+        prefix = profiles_cfg.get("catboost", {}).get("output_prefix", "catboost")
+        save_profile(X_tr_final, X_te_final, y_train, y_test, X_va_final, y_val, prefix)
+        # Save list of categorical columns for catboost
+        cat_cols = X_tr_final.select_dtypes(include=["object", "category"]).columns.tolist()
+        (pre_dir / f"categorical_columns_{prefix}.txt").write_text("\n".join(cat_cols), encoding="utf-8")
+        if first_profile_saved is None:
+            first_profile_saved = prefix
 
-    # Also save split datasets for training convenience
-    X_train_path = pre_dir / "X_train.parquet"
-    X_test_path = pre_dir / "X_test.parquet"
-    y_train_path = pre_dir / "y_train.parquet"
-    y_test_path = pre_dir / "y_test.parquet"
-    X_train.to_parquet(X_train_path, index=False)
-    X_test.to_parquet(X_test_path, index=False)
-    pd.DataFrame({target_col: y_train}).to_parquet(y_train_path, index=False)
-    pd.DataFrame({target_col: y_test}).to_parquet(y_test_path, index=False)
-    if X_val is not None and y_val is not None:
-        X_val_path = pre_dir / "X_val.parquet"
-        y_val_path = pre_dir / "y_val.parquet"
-        X_val.to_parquet(X_val_path, index=False)
-        pd.DataFrame({target_col: y_val}).to_parquet(y_val_path, index=False)
+    # Backward-compatible symlinks (copy) to default filenames using first enabled profile
+    if first_profile_saved is not None:
+        # Save combined
+        X_train_bc = pd.read_parquet(pre_dir / f"X_train_{first_profile_saved}.parquet")
+        X_test_bc = pd.read_parquet(pre_dir / f"X_test_{first_profile_saved}.parquet")
+        y_train_bc = pd.read_parquet(pre_dir / f"y_train_{first_profile_saved}.parquet")[target_col]
+        y_test_bc = pd.read_parquet(pre_dir / f"y_test_{first_profile_saved}.parquet")[target_col]
+        frames = [X_train_bc.assign(**{target_col: y_train_bc})]
+        if (pre_dir / f"X_val_{first_profile_saved}.parquet").exists() and (pre_dir / f"y_val_{first_profile_saved}.parquet").exists():
+            X_val_bc = pd.read_parquet(pre_dir / f"X_val_{first_profile_saved}.parquet")
+            y_val_bc = pd.read_parquet(pre_dir / f"y_val_{first_profile_saved}.parquet")[target_col]
+            frames.append(X_val_bc.assign(**{target_col: y_val_bc}))
+        frames.append(X_test_bc.assign(**{target_col: y_test_bc}))
+        combined = pd.concat(frames, axis=0)
+        out_path = pre_dir / paths.get("preprocessed_filename", "preprocessed.parquet")
+        combined.to_parquet(out_path, index=False)
+        # Default names without suffix
+        (pre_dir / "X_train.parquet").write_bytes((pre_dir / f"X_train_{first_profile_saved}.parquet").read_bytes())
+        (pre_dir / "X_test.parquet").write_bytes((pre_dir / f"X_test_{first_profile_saved}.parquet").read_bytes())
+        (pre_dir / "y_train.parquet").write_bytes((pre_dir / f"y_train_{first_profile_saved}.parquet").read_bytes())
+        (pre_dir / "y_test.parquet").write_bytes((pre_dir / f"y_test_{first_profile_saved}.parquet").read_bytes())
+        if (pre_dir / f"X_val_{first_profile_saved}.parquet").exists():
+            (pre_dir / "X_val.parquet").write_bytes((pre_dir / f"X_val_{first_profile_saved}.parquet").read_bytes())
+        if (pre_dir / f"y_val_{first_profile_saved}.parquet").exists():
+            (pre_dir / "y_val.parquet").write_bytes((pre_dir / f"y_val_{first_profile_saved}.parquet").read_bytes())
 
     # Report
     save_report(
         reports_dir / "preprocessing.md",
         sections={
             "Raw profile": dataframe_profile(df),
-            "After feature extraction": dataframe_profile(X_train),
-            "Train features": dataframe_profile(X_train),
-            "Test features": dataframe_profile(X_test),
+            "After feature extraction": dataframe_profile(base_train),
+            "Train features": dataframe_profile(base_train),
+            "Test features": dataframe_profile(base_test),
         },
     )
 

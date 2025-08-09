@@ -59,6 +59,28 @@ Configurazione chiave (estratto `config/config.yaml`):
 - scaling: `scaler_type`, `with_mean`, `with_std`
 - pca: `enabled`, `n_components`, `random_state`
 - correlation: `numeric_threshold`
+- profiles: abilita dataset multipli e override per profilo (vedi sotto)
+
+#### Profili multipli (profiles)
+Permette di generare più varianti del dataset in un singolo run, utili per famiglie di modelli diverse.
+- `profiles.scaled` (per Linear/SVR/KNN):
+  - `enabled`: true/false
+  - `output_prefix`: suffisso dei file prodotti (es. `scaled`)
+  - `encoding.max_ohe_cardinality`: soglia per OHE
+  - `winsorization`: quantile clipping (enabled, lower_quantile, upper_quantile)
+  - `scaling`: tipo scaler (`standard`/`robust`/`none`), `with_mean`, `with_std`
+  - `pca`: `enabled`, `n_components`, `random_state`
+  - `correlation.numeric_threshold`: pruning correlazioni dopo scaling/PCA
+- `profiles.tree` (per tree/boosting):
+  - `enabled`, `output_prefix`, `encoding.max_ohe_cardinality`
+  - `correlation.numeric_threshold`: pruning solo sulle numeriche (nessuno scaling/PCA)
+- `profiles.catboost` (per CatBoost):
+  - `enabled`, `output_prefix`
+  - `correlation.numeric_threshold`: pruning solo sulle numeriche
+  - salva anche `categorical_columns_{prefix}.txt` con la lista di colonne categoriche da passare a CatBoost
+
+Output per profilo (se abilitato): `X_train_{prefix}.parquet`, `X_val_{prefix}.parquet` (se presente), `X_test_{prefix}.parquet`, e le corrispondenze `y_*_{prefix}.parquet`.
+Il profilo abilitato per primo viene anche copiato nei nomi “di default” senza suffisso e in `preprocessed.parquet` per compatibilità.
 
 ### Scelta del dataset per i modelli
 - Modelli lineari/SVR/KNN: profilo “scaled” (OHE + scaling + opzionale PCA; log-target spesso utile).
