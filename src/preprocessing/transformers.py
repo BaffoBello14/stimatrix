@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, RobustScaler
 
 from utils.logger import get_logger
 
@@ -15,6 +15,7 @@ logger = get_logger(__name__)
 
 @dataclass
 class ScalingConfig:
+    scaler_type: str = "standard"  # 'standard' | 'robust' | 'none'
     with_mean: bool = True
     with_std: bool = True
 
@@ -45,8 +46,21 @@ class CorrelationFilterConfig:
 
 @dataclass
 class FittedTransforms:
-    scaler: Optional[StandardScaler]
+    scaler: Optional[object]
     pca: Optional[PCA]
+
+
+@dataclass
+class WinsorConfig:
+    enabled: bool = False
+    lower_quantile: float = 0.01
+    upper_quantile: float = 0.99
+
+
+@dataclass
+class FittedWinsorizer:
+    lower_bounds: pd.Series
+    upper_bounds: pd.Series
 
 
 def temporal_key(df: pd.DataFrame, year_col: str, month_col: str) -> pd.Series:
@@ -114,15 +128,44 @@ def temporal_split_3way(
     return pre_test.loc[train_idx].copy(), pre_test.loc[val_idx].copy(), test_df
 
 
+def fit_winsorizer(X_train: pd.DataFrame, cfg: WinsorConfig) -> FittedWinsorizer:
+    if not cfg.enabled:
+        return FittedWinsorizer(lower_bounds=pd.Series(dtype=float), upper_bounds=pd.Series(dtype=float))
+    lb = X_train.quantile(cfg.lower_quantile)
+    ub = X_train.quantile(cfg.upper_quantile)
+    return FittedWinsorizer(lower_bounds=lb, upper_bounds=ub)
+
+
+def apply_winsorizer(X: pd.DataFrame, fitted: FittedWinsorizer) -> pd.DataFrame:
+    if fitted.lower_bounds.empty and fitted.upper_bounds.empty:
+        return X
+    Y = X.copy()
+    for col in Y.columns:
+        if col in fitted.lower_bounds.index:
+            Y[col] = Y[col].clip(lower=fitted.lower_bounds[col], upper=fitted.upper_bounds[col])
+    return Y
+
+
 def scale_and_pca(
     X_train: pd.DataFrame,
     X_test: pd.DataFrame,
     scaling_cfg: ScalingConfig,
     pca_cfg: PCAConfig,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, FittedTransforms]:
-    scaler = StandardScaler(with_mean=scaling_cfg.with_mean, with_std=scaling_cfg.with_std)
-    X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns, index=X_train.index)
-    X_test_scaled = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns, index=X_test.index)
+    # Choose scaler
+    scaler: Optional[object]
+    if scaling_cfg.scaler_type == "none":
+        scaler = None
+        X_train_scaled = X_train.copy()
+        X_test_scaled = X_test.copy()
+    elif scaling_cfg.scaler_type == "robust":
+        scaler = RobustScaler(with_centering=scaling_cfg.with_mean, with_scaling=scaling_cfg.with_std)
+        X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns, index=X_train.index)
+        X_test_scaled = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns, index=X_test.index)
+    else:
+        scaler = StandardScaler(with_mean=scaling_cfg.with_mean, with_std=scaling_cfg.with_std)
+        X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns, index=X_train.index)
+        X_test_scaled = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns, index=X_test.index)
 
     if pca_cfg.enabled:
         pca = PCA(n_components=pca_cfg.n_components, random_state=pca_cfg.random_state)

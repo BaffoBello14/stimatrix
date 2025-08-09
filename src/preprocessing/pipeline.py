@@ -17,6 +17,8 @@ from preprocessing.transformers import (
     PCAConfig,
     temporal_split,
     temporal_split_3way,
+    fit_winsorizer,
+    apply_winsorizer,
     scale_and_pca,
     remove_highly_correlated,
     drop_non_descriptive,
@@ -68,8 +70,15 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     df = df.dropna(axis=1, how="all")
 
     # Feature extraction from JSON and geometry-like WKT columns
-    df, drop_geom = extract_geometry_features(df)
-    df, drop_json = maybe_extract_json_features(df)
+    fe_cfg = config.get("feature_extraction", {})
+    if bool(fe_cfg.get("geometry", True)):
+        df, drop_geom = extract_geometry_features(df)
+    else:
+        drop_geom = []
+    if bool(fe_cfg.get("json", True)):
+        df, drop_json = maybe_extract_json_features(df)
+    else:
+        drop_json = []
     cols_to_drop_now = list(set(drop_geom + drop_json))
     if cols_to_drop_now:
         df = df.drop(columns=cols_to_drop_now, errors="ignore")
@@ -174,8 +183,27 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_val_num = X_val.select_dtypes(include=[np.number]).fillna(0)
         X_val_num = X_val_num.reindex(columns=X_train_num.columns, fill_value=0.0)
 
+    # Optional winsorization (fit on train, apply to all)
+    wins_cfg_dict = config.get("winsorization", {})
+    from preprocessing.transformers import WinsorConfig
+    wins_cfg = WinsorConfig(
+        enabled=bool(wins_cfg_dict.get("enabled", False)),
+        lower_quantile=float(wins_cfg_dict.get("lower_quantile", 0.01)),
+        upper_quantile=float(wins_cfg_dict.get("upper_quantile", 0.99)),
+    )
+    winsorizer = fit_winsorizer(X_train_num, wins_cfg)
+    X_train_num = apply_winsorizer(X_train_num, winsorizer)
+    X_test_num = apply_winsorizer(X_test_num, winsorizer)
+    if X_val_num is not None:
+        X_val_num = apply_winsorizer(X_val_num, winsorizer)
+
     # Scaling and optional PCA (fit only on train)
-    scaling_cfg = ScalingConfig()
+    scaling_cfg_dict = config.get("scaling", {})
+    scaling_cfg = ScalingConfig(
+        scaler_type=scaling_cfg_dict.get("scaler_type", "standard"),
+        with_mean=bool(scaling_cfg_dict.get("with_mean", True)),
+        with_std=bool(scaling_cfg_dict.get("with_std", True)),
+    )
     pca_cfg_dict = config.get("pca", {})
     pca_cfg = PCAConfig(
         enabled=bool(pca_cfg_dict.get("enabled", False)),

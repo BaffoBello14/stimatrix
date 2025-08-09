@@ -70,3 +70,20 @@ pca:
 # Correlation pruning
 correlation:
   numeric_threshold: 0.98
+
+# Feature extraction toggles
+feature_extraction:
+  geometry: true
+  json: true
+
+# Scaling configuration
+scaling:
+  scaler_type: 'standard'   # 'standard' | 'robust' | 'none'
+  with_mean: true
+  with_std: true
+
+# Winsorization (quantile clipping on numeric features)
+winsorization:
+  enabled: false
+  lower_quantile: 0.01
+  upper_quantile: 0.99
