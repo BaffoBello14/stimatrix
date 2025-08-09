@@ -120,3 +120,59 @@ profiles:
     output_prefix: 'catboost'
     correlation:
       numeric_threshold: 0.98
+
+# Training configuration
+training:
+  # Modelli da addestrare (identificatori)
+  # Possibili: linear, ridge, lasso, elasticnet, dt, knn, svr, rf, gbr, hgbt, xgboost, lightgbm, catboost, voting, stacking
+  models: ["ridge", "rf", "lightgbm", "xgboost", "catboost"]
+
+  # Profilo dataset per famiglia di modelli (se non presente, fallback ai file senza suffisso)
+  profile_map:
+    linear: "scaled"
+    ridge: "scaled"
+    lasso: "scaled"
+    elasticnet: "scaled"
+    knn: "scaled"
+    svr: "scaled"
+    dt: "tree"
+    rf: "tree"
+    gbr: "tree"
+    hgbt: "tree"
+    xgboost: "tree"
+    lightgbm: "tree"
+    catboost: "catboost"
+
+  # Metrica primaria da massimizzare durante il tuning
+  # Supportate: r2, neg_mean_squared_error, neg_root_mean_squared_error, neg_mean_absolute_error, neg_mean_absolute_percentage_error
+  primary_metric: "r2"
+
+  # Metrica per il report finale (sempre calcoliamo tutte queste positive); non influenza la direzione del tuning
+  report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
+
+  # Optuna/OptunaHub
+  optuna:
+    n_trials: 50
+    timeout: null  # secondi, null per nessun timeout
+    sampler: "auto"  # "auto" usa optunahub samplers/auto_sampler; "tpe" per TPE standard
+    seed: 42
+
+  # SHAP feature importance
+  shap:
+    enabled: true
+    sample_size: 2000
+    max_display: 30
+    save_plots: true
+    save_values: false  # salva shap_values completi (può essere molto pesante)
+
+  # Ensemble settings
+  ensembles:
+    voting:
+      enabled: true
+      top_n: 3
+      tune_weights: true
+    stacking:
+      enabled: true
+      top_n: 5
+      final_estimator: "ridge"  # ridge | lgbm
+      cv_folds: 5
