@@ -29,19 +29,16 @@ logger = get_logger(__name__)
 
 
 def choose_target(df: pd.DataFrame, config: Dict[str, Any]) -> str:
-    # Prefer redistributed price if present, else fall back to AI_Valore or similar if available
+    # Prefer redistributed price if present
     preferred = config.get("target", {}).get("column_candidates", [
         "AI_Prezzo_Ridistribuito",
-        "AI_Prezzo",
     ])
     for c in preferred:
         if c in df.columns:
             return c
-    # Fallback: look for price-like columns
-    price_like = [c for c in df.columns if "Prezzo" in c or "Valore" in c]
-    if not price_like:
-        raise ValueError("Nessuna colonna target trovata (Prezzo/Valore)")
-    return price_like[0]
+    # Strict: raise with info
+    available = [c for c in df.columns if "Prezzo" in c or "Valore" in c]
+    raise ValueError(f"Nessuna colonna target trovata tra {preferred}. Disponibili simili: {available[:10]}")
 
 
 def apply_log_target_if(config: Dict[str, Any], y: pd.Series) -> Tuple[pd.Series, Dict[str, Any]]:

@@ -28,7 +28,7 @@ database:
 
 # Target configuration
 target:
-  column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo']
+  column_candidates: ['AI_Prezzo_Ridistribuito']
   log_transform: false
 
 # Outlier detection
