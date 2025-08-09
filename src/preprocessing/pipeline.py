@@ -25,7 +25,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     # Esempio minimo: drop colonne completamente vuote
     df = df.dropna(axis=1, how="all")
 
-    out_path = pre_dir / "preprocessed.parquet"
+    pre_filename = paths.get("preprocessed_filename", "preprocessed.parquet")
+    out_path = pre_dir / pre_filename
     df.to_parquet(out_path, index=False)
     logger.info(f"Preprocessing completato: {out_path}")
     return out_path

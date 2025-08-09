@@ -16,6 +16,7 @@ from db.schema_extract import main as schema_main
 from dataset_builder.retrieval import retrieve_data
 from preprocessing.pipeline import run_preprocessing
 from training.train import run_training
+from utils.logger_config import setup_logger
 
 
 def parse_args() -> argparse.Namespace:
@@ -49,8 +50,11 @@ def run_schema(config) -> None:
 
     out = config.get("paths", {}).get("schema", "data/db_schema.json")
     ensure_parent_dir(out)
+
+    schema_name = config.get("database", {}).get("schema_name", None)
+
     engine = get_engine()
-    schema_dict = extract_schema(engine, schema_name=None)
+    schema_dict = extract_schema(engine, schema_name=schema_name)
     import json
 
     with open(out, "w", encoding="utf-8") as f:
@@ -64,12 +68,15 @@ def run_dataset(config) -> None:
     schema_path = paths.get("schema", "data/db_schema.json")
     raw_dir = Path(paths.get("raw_data", "data/raw"))
     raw_dir.mkdir(parents=True, exist_ok=True)
-    out_path = str(raw_dir / "raw.parquet")
+
+    raw_filename = paths.get("raw_filename", f"raw.{db_cfg.get('output_format', 'parquet')}")
+    out_path = str(raw_dir / raw_filename)
 
     aliases = db_cfg.get("selected_aliases", [])
     include_poi = bool(db_cfg.get("use_poi", True))
     include_ztl = bool(db_cfg.get("use_ztl", True))
 
+    # retrieval salva con formato interno; passiamo via config usando globali
     retrieve_data(
         schema_path=schema_path,
         selected_aliases=aliases,
@@ -83,6 +90,9 @@ def run_dataset(config) -> None:
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
+
+    # Initialize logging according to config
+    setup_logger(args.config)
 
     steps: List[str] = args.steps
     if "all" in steps:

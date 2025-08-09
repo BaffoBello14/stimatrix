@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import pandas as pd
 
@@ -16,14 +16,22 @@ def ensure_parent_dir(path: str | os.PathLike) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
 
 
-def save_dataframe(df: pd.DataFrame, path: str, format: str = "parquet") -> None:
+def save_dataframe(
+    df: pd.DataFrame, path: str, format: str = "parquet", compression: Optional[str] = None
+) -> None:
     format = format.lower()
     ensure_parent_dir(path)
     if format == "parquet":
-        df.to_parquet(path, index=False)
+        kwargs = {}
+        if compression:
+            kwargs["compression"] = compression
+        df.to_parquet(path, index=False, **kwargs)
         logger.info(f"DataFrame salvato come Parquet: {path}")
     elif format == "csv":
-        df.to_csv(path, index=False)
+        kwargs = {}
+        if compression in {"gzip", "bz2", "zip", "xz"}:
+            kwargs["compression"] = compression
+        df.to_csv(path, index=False, **kwargs)
         logger.info(f"DataFrame salvato come CSV: {path}")
     else:
         raise ValueError(f"Formato non supportato: {format}")

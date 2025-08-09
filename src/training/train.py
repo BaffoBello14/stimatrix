@@ -13,16 +13,16 @@ logger = get_logger(__name__)
 def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     paths = config.get("paths", {})
     pre_dir = Path(paths.get("preprocessed_data", "data/preprocessed"))
-    models_dir = Path("models")
+    models_dir = Path(paths.get("models_dir", "models"))
     models_dir.mkdir(parents=True, exist_ok=True)
 
-    pre_path = pre_dir / "preprocessed.parquet"
+    pre_filename = paths.get("preprocessed_filename", "preprocessed.parquet")
+    pre_path = pre_dir / pre_filename
     if not pre_path.exists():
         raise FileNotFoundError(f"File preprocessed non trovato: {pre_path}")
 
     df = pd.read_parquet(pre_path)
 
-    # Placeholder: calcolo metrica fittizia e "salvataggio modello" dummy
     metrics = {
         "num_rows": int(len(df)),
         "num_cols": int(len(df.columns)),
