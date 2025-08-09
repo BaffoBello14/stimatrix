@@ -99,6 +99,15 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             else:
                 cat_features = _catboost_cat_features(pre_dir, prefix, X_train)
 
+        # Per modelli non-CatBoost, rimuovi eventuali colonne non numeriche rimaste
+        if model_key.lower() != "catboost":
+            numeric_cols = X_train.select_dtypes(include=[np.number]).columns
+            if len(numeric_cols) != X_train.shape[1]:
+                X_train = X_train[numeric_cols]
+                X_test = X_test.reindex(columns=numeric_cols, fill_value=0)
+                if X_val is not None:
+                    X_val = X_val.reindex(columns=numeric_cols, fill_value=0)
+
         # Tuning
         space = model_entry.get("search_space", {})
         base = default_params(model_key)
