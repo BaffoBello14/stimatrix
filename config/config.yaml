@@ -11,7 +11,7 @@ logging:
 paths:
   raw_data: 'data/raw'
   preprocessed_data: 'data/preprocessed'
-  schema: 'data/db_schema.json'
+  schema: 'schema/db_schema.json'
   models_dir: 'models'
   raw_filename: 'raw.parquet'
   preprocessed_filename: 'preprocessed.parquet'
@@ -24,4 +24,99 @@ database:
   use_ztl: true
   output_format: 'parquet'
   compression: 'snappy'
-  force_reload: false
+
+# Target configuration
+target:
+  column_candidates: ['AI_Prezzo_Ridistribuito']
+  log_transform: false
+
+# Outlier detection
+outliers:
+  method: 'ensemble'       # 'iqr' | 'zscore' | 'iso_forest' | 'ensemble'
+  z_thresh: 4.0
+  iqr_factor: 1.5
+  iso_forest_contamination: 0.02
+  group_by_col: 'AI_IdCategoriaCatastale'
+  min_group_size: 30       # minimum samples per group to apply group-wise outlier detection
+  fallback_strategy: 'global'  # 'skip' keeps all small groups; 'global' applies global detection
+
+# Missing value imputation
+imputation:
+  numeric_strategy: 'median'      # 'median' | 'mean'
+  categorical_strategy: 'most_frequent'
+  group_by_col: 'AI_IdCategoriaCatastale'
+
+# Categorical encoding
+encoding:
+  max_ohe_cardinality: 12
+
+# Temporal split configuration
+temporal_split:
+  year_col: 'A_AnnoStipula'
+  month_col: 'A_MeseStipula'
+  mode: 'fraction'      # 'date' | 'fraction'
+  train_fraction: 0.8   # fraction of time-ordered data for train
+  valid_fraction: 0.1   # fraction of time-ordered data for validation (0 disables val)
+  test_start_year: 2023 # used only if mode=='date'
+  test_start_month: 1   # used only if mode=='date'
+
+# PCA configuration
+pca:
+  enabled: false
+  n_components: 0.95
+  random_state: 42
+
+# Correlation pruning
+correlation:
+  numeric_threshold: 0.98
+
+# Feature extraction toggles
+feature_extraction:
+  geometry: true
+  json: true
+
+# Scaling configuration
+scaling:
+  scaler_type: 'standard'   # 'standard' | 'robust' | 'none'
+  with_mean: true
+  with_std: true
+
+# Winsorization (quantile clipping on numeric features)
+winsorization:
+  enabled: false
+  lower_quantile: 0.01
+  upper_quantile: 0.99
+
+# Profiles: generate multiple datasets tailored to model families
+profiles:
+  scaled:
+    enabled: true
+    output_prefix: 'scaled'
+    encoding:
+      max_ohe_cardinality: 12
+    winsorization:
+      enabled: false
+      lower_quantile: 0.01
+      upper_quantile: 0.99
+    scaling:
+      scaler_type: 'standard'   # 'standard' | 'robust' | 'none'
+      with_mean: true
+      with_std: true
+    pca:
+      enabled: false
+      n_components: 0.95
+      random_state: 42
+    correlation:
+      numeric_threshold: 0.98
+  tree:
+    enabled: false
+    output_prefix: 'tree'
+    encoding:
+      max_ohe_cardinality: 12
+    correlation:
+      numeric_threshold: 0.98
+  catboost:
+    enabled: false
+    output_prefix: 'catboost'
+    correlation:
+      numeric_threshold: 0.98

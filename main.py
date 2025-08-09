@@ -27,7 +27,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         nargs="+",
         choices=["schema", "dataset", "preprocessing", "training", "all"],
-        required=True,
+        required=False,
         help="Passi da eseguire (uno o più). Usa 'all' per tutti",
     )
     return parser.parse_args()
@@ -94,7 +94,11 @@ def main() -> None:
     # Initialize logging according to config
     setup_logger(args.config)
 
-    steps: List[str] = args.steps
+    steps: List[str] = args.steps or []
+    if not steps:
+        print("Seleziona i passi da eseguire separati da spazio (schema, dataset, preprocessing, training, all):")
+        user_input = input().strip()
+        steps = user_input.split()
     if "all" in steps:
         steps = ["schema", "dataset", "preprocessing", "training"]
 
