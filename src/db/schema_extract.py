@@ -3,32 +3,18 @@ import json
 import re
 import warnings
 from collections import defaultdict
-from pathlib import Path
 from typing import Dict, Any, Optional
 
 from sqlalchemy import inspect
 from sqlalchemy.exc import SAWarning
 
-# Supporto a esecuzione diretta del file (senza package parent): fallback agli import assoluti
-try:
-    from .connect import get_engine  # type: ignore
-    from ..utils.io import ensure_parent_dir  # type: ignore
-except Exception:
-    import sys as _sys
-    import pathlib as _pathlib
+from db.connect import get_engine
+from utils.io import ensure_parent_dir
 
-    _sys.path.append(str(_pathlib.Path(__file__).resolve().parents[2] / "src"))
-    from dataset_builder.db.connect import get_engine  # type: ignore
-    from dataset_builder.utils.io import ensure_parent_dir  # type: ignore
-
-# Dizionario per raccogliere tipi personalizzati rilevati dai warning
 unrecognized_types: Dict[str, str] = defaultdict(str)
-
-# Regex per estrarre tipo non riconosciuto da SAWarning
 SA_TYPE_REGEX = re.compile(r"Did not recognize type '(\w+)' of column '(\w+)'")
 
 
-# Intercetta warning per registrare tipi sconosciuti
 def catch_unrecognized_types() -> None:
     def custom_warning_handler(message, category, filename, lineno, file=None, line=None):
         match = SA_TYPE_REGEX.search(str(message))
@@ -41,7 +27,6 @@ def catch_unrecognized_types() -> None:
 
 
 def normalize_type(col_name: str, raw_type_str: str) -> str:
-    # Usa tipo rilevato da warning se presente
     if col_name in unrecognized_types:
         return unrecognized_types[col_name]
 
@@ -99,7 +84,6 @@ def extract_schema(engine, schema_name: Optional[str] = None) -> Dict[str, Any]:
         for col in columns:
             try:
                 raw_type = str(col["type"])  # type: ignore[index]
-                # Talvolta raw_type è NULL o simile, tenta di ricompilare
                 if raw_type.upper() in ("NULL", "NULLTYPE", "UNKNOWN"):
                     raw_type = col["type"].compile(dialect=engine.dialect)  # type: ignore[index]
             except Exception:
@@ -124,7 +108,7 @@ def main() -> None:
     parser.add_argument("--schema", type=str, default=None, help="Schema DB (opzionale)")
     args = parser.parse_args()
 
-    catch_unrecognized_types()  # intercetta tipi non riconosciuti
+    catch_unrecognized_types()
     engine = get_engine()
     schema_dict = extract_schema(engine, schema_name=args.schema)
 

@@ -1,5 +1,5 @@
 from dataset_builder.data.retrieval import build_select_clause_dual_omi
-from dataset_builder.utils.io import load_json
+from utils.io import load_json
 
 
 def test_build_select_clause_dual_omi_example_schema(tmp_path):
