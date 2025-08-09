@@ -11,7 +11,7 @@ logging:
 paths:
   raw_data: 'data/raw'
   preprocessed_data: 'data/preprocessed'
-  schema: 'data/db_schema.json'
+  schema: 'schema/db_schema.json'
   models_dir: 'models'
   raw_filename: 'raw.parquet'
   preprocessed_filename: 'preprocessed.parquet'
