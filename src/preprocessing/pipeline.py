@@ -103,6 +103,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         iqr_factor=float(out_cfg_dict.get("iqr_factor", 1.5)),
         iso_forest_contamination=float(out_cfg_dict.get("iso_forest_contamination", 0.02)),
         group_by_col=out_cfg_dict.get("group_by_col", "AI_IdCategoriaCatastale"),
+        min_group_size=int(out_cfg_dict.get("min_group_size", 30)),
+        fallback_strategy=str(out_cfg_dict.get("fallback_strategy", "skip")),
     )
     inliers_mask = detect_outliers(train_df, target_col, out_cfg)
     train_df = train_df.loc[inliers_mask].copy()
