@@ -62,12 +62,16 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         raise FileNotFoundError(f"Nessun file parquet trovato in {raw_dir}")
 
     df = pd.read_parquet(raw_files[0])
+    logger.info(f"Caricamento raw completato: rows={len(df)}, cols={len(df.columns)}")
 
     # Initial cleanup
+    prev_cols = len(df.columns)
     df = df.dropna(axis=1, how="all")
+    logger.info(f"Drop colonne completamente vuote: {prev_cols - len(df.columns)} rimosse")
 
     # Feature extraction from JSON and geometry-like WKT columns
     fe_cfg = config.get("feature_extraction", {})
+    logger.info(f"Feature extraction - geometry={bool(fe_cfg.get('geometry', True))}, json={bool(fe_cfg.get('json', True))}")
     if bool(fe_cfg.get("geometry", True)):
         df, drop_geom = extract_geometry_features(df)
     else:
@@ -79,13 +83,16 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     cols_to_drop_now = list(set(drop_geom + drop_json))
     if cols_to_drop_now:
         df = df.drop(columns=cols_to_drop_now, errors="ignore")
+    logger.info(f"Estrazione feature: aggiunte/derivate, dropped_raw={len(cols_to_drop_now)} -> cols={len(df.columns)}")
 
     # Create temporal key to enable split later (do not leak across time)
     if "A_AnnoStipula" in df.columns and "A_MeseStipula" in df.columns:
         df["TemporalKey"] = df["A_AnnoStipula"].astype(int) * 100 + df["A_MeseStipula"].astype(int)
+        logger.info("Creata colonna TemporalKey (A_AnnoStipula*100 + A_MeseStipula)")
 
     # Decide target
     target_col = choose_target(df, config)
+    logger.info(f"Target selezionato: {target_col}")
 
     # Create combined for split key if needed
     Xy_full = df.copy()
@@ -95,11 +102,16 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     split_cfg = TemporalSplitConfig(
         year_col=split_cfg_dict.get("year_col", "A_AnnoStipula"),
         month_col=split_cfg_dict.get("month_col", "A_MeseStipula"),
+        mode=split_cfg_dict.get("mode", "date"),
         test_start_year=int(split_cfg_dict.get("test_start_year", 2023)),
         test_start_month=int(split_cfg_dict.get("test_start_month", 1)),
+        train_fraction=float(split_cfg_dict.get("train_fraction", 0.8)),
+        valid_fraction=float(split_cfg_dict.get("valid_fraction", 0.0)),
     )
-    # Use 3-way split (val optional if valid_fraction>0)
     train_df, val_df, test_df = temporal_split_3way(Xy_full, split_cfg)
+    logger.info(
+        f"Split temporale ({split_cfg.mode}) -> train={len(train_df)}, val={len(val_df)}, test={len(test_df)}"
+    )
 
     # Outlier detection ONLY on train target (optionally per category)
     out_cfg_dict = config.get("outliers", {})
@@ -112,8 +124,11 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         min_group_size=int(out_cfg_dict.get("min_group_size", 30)),
         fallback_strategy=str(out_cfg_dict.get("fallback_strategy", "skip")),
     )
+    before = len(train_df)
     inliers_mask = detect_outliers(train_df, target_col, out_cfg)
     train_df = train_df.loc[inliers_mask].copy()
+    after = len(train_df)
+    logger.info(f"Outlier detection: rimossi {before - after} record dal train ({(before-after)/max(1,before)*100:.2f}%)")
 
     # Separate X and y
     y_train = train_df[target_col].astype(float)
@@ -129,8 +144,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     # Optional log-transform of target
     y_train, log_meta = apply_log_target_if(config, y_train)
     if log_meta.get("log"):
-        # Apply same transform to test for consistency
         y_test = np.log1p(y_test.clip(lower=1e-6))
+        if y_val is not None:
+            y_val = np.log1p(y_val.clip(lower=1e-6))
+        logger.info("Applicata trasformazione log1p al target")
 
     # Fit imputers on train, transform train/test
     imp_cfg_dict = config.get("imputation", {})
@@ -139,13 +156,15 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         categorical_strategy=imp_cfg_dict.get("categorical_strategy", "most_frequent"),
         group_by_col=imp_cfg_dict.get("group_by_col", "AI_IdCategoriaCatastale"),
     )
+    logger.info(
+        f"Imputation: numeric={imp_cfg.numeric_strategy}, categorical={imp_cfg.categorical_strategy}, group_by={imp_cfg.group_by_col}"
+    )
     fitted_imputers = fit_imputers(X_train, imp_cfg)
     X_train = transform_with_imputers(X_train, fitted_imputers)
     X_test = transform_with_imputers(X_test, fitted_imputers)
     if X_val is not None:
         X_val = transform_with_imputers(X_val, fitted_imputers)
 
-    # Encoding plan on train columns, fit on train and transform test
     # Prepare base copies before per-profile transformations
     base_train = X_train.copy()
     base_test = X_test.copy()
@@ -156,6 +175,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         "tree": {"enabled": False, "output_prefix": "tree"},
         "catboost": {"enabled": False, "output_prefix": "catboost"},
     })
+    logger.info(f"Profili attivi: {[k for k,v in profiles_cfg.items() if v.get('enabled', False)]}")
 
     first_profile_saved = None
 
@@ -167,6 +187,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if X_va is not None and y_va is not None:
             X_va.to_parquet(pre_dir / f"X_val_{prefix}.parquet", index=False)
             pd.DataFrame({target_col: y_va}).to_parquet(pre_dir / f"y_val_{prefix}.parquet", index=False)
+        logger.info(f"Profilo '{prefix}': salvati file train/val/test")
 
     # Helper: numeric coercion based on train
     def coerce_numeric_like(train_df: pd.DataFrame, other_dfs: List[pd.DataFrame | None]) -> Tuple[pd.DataFrame, List[pd.DataFrame | None]]:
@@ -177,6 +198,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             if coerced.notna().mean() > 0.8:
                 cols_to_coerce.append(col)
                 train[col] = coerced
+        if cols_to_coerce:
+            logger.info(f"Coercizione numerica da stringhe: {len(cols_to_coerce)} colonne")
         outs: List[pd.DataFrame | None] = []
         for df_ in other_dfs:
             if df_ is None:
@@ -192,6 +215,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     # Profile: scaled
     if profiles_cfg.get("scaled", {}).get("enabled", False):
         enc_max = int(profiles_cfg.get("scaled", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
+        logger.info(f"[scaled] Encoding plan con max_ohe_cardinality={enc_max}")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
         plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
         X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
@@ -199,7 +223,9 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if X_va is not None:
             X_va = transform_with_encoders(X_va, encoders)
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
+        prev_cols = len(X_tr.columns)
         X_tr, removed_nd = drop_non_descriptive(X_tr)
+        logger.info(f"[scaled] Drop non descrittive: {len(removed_nd)}")
         X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
         if X_va is not None:
             X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
@@ -217,6 +243,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             lower_quantile=float(wins_cfg_dict.get("lower_quantile", 0.01)),
             upper_quantile=float(wins_cfg_dict.get("upper_quantile", 0.99)),
         )
+        if wins_cfg.enabled:
+            logger.info(f"[scaled] Winsorization: q=({wins_cfg.lower_quantile}, {wins_cfg.upper_quantile})")
         winsorizer = fit_winsorizer(X_tr_num, wins_cfg)
         X_tr_num = apply_winsorizer(X_tr_num, winsorizer)
         X_te_num = apply_winsorizer(X_te_num, winsorizer)
@@ -235,6 +263,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             n_components=pca_dict.get("n_components", 0.95),
             random_state=int(pca_dict.get("random_state", 42)),
         )
+        logger.info(f"[scaled] Scaling: {scaling_cfg.scaler_type}, PCA: {pca_cfg.enabled}")
         X_tr_f, X_te_f, fitted = scale_and_pca(X_tr_num, X_te_num, scaling_cfg, pca_cfg)
         if X_va_num is not None:
             X_va_scaled = pd.DataFrame(fitted.scaler.transform(X_va_num), columns=X_va_num.columns, index=X_va_num.index) if fitted.scaler is not None else X_va_num
@@ -248,6 +277,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         # Correlation prune
         corr_thr = float(profiles_cfg.get("scaled", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
         X_tr_f, dropped_corr = remove_highly_correlated(X_tr_f, threshold=corr_thr)
+        logger.info(f"[scaled] Pruning correlazioni: {len(dropped_corr)} colonne rimosse")
         X_te_f = X_te_f.drop(columns=[c for c in dropped_corr if c in X_te_f.columns], errors="ignore")
         if X_va_f is not None:
             X_va_f = X_va_f.drop(columns=[c for c in dropped_corr if c in X_va_f.columns], errors="ignore")
@@ -259,6 +289,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     # Profile: tree (no scaling/PCA)
     if profiles_cfg.get("tree", {}).get("enabled", False):
         enc_max = int(profiles_cfg.get("tree", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
+        logger.info(f"[tree] Encoding plan con max_ohe_cardinality={enc_max}")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
         plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
         X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
@@ -267,6 +298,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             X_va = transform_with_encoders(X_va, encoders)
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         X_tr, removed_nd = drop_non_descriptive(X_tr)
+        logger.info(f"[tree] Drop non descrittive: {len(removed_nd)}")
         X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
         if X_va is not None:
             X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
@@ -279,8 +311,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         corr_thr = float(profiles_cfg.get("tree", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
         X_tr_num = X_tr.select_dtypes(include=[np.number])
         X_tr_num_pruned, dropped_corr = remove_highly_correlated(X_tr_num, threshold=corr_thr)
-        keep_cols = list(dropped_corr)
-        # Build mask of kept numeric columns
+        logger.info(f"[tree] Pruning correlazioni numeriche: {len(dropped_corr)}")
         kept_num_cols = X_tr_num_pruned.columns
         X_tr_final = pd.concat([X_tr[kept_num_cols], X_tr.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
         X_te_final = pd.concat([X_te[kept_num_cols], X_te.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
@@ -295,12 +326,13 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Profile: catboost (preserve categoricals)
     if profiles_cfg.get("catboost", {}).get("enabled", False):
+        logger.info("[catboost] Preservazione categoriche; niente OHE")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
-        # Imputation already done; keep categoricals
         # Coerce numeric-like strings to numeric
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         # Drop non-descriptive
         X_tr, removed_nd = drop_non_descriptive(X_tr)
+        logger.info(f"[catboost] Drop non descrittive: {len(removed_nd)}")
         X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
         if X_va is not None:
             X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
@@ -308,6 +340,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         corr_thr = float(profiles_cfg.get("catboost", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
         X_tr_num = X_tr.select_dtypes(include=[np.number])
         X_tr_num_pruned, dropped_corr = remove_highly_correlated(X_tr_num, threshold=corr_thr)
+        logger.info(f"[catboost] Pruning correlazioni numeriche: {len(dropped_corr)}")
         kept_num_cols = X_tr_num_pruned.columns
         X_tr_final = pd.concat([X_tr[kept_num_cols], X_tr.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
         X_te_final = pd.concat([X_te[kept_num_cols], X_te.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
@@ -320,12 +353,12 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         # Save list of categorical columns for catboost
         cat_cols = X_tr_final.select_dtypes(include=["object", "category"]).columns.tolist()
         (pre_dir / f"categorical_columns_{prefix}.txt").write_text("\n".join(cat_cols), encoding="utf-8")
+        logger.info(f"[catboost] Salvate {len(cat_cols)} colonne categoriche")
         if first_profile_saved is None:
             first_profile_saved = prefix
 
     # Backward-compatible symlinks (copy) to default filenames using first enabled profile
     if first_profile_saved is not None:
-        # Save combined
         X_train_bc = pd.read_parquet(pre_dir / f"X_train_{first_profile_saved}.parquet")
         X_test_bc = pd.read_parquet(pre_dir / f"X_test_{first_profile_saved}.parquet")
         y_train_bc = pd.read_parquet(pre_dir / f"y_train_{first_profile_saved}.parquet")[target_col]
@@ -348,6 +381,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             (pre_dir / "X_val.parquet").write_bytes((pre_dir / f"X_val_{first_profile_saved}.parquet").read_bytes())
         if (pre_dir / f"y_val_{first_profile_saved}.parquet").exists():
             (pre_dir / "y_val.parquet").write_bytes((pre_dir / f"y_val_{first_profile_saved}.parquet").read_bytes())
+        logger.info(f"Back-compat: copiati file del profilo '{first_profile_saved}' nei nomi default e combinati in {out_path}")
 
     # Report
     save_report(
@@ -360,5 +394,5 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         },
     )
 
-    logger.info(f"Preprocessing completato: {out_path}")
+    logger.info(f"Preprocessing completato. Output in {pre_dir}")
     return out_path
