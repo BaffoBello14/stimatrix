@@ -1,0 +1,27 @@
+# Configurazione Preprocessing Pipeline
+# =================================
+
+# Logging Configuration
+logging:
+  level: INFO
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  file: 'logs/pipeline.log'
+
+# Paths Configuration
+paths:
+  raw_data: 'data/raw'
+  preprocessed_data: 'data/preprocessed'
+  schema: 'data/db_schema.json'
+  models_dir: 'models'
+  raw_filename: 'raw.parquet'
+  preprocessed_filename: 'preprocessed.parquet'
+
+# Database Configuration (for data retrieval)
+database:
+  schema_name: null
+  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV']
+  use_poi: true
+  use_ztl: true
+  output_format: 'parquet'
+  compression: 'snappy'
+  force_reload: false

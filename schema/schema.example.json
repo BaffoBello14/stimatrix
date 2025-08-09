@@ -1,0 +1,34 @@
+{
+  "Atti": {
+    "alias": "A",
+    "columns": [
+      { "name": "Id", "type": "int", "retrieve": true },
+      { "name": "Prezzo", "type": "decimal", "retrieve": true },
+      { "name": "TotaleImmobili", "type": "int", "retrieve": true },
+      { "name": "Semestre", "type": "varchar", "retrieve": true }
+    ]
+  },
+  "AttiImmobili": {
+    "alias": "AI",
+    "columns": [
+      { "name": "IdAtto", "type": "int", "retrieve": true },
+      { "name": "Superficie", "type": "decimal", "retrieve": true },
+      { "name": "IdTipologiaEdilizia", "type": "int", "retrieve": true }
+    ]
+  },
+  "ParticelleCatastali": {
+    "alias": "PC",
+    "columns": [
+      { "name": "Id", "type": "int", "retrieve": true },
+      { "name": "Isodistanza", "type": "geometry", "retrieve": false },
+      { "name": "Centroide", "type": "geometry", "retrieve": false }
+    ]
+  },
+  "OmiValori": {
+    "alias": "OV",
+    "columns": [
+      { "name": "ValoreMercatoMin", "type": "decimal", "retrieve": true },
+      { "name": "ValoreMercatoMax", "type": "decimal", "retrieve": true }
+    ]
+  }
+}
