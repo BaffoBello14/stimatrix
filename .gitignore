@@ -35,8 +35,8 @@ logs/
 
 # Data outputs
 # Raw and preprocessed data folders
-/data/raw/
-/data/preprocessed/
+#/data/raw/
+#/data/preprocessed/
 !data/.gitkeep
 
 # Models & artifacts
