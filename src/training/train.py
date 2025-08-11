@@ -75,6 +75,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     trials_simple = int(defaults.get("trials_simple", 50))
     trials_advanced = int(defaults.get("trials_advanced", 100))
     profile_map = defaults.get("profile_map", {})
+    default_model_params: Dict[str, Any] = defaults.get("model_params", {})
     # classifica modelli "avanzati"
     advanced_models = {"rf", "gbr", "hgbt", "xgboost", "lightgbm", "catboost"}
     selected_models: List[str] = [k for k, v in models_cfg.items() if bool(v.get("enabled", False))]
@@ -114,7 +115,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
 
         # Tuning
         space = model_entry.get("search_space", {})
-        base = default_params(model_key)
+        base = default_model_params.get(model_key, {})
         # merge con base_params espliciti del modello
         base.update(model_entry.get("base_params", {}) or {})
         # trials: se specificato per modello, altrimenti in base alla categoria
