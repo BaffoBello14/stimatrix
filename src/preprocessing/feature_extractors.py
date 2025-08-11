@@ -13,7 +13,6 @@ logger = get_logger(__name__)
 # Regex for basic WKT parsing without external spatial deps
 _WKT_POINT_RE = re.compile(r"^POINT\s*\(\s*([+-]?[0-9]*\.?[0-9]+)\s+([+-]?[0-9]*\.?[0-9]+)\s*\)$", re.IGNORECASE)
 _WKT_POLYGON_RE = re.compile(r"^POLYGON\s*\(\((.*?)\)\)$", re.IGNORECASE)
-_WKT_MULTIPOLYGON_PREFIX_RE = re.compile(r"^MULTIPOLYGON\s*\(\(", re.IGNORECASE)
 
 
 def extract_point_xy_from_wkt(series: pd.Series) -> Tuple[pd.Series, pd.Series]:

@@ -87,7 +87,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         df, drop_geojson = extract_geojson_polygon_features(df)
     except Exception as _exc:
         drop_geojson = []
-    cols_to_drop_now = list(set(drop_geom + drop_json))
+    cols_to_drop_now = list(set(drop_geom + drop_json + drop_geojson))
     if cols_to_drop_now:
         df = df.drop(columns=cols_to_drop_now, errors="ignore")
     logger.info(f"Estrazione feature: aggiunte/derivate, dropped_raw={len(cols_to_drop_now)} -> cols={len(df.columns)}")
