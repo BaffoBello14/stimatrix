@@ -63,9 +63,13 @@ def tune_model(
 
     def objective(trial: optuna.Trial) -> float:
         params = _apply_suggestions(trial, search_space or {}, base_params or {})
-        # Guardia SVR: degree ha senso solo con kernel 'poly'
-        if model_key.lower() == "svr" and params.get("kernel") != "poly":
-            params.pop("degree", None)
+        # Guardia SVR: degree ha senso solo con kernel 'poly'; coef0 solo per 'poly' o 'sigmoid'
+        if model_key.lower() == "svr":
+            k = params.get("kernel")
+            if k != "poly":
+                params.pop("degree", None)
+            if k not in {"poly", "sigmoid"}:
+                params.pop("coef0", None)
         est: RegressorMixin = build_estimator(model_key, params)
         if X_val is None or y_val is None:
             X_tr, X_va, y_tr, y_va = train_test_split(X_train, y_train, test_size=0.2, random_state=seed, shuffle=False)
