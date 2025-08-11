@@ -63,16 +63,61 @@ def tune_model(
 
     def objective(trial: optuna.Trial) -> float:
         params = _apply_suggestions(trial, search_space or {}, base_params or {})
+        # Guardia SVR: degree ha senso solo con kernel 'poly'
+        if model_key.lower() == "svr" and params.get("kernel") != "poly":
+            params.pop("degree", None)
         est: RegressorMixin = build_estimator(model_key, params)
-        if model_key.lower() == "catboost" and cat_features is not None:
-            est.fit(X_train, y_train, cat_features=cat_features, verbose=False)
-        else:
-            est.fit(X_train, y_train)
         if X_val is None or y_val is None:
             X_tr, X_va, y_tr, y_va = train_test_split(X_train, y_train, test_size=0.2, random_state=seed, shuffle=False)
+            # Fit con eventuale early stopping non applicabile senza validation esterna coerente; esegue fit semplice
+            if model_key.lower() == "catboost" and cat_features is not None:
+                est.fit(X_tr, y_tr, cat_features=cat_features, verbose=False)
+            else:
+                est.fit(X_tr, y_tr)
             y_pred = est.predict(X_va)
             return select_primary_value(primary_metric, y_va, y_pred)
         else:
+            # Con validation esterna: abilita early stopping dove supportato
+            mk = model_key.lower()
+            try:
+                if mk == "xgboost":
+                    est.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False, early_stopping_rounds=50)
+                elif mk == "lightgbm":
+                    # Mappa metrica primaria a metrica LGBM
+                    metric_map = {
+                        "r2": "r2",
+                        "neg_mean_squared_error": "l2",
+                        "neg_root_mean_squared_error": "rmse",
+                        "neg_mean_absolute_error": "mae",
+                        "neg_mean_absolute_percentage_error": "mape",
+                    }
+                    eval_metric = metric_map.get(primary_metric.lower(), None)
+                    fit_kwargs = {"eval_set": [(X_val, y_val)]}
+                    if eval_metric is not None:
+                        fit_kwargs["eval_metric"] = eval_metric
+                    # callbacks per early stopping silenzioso
+                    try:
+                        import lightgbm as lgb  # type: ignore
+                        fit_kwargs["callbacks"] = [lgb.early_stopping(50, verbose=False)]
+                    except Exception:
+                        fit_kwargs["early_stopping_rounds"] = 50
+                    est.fit(X_train, y_train, **fit_kwargs)
+                elif mk == "catboost":
+                    if cat_features is not None:
+                        est.fit(X_train, y_train, cat_features=cat_features, eval_set=(X_val, y_val), verbose=False, early_stopping_rounds=50)
+                    else:
+                        est.fit(X_train, y_train, eval_set=(X_val, y_val), verbose=False, early_stopping_rounds=50)
+                else:
+                    if mk == "catboost" and cat_features is not None:
+                        est.fit(X_train, y_train, cat_features=cat_features, verbose=False)
+                    else:
+                        est.fit(X_train, y_train)
+            except Exception:
+                # Fallback robusto
+                if mk == "catboost" and cat_features is not None:
+                    est.fit(X_train, y_train, cat_features=cat_features, verbose=False)
+                else:
+                    est.fit(X_train, y_train)
             y_pred = est.predict(X_val)
             return select_primary_value(primary_metric, y_val, y_pred)
 
