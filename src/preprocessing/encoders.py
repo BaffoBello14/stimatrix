@@ -61,7 +61,7 @@ def fit_apply_encoders(df: pd.DataFrame, plan: EncodingPlan) -> Tuple[pd.DataFra
         enc_ordinals[col] = enc
         cols_to_drop.append(col)
 
-    # OneHot on all OHE columns jointly to avoid duplicate categories
+        # OneHot on all OHE columns jointly to avoid duplicate categories
     if plan.one_hot_cols:
         enc_one_hot = OneHotEncoder(sparse_output=False, handle_unknown="ignore", dtype=np.float64)
         ohe_arr = enc_one_hot.fit_transform(result[plan.one_hot_cols])
@@ -69,6 +69,10 @@ def fit_apply_encoders(df: pd.DataFrame, plan: EncodingPlan) -> Tuple[pd.DataFra
         ohe_df = pd.DataFrame(ohe_arr, columns=ohe_cols, index=result.index)
         result = pd.concat([result.drop(columns=plan.one_hot_cols), ohe_df], axis=1)
         cols_to_drop.extend([c for c in plan.one_hot_cols if c in result.columns])
+
+    # Drop original categorical columns that were encoded (both ordinal and OHE inputs)
+    if cols_to_drop:
+        result = result.drop(columns=list(set(cols_to_drop)), errors="ignore")
 
     return result, FittedEncoders(one_hot=enc_one_hot, ordinal=enc_ordinals, one_hot_input_cols=plan.one_hot_cols), cols_to_drop
 

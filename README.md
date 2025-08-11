@@ -93,6 +93,64 @@ Attualmente la pipeline genera un profilo numerico unico; è possibile estendere
 - Usa `X_train/y_train` per ottimizzare su `X_val/y_val` (se `valid_fraction>0`).
 - Dopo tuning, riaddestra su train+val e valuta su test.
 
+### Training/Tuning/Evaluation
+- Configurazione (`config/config.yaml`):
+  - Global:
+    - `training.primary_metric`: metrica da massimizzare in tuning (`r2`, `neg_mean_squared_error`, `neg_root_mean_squared_error`, `neg_mean_absolute_error`, `neg_mean_absolute_percentage_error`).
+    - `training.report_metrics`: metriche calcolate e riportate.
+    - `training.sampler`: `auto` (OptunaHub) o `tpe`.
+    - `training.seed`: random seed.
+  - Defaults:
+    - `training.defaults.trials_simple`: numero di trial per modelli semplici (es. linear/ridge/knn/svr/dt) – default 50.
+    - `training.defaults.trials_advanced`: numero di trial per modelli avanzati (rf/gbr/hgbt/xgboost/lightgbm/catboost) – default 100.
+    - `training.defaults.profile_map`: mappa modello→profilo dataset.
+  - Per-modello (`training.models.<model_key>`):
+    - `enabled`: abilita/disabilita training del modello.
+    - `profile`: profilo dataset (se omesso, usa `defaults.profile_map`).
+    - `trials`: override del numero di trial (se omesso, usa simple/advanced in base al modello).
+    - `base_params`: parametri base fissati (uniti ai defaults del modello).
+    - `search_space`: spazio di ricerca Optuna (spec generica: `type: float|int|categorical`, con `low|high|log|choices`).
+- Esempio:
+  ```yaml
+  training:
+    primary_metric: r2
+    sampler: auto
+    seed: 42
+    defaults:
+      trials_simple: 50
+      trials_advanced: 100
+      profile_map:
+        ridge: scaled
+        rf: tree
+        lightgbm: tree
+        xgboost: tree
+        catboost: catboost
+    models:
+      ridge:
+        enabled: true
+        search_space:
+          alpha: {type: float, low: 0.001, high: 100.0, log: true}
+      rf:
+        enabled: true
+        trials: 120  # (opzionale) override
+        search_space:
+          n_estimators: {type: int, low: 300, high: 1200}
+          max_depth: {type: int, low: 4, high: 40}
+      lightgbm:
+        enabled: true
+        search_space:
+          learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+          num_leaves: {type: int, low: 15, high: 255}
+  ```
+- Output:
+  - Modello e meta per ciascun modello: `models/{model_key}/model.pkl`, `metrics.json`, `optuna_trials.csv`, eventuali `shap/*.png`.
+  - Ensemble (se abilitati): `models/voting/*`, `models/stacking/*`.
+  - Riepilogo: `models/summary.json`.
+- Esecuzione:
+  ```bash
+  python /workspace/main.py --config config/config.yaml --steps preprocessing training
+  ```
+
 ### Esecuzione
 Esempio di comando:
 ```bash
