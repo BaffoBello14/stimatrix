@@ -114,6 +114,14 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if extract_floor_features_series is not None:
             floor_feats = extract_floor_features_series(df["AI_Piano"])
             df = pd.concat([df, floor_feats], axis=1)
+    # Remove AI_Piano raw after feature extraction
+    df = df.drop(columns=[c for c in ["AI_Piano"] if c in df.columns], errors="ignore")
+
+    # Keep only numeric part of AI_Civico
+    if "AI_Civico" in df.columns:
+        civico_num = df["AI_Civico"].astype(str).str.extract(r"(\d+)", expand=False)
+        df["AI_Civico_num"] = pd.to_numeric(civico_num, errors="coerce")
+        df = df.drop(columns=["AI_Civico"], errors="ignore")
 
     # Create temporal key to enable split later (do not leak across time)
     if "A_AnnoStipula" in df.columns and "A_MeseStipula" in df.columns:

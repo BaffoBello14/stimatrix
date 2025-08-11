@@ -10,9 +10,7 @@ AI_Particella
 AI_Subalterno
 AI_ZonaOmi
 AI_Via
-AI_Civico
 AI_Posizione
-AI_Piano
 AI_ConsistenzaUm
 AI_IdTipologiaEdilizia
 AI_ParticellaAttuale

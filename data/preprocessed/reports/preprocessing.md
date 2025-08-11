@@ -1,6 +1,6 @@
 ### Raw profile
 
-Rows: 4275, Cols: 271
+Rows: 4275, Cols: 270
 
 | Column | Dtype | Non-Null | NA% | Unique | Sample |
 |---|---|---:|---:|---:|---|
@@ -33,12 +33,10 @@ Rows: 4275, Cols: 271
 | AI_Subalterno | object | 2348 | 45.08 | 218 | 10 |
 | AI_ZonaOmi | object | 4234 | 0.96 | 13 | D2 |
 | AI_Via | object | 4223 | 1.22 | 762 | Viale Europa |
-| AI_Civico | object | 3929 | 8.09 | 260 | 16D |
 | AI_Latitudine | float64 | 4275 | 0.00 | 1931 | 45.1503481 |
 | AI_Longitudine | float64 | 4275 | 0.00 | 2031 | 10.7645318 |
 | AI_QuotaFavore | int64 | 4275 | 0.00 | 2 | 1 |
 | AI_Posizione | object | 4275 | 0.00 | 1982 | POINT (10.7645318 45.1503481) |
-| AI_Piano | object | 2153 | 49.64 | 175 | S1 |
 | AI_Rendita | float64 | 2169 | 49.26 | 369 | 46.12 |
 | AI_ConsistenzaValore | float64 | 4275 | 0.00 | 266 | 18.0 |
 | AI_ConsistenzaUm | object | 4275 | 0.00 | 2 | mq |
@@ -274,11 +272,12 @@ Rows: 4275, Cols: 271
 | n_basement_levels | float64 | 4275 | 0.00 | 2 | 0.0 |
 | contains_range | float64 | 4275 | 0.00 | 2 | 0.0 |
 | floor_numeric_weighted | float64 | 2150 | 49.71 | 85 | -1.0 |
+| AI_Civico_num | float64 | 3265 | 23.63 | 109 | 16.0 |
 | TemporalKey | int64 | 4275 | 0.00 | 70 | 202309 |
 
 ### After feature extraction
 
-Rows: 3351, Cols: 270
+Rows: 3351, Cols: 269
 
 | Column | Dtype | Non-Null | NA% | Unique | Sample |
 |---|---|---:|---:|---:|---|
@@ -311,12 +310,10 @@ Rows: 3351, Cols: 270
 | AI_Subalterno | object | 3351 | 0.00 | 215 | 302 |
 | AI_ZonaOmi | object | 3351 | 0.00 | 13 | C4 |
 | AI_Via | object | 3351 | 0.00 | 624 | VIALE LUIGI VASCHI |
-| AI_Civico | object | 3351 | 0.00 | 237 | 2 |
 | AI_Latitudine | float64 | 3351 | 0.00 | 1557 | 45.15074920654297 |
 | AI_Longitudine | float64 | 3351 | 0.00 | 1654 | 10.77920913696289 |
 | AI_QuotaFavore | int64 | 3351 | 0.00 | 2 | 1 |
 | AI_Posizione | object | 3351 | 0.00 | 1604 | POINT (10.7792 45.1507) |
-| AI_Piano | object | 3351 | 0.00 | 171 | S1 |
 | AI_Rendita | float64 | 3351 | 0.00 | 360 | 33.05 |
 | AI_ConsistenzaValore | float64 | 3351 | 0.00 | 232 | 10.0 |
 | AI_ConsistenzaUm | object | 3351 | 0.00 | 2 | mq |
@@ -551,11 +548,12 @@ Rows: 3351, Cols: 270
 | n_basement_levels | float64 | 3351 | 0.00 | 2 | 1.0 |
 | contains_range | float64 | 3351 | 0.00 | 2 | 0.0 |
 | floor_numeric_weighted | float64 | 3351 | 0.00 | 84 | -1.0 |
+| AI_Civico_num | float64 | 3351 | 0.00 | 99 | 2.0 |
 | TemporalKey | int64 | 3351 | 0.00 | 59 | 201901 |
 
 ### Train features
 
-Rows: 3351, Cols: 270
+Rows: 3351, Cols: 269
 
 | Column | Dtype | Non-Null | NA% | Unique | Sample |
 |---|---|---:|---:|---:|---|
@@ -588,12 +586,10 @@ Rows: 3351, Cols: 270
 | AI_Subalterno | object | 3351 | 0.00 | 215 | 302 |
 | AI_ZonaOmi | object | 3351 | 0.00 | 13 | C4 |
 | AI_Via | object | 3351 | 0.00 | 624 | VIALE LUIGI VASCHI |
-| AI_Civico | object | 3351 | 0.00 | 237 | 2 |
 | AI_Latitudine | float64 | 3351 | 0.00 | 1557 | 45.15074920654297 |
 | AI_Longitudine | float64 | 3351 | 0.00 | 1654 | 10.77920913696289 |
 | AI_QuotaFavore | int64 | 3351 | 0.00 | 2 | 1 |
 | AI_Posizione | object | 3351 | 0.00 | 1604 | POINT (10.7792 45.1507) |
-| AI_Piano | object | 3351 | 0.00 | 171 | S1 |
 | AI_Rendita | float64 | 3351 | 0.00 | 360 | 33.05 |
 | AI_ConsistenzaValore | float64 | 3351 | 0.00 | 232 | 10.0 |
 | AI_ConsistenzaUm | object | 3351 | 0.00 | 2 | mq |
@@ -828,11 +824,12 @@ Rows: 3351, Cols: 270
 | n_basement_levels | float64 | 3351 | 0.00 | 2 | 1.0 |
 | contains_range | float64 | 3351 | 0.00 | 2 | 0.0 |
 | floor_numeric_weighted | float64 | 3351 | 0.00 | 84 | -1.0 |
+| AI_Civico_num | float64 | 3351 | 0.00 | 99 | 2.0 |
 | TemporalKey | int64 | 3351 | 0.00 | 59 | 201901 |
 
 ### Test features
 
-Rows: 428, Cols: 270
+Rows: 428, Cols: 269
 
 | Column | Dtype | Non-Null | NA% | Unique | Sample |
 |---|---|---:|---:|---:|---|
@@ -865,12 +862,10 @@ Rows: 428, Cols: 270
 | AI_Subalterno | object | 428 | 0.00 | 5 | 1 |
 | AI_ZonaOmi | object | 428 | 0.00 | 12 | B1 |
 | AI_Via | object | 428 | 0.00 | 185 | Via Giovanni Chiassi |
-| AI_Civico | object | 428 | 0.00 | 68 | 67 |
 | AI_Latitudine | float64 | 428 | 0.00 | 261 | 45.1546624 |
 | AI_Longitudine | float64 | 428 | 0.00 | 261 | 10.7870779 |
 | AI_QuotaFavore | int64 | 428 | 0.00 | 2 | 1 |
 | AI_Posizione | object | 428 | 0.00 | 261 | POINT (10.7870779 45.1546624) |
-| AI_Piano | object | 428 | 0.00 | 4 | 1 |
 | AI_Rendita | float64 | 428 | 0.00 | 6 | 667.52 |
 | AI_ConsistenzaValore | float64 | 428 | 0.00 | 153 | 154.0 |
 | AI_ConsistenzaUm | object | 428 | 0.00 | 2 | mq |
@@ -1105,4 +1100,5 @@ Rows: 428, Cols: 270
 | n_basement_levels | float64 | 428 | 0.00 | 1 | 0.0 |
 | contains_range | float64 | 428 | 0.00 | 1 | 0.0 |
 | floor_numeric_weighted | float64 | 428 | 0.00 | 4 | 1.0909090909090908 |
+| AI_Civico_num | float64 | 428 | 0.00 | 63 | 67.0 |
 | TemporalKey | int64 | 428 | 0.00 | 6 | 202406 |
