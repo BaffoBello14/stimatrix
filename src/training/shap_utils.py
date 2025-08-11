@@ -48,10 +48,6 @@ def _is_linear(model) -> bool:
     return isinstance(model, (LinearRegression, Ridge, Lasso, ElasticNet))
 
 
-def _needs_kernel(model) -> bool:
-    return isinstance(model, (KNeighborsRegressor, SVR))
-
-
 def compute_shap(
     model,
     X: pd.DataFrame,
@@ -59,7 +55,6 @@ def compute_shap(
     max_display: int = 30,
     background_size: int = 500,
 ) -> Dict[str, Any]:
-    # Sample foreground data
     if len(X) > sample_size:
         Xs = X.sample(n=sample_size, random_state=42)
     else:
@@ -77,36 +72,24 @@ def compute_shap(
                 explainer = shap.LinearExplainer(model, X)
                 shap_values = explainer(Xs)
             except Exception:
-                # Fallback to kernel with predict function
                 X_bg = X.sample(n=min(len(X), background_size), random_state=42)
                 explainer = shap.Explainer(model.predict, X_bg.values)
                 shap_values = explainer(Xs.values)
         else:
-            # Generic fallback: kernel-like using function handle and background
+            # Generic fallback: use function handle with numpy arrays to avoid feature-name warnings
             X_bg = X.sample(n=min(len(X), background_size), random_state=42)
-            try:
-                explainer = shap.Explainer(model.predict, X_bg)
-                shap_values = explainer(Xs)
-            except Exception:
-                # Permutation fallback
-                explainer = shap.Explainer(model.predict, shap.maskers.Independent(X_bg))
-                shap_values = explainer(Xs)
-    except Exception:
-        # Final safety fallback to KernelExplainer style if anything above fails
-        X_bg = X.sample(n=min(len(X), background_size), random_state=42)
-        try:
-            explainer = shap.Explainer(getattr(model, "predict", model), X_bg)
-            shap_values = explainer(Xs)
-        except Exception:
-            # Force value arrays to avoid feature-name mismatch warnings
-            explainer = shap.Explainer(getattr(model, "predict", model), X_bg.values)
+            explainer = shap.Explainer(model.predict, X_bg.values)
             shap_values = explainer(Xs.values)
+    except Exception:
+        # Final safety fallback: force numpy arrays
+        X_bg = X.sample(n=min(len(X), background_size), random_state=42)
+        explainer = shap.Explainer(getattr(model, "predict", model), X_bg.values)
+        shap_values = explainer(Xs.values)
 
-    # Summary stats per feature
     try:
         abs_mean = np.abs(shap_values.values).mean(axis=0)
         importance = (
-            pd.Series(abs_mean, index=Xs.columns).sort_values(ascending=False).to_dict()
+            pd.Series(abs_mean, index=(Xs.columns if hasattr(Xs, 'columns') else range(len(abs_mean)))).sort_values(ascending=False).to_dict()
         )
     except Exception:
         importance = {}
