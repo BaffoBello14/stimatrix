@@ -31,7 +31,6 @@ def _apply_suggestions(trial: optuna.Trial, space: Dict[str, Any], base: Dict[st
         elif t == "categorical":
             params[name] = trial.suggest_categorical(name, spec.get("choices", []))
         else:
-            # Unknown type: ignore or pass-through fixed value
             if "value" in spec:
                 params[name] = spec["value"]
     return params
