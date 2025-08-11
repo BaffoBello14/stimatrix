@@ -15,6 +15,7 @@ from .metrics import regression_metrics, overfit_diagnostics
 from .ensembles import build_voting, build_stacking
 from .shap_utils import compute_shap, save_shap_plots
 from .model_zoo import default_params
+import importlib
 
 logger = get_logger(__name__)
 
@@ -91,6 +92,9 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             logger.error(f"Caricamento dataset fallito per modello {model_key} (prefix={prefix}): {e}")
             continue
 
+        # Determina se richiede solo numeriche
+        requires_numeric_only = bool(model_entry.get("requires_numeric_only", model_key.lower() != "catboost"))
+
         cat_features: Optional[List[int]] = None
         if model_key.lower() == "catboost":
             if prefix is None:
@@ -99,8 +103,8 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             else:
                 cat_features = _catboost_cat_features(pre_dir, prefix, X_train)
 
-        # Per modelli non-CatBoost, rimuovi eventuali colonne non numeriche rimaste
-        if model_key.lower() != "catboost":
+        # Per modelli che richiedono solo numeriche, rimuovi eventuali colonne non numeriche rimaste
+        if requires_numeric_only:
             numeric_cols = X_train.select_dtypes(include=[np.number]).columns
             if len(numeric_cols) != X_train.shape[1]:
                 X_train = X_train[numeric_cols]
@@ -121,9 +125,9 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         timeout = None
         tuning = tune_model(
             model_key=model_key,
-            X_train=X_train.values if model_key != "catboost" else X_train,
+            X_train=X_train.values if requires_numeric_only else X_train,
             y_train=y_train.values,
-            X_val=None if X_val is None else (X_val.values if model_key != "catboost" else X_val),
+            X_val=None if X_val is None else (X_val.values if requires_numeric_only else X_val),
             y_val=None if y_val is None else y_val.values,
             primary_metric=primary_metric,
             n_trials=n_trials,
@@ -142,15 +146,40 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         else:
             X_tr_final, y_tr_final = X_train, y_train
 
-        estimator = build_estimator(model_key, tuning.best_params)
-        if model_key == "catboost" and cat_features is not None:
-            estimator.fit(X_tr_final, y_tr_final, cat_features=cat_features, verbose=False)
+        # Build estimator (support class_path override)
+        class_path = model_entry.get("class_path", None)
+        if class_path:
+            module_name, class_name = class_path.rsplit(".", 1)
+            cls = getattr(importlib.import_module(module_name), class_name)
+            estimator = cls(**tuning.best_params)
         else:
-            estimator.fit(X_tr_final.values if model_key != "catboost" else X_tr_final, y_tr_final.values)
+            estimator = build_estimator(model_key, tuning.best_params)
+
+        # Fit params handling (e.g., cat_features)
+        fit_params = model_entry.get("fit_params", {}) or {}
+        if "__categorical_indices__" in str(fit_params):
+            # Replace placeholder
+            if cat_features is None:
+                cat_features = _catboost_cat_features(pre_dir, prefix or "catboost", X_tr_final)
+            # deep copy-like replace
+            fit_params = json.loads(json.dumps(fit_params).replace("__categorical_indices__", json.dumps(cat_features)))
+        # Flatten json dumps artifact if numbers got quoted
+        if isinstance(fit_params, dict):
+            for k, v in list(fit_params.items()):
+                if isinstance(v, str) and v.startswith("[") and v.endswith("]"):
+                    try:
+                        fit_params[k] = json.loads(v)
+                    except Exception:
+                        pass
+
+        if requires_numeric_only:
+            estimator.fit(X_tr_final.values, y_tr_final.values, **fit_params)
+        else:
+            estimator.fit(X_tr_final, y_tr_final, **fit_params)
 
         # Evaluate
-        y_pred_test = estimator.predict(X_test.values if model_key != "catboost" else X_test)
-        y_pred_train = estimator.predict(X_tr_final.values if model_key != "catboost" else X_tr_final)
+        y_pred_test = estimator.predict(X_test.values if requires_numeric_only else X_test)
+        y_pred_train = estimator.predict(X_tr_final.values if requires_numeric_only else X_tr_final)
 
         m_test = regression_metrics(y_test.values, y_pred_test)
         m_train = regression_metrics(y_tr_final.values, y_pred_train)
@@ -184,7 +213,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 shap_bundle = compute_shap(
                     model=estimator,
-                    X=X_tr_final if model_key == "catboost" else X_tr_final,
+                    X=X_tr_final if requires_numeric_only else X_tr_final,
                     sample_size=int(shap_cfg.get("sample_size", 2000)),
                     max_display=int(shap_cfg.get("max_display", 30)),
                 )
