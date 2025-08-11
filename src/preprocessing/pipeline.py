@@ -5,6 +5,7 @@ from typing import Dict, Any, List, Tuple
 
 import numpy as np
 import pandas as pd
+import re
 
 from utils.logger import get_logger
 from preprocessing.feature_extractors import extract_geometry_features, maybe_extract_json_features
@@ -80,10 +81,39 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         df, drop_json = maybe_extract_json_features(df)
     else:
         drop_json = []
+    # Extract GeoJSON-derived features (Polygon Feature/FeatureCollection)
+    try:
+        from preprocessing.feature_extractors import extract_geojson_polygon_features
+        df, drop_geojson = extract_geojson_polygon_features(df)
+    except Exception as _exc:
+        drop_geojson = []
     cols_to_drop_now = list(set(drop_geom + drop_json))
     if cols_to_drop_now:
         df = df.drop(columns=cols_to_drop_now, errors="ignore")
     logger.info(f"Estrazione feature: aggiunte/derivate, dropped_raw={len(cols_to_drop_now)} -> cols={len(df.columns)}")
+
+    # Keep only canonical surface in m²
+    surface_cols_to_drop = [
+        "A_ImmobiliPrincipaliConSuperficieValorizzata",
+        "AI_SuperficieCalcolata",
+        "AI_SuperficieVisuraTotale",
+        "AI_SuperficieVisuraTotaleE",
+        "AI_SuperficieVisuraTotaleAttuale",
+        "AI_SuperficieVisuraTotaleEAttuale",
+    ]
+    df = df.drop(columns=[c for c in surface_cols_to_drop if c in df.columns], errors="ignore")
+    # Drop useless geo SRID (constant)
+    df = df.drop(columns=[c for c in ["PC_PoligonoMetricoSrid"] if c in df.columns], errors="ignore")
+
+    # AI_Piano features
+    if "AI_Piano" in df.columns:
+        try:
+            from preprocessing.floor_parser import extract_floor_features_series
+        except ImportError:
+            extract_floor_features_series = None
+        if extract_floor_features_series is not None:
+            floor_feats = extract_floor_features_series(df["AI_Piano"])
+            df = pd.concat([df, floor_feats], axis=1)
 
     # Create temporal key to enable split later (do not leak across time)
     if "A_AnnoStipula" in df.columns and "A_MeseStipula" in df.columns:
@@ -191,15 +221,21 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Helper: numeric coercion based on train
     def coerce_numeric_like(train_df: pd.DataFrame, other_dfs: List[pd.DataFrame | None]) -> Tuple[pd.DataFrame, List[pd.DataFrame | None]]:
+        BLACKLIST_RE = re.compile(
+            r"^(II_.*|AI_(Id.*|Foglio|Particella.*|Subalterno|SezioneAmministrativa|ZonaOmi)|.*COD.*)$",
+            re.IGNORECASE,
+        )
         train = train_df.copy()
         cols_to_coerce: List[str] = []
         for col in train.select_dtypes(include=["object"]).columns:
+            if BLACKLIST_RE.match(col or ""):
+                continue
             coerced = pd.to_numeric(train[col].astype(str).str.replace(",", "."), errors="coerce")
-            if coerced.notna().mean() > 0.8:
+            if coerced.notna().mean() >= 0.95:
                 cols_to_coerce.append(col)
                 train[col] = coerced
         if cols_to_coerce:
-            logger.info(f"Coercizione numerica da stringhe: {len(cols_to_coerce)} colonne")
+            logger.info(f"Coercizione numerica da stringhe: {len(cols_to_coerce)} colonne (soglia 0.95, blacklist attiva)")
         outs: List[pd.DataFrame | None] = []
         for df_ in other_dfs:
             if df_ is None:
