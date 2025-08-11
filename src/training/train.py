@@ -71,22 +71,15 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
 
     # Raccogli definizioni per-modello
     models_cfg: Dict[str, Any] = tr_cfg.get("models", {})
-    defaults = tr_cfg.get("defaults", {})
-    trials_simple = int(defaults.get("trials_simple", 50))
-    trials_advanced = int(defaults.get("trials_advanced", 100))
-    profile_map = defaults.get("profile_map", {})
-    default_model_params: Dict[str, Any] = defaults.get("model_params", {})
-    # classifica modelli "avanzati"
-    advanced_models = {"rf", "gbr", "hgbt", "xgboost", "lightgbm", "catboost"}
     selected_models: List[str] = [k for k, v in models_cfg.items() if bool(v.get("enabled", False))]
 
     results: Dict[str, Any] = {"models": {}, "ensembles": {}}
 
     # Per-model loop
     for model_key in selected_models:
-        # Profilo preferito: specifico del modello o da defaults
+        # Profilo preferito: specifico del modello
         model_entry = models_cfg.get(model_key, {})
-        prefix = model_entry.get("profile", None) or profile_map.get(model_key)
+        prefix = model_entry.get("profile", None)
         try:
             X_train, y_train, X_val, y_val, X_test, y_test = _load_xy(pre_dir, prefix)
         except Exception as e:
@@ -115,14 +108,11 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
 
         # Tuning
         space = model_entry.get("search_space", {})
-        base = default_model_params.get(model_key, {})
+        base = {}
         # merge con base_params espliciti del modello
         base.update(model_entry.get("base_params", {}) or {})
         # trials: se specificato per modello, altrimenti in base alla categoria
-        if model_entry.get("trials") is not None:
-            n_trials = int(model_entry["trials"])
-        else:
-            n_trials = trials_advanced if model_key in advanced_models else trials_simple
+        n_trials = int(model_entry.get("trials", 50))
         timeout = None
         tuning = tune_model(
             model_key=model_key,
@@ -148,13 +138,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             X_tr_final, y_tr_final = X_train, y_train
 
         # Build estimator (support class_path override)
-        class_path = model_entry.get("class_path", None)
-        if class_path:
-            module_name, class_name = class_path.rsplit(".", 1)
-            cls = getattr(importlib.import_module(module_name), class_name)
-            estimator = cls(**tuning.best_params)
-        else:
-            estimator = build_estimator(model_key, tuning.best_params)
+        estimator = build_estimator(model_key, tuning.best_params)
 
         # Fit params handling (e.g., cat_features)
         fit_params = model_entry.get("fit_params", {}) or {}

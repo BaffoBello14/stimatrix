@@ -129,110 +129,44 @@ training:
   sampler: "auto"   # auto (OptunaHub) | tpe
   seed: 42
 
-  # Defaults comuni
-  defaults:
-    trials_simple: 50
-    trials_advanced: 100
-    profile_map:
-      linear: "scaled"
-      ridge: "scaled"
-      lasso: "scaled"
-      elasticnet: "scaled"
-      knn: "scaled"
-      svr: "scaled"
-      dt: "tree"
-      rf: "tree"
-      gbr: "tree"
-      hgbt: "tree"
-      xgboost: "tree"
-      lightgbm: "tree"
-      catboost: "catboost"
-    model_params:
-      linear:
-        n_jobs: -1
-      ridge:
-        random_state: 42
-      lasso:
-        random_state: 42
-        max_iter: 20000
-      elasticnet:
-        random_state: 42
-        max_iter: 20000
-      dt:
-        random_state: 42
-      knn: {}
-      svr:
-        kernel: rbf
-      rf:
-        n_estimators: 300
-        n_jobs: -1
-        random_state: 42
-      gbr:
-        random_state: 42
-      hgbt:
-        random_state: 42
-      xgboost:
-        n_estimators: 800
-        tree_method: hist
-        random_state: 42
-        n_jobs: -1
-      lightgbm:
-        n_estimators: 800
-        random_state: 42
-        n_jobs: -1
-      catboost:
-        iterations: 800
-        random_seed: 42
-        verbose: false
-
-  # Definizione per-modello
+  # Definizione per-modello (schema minimale)
   models:
     linear:
-      enabled: true
-      profile: null     # usa defaults.profile_map se null
-      trials: null      # usa defaults.trials_simple
-      class_path: null  # es. sklearn.linear_model.LinearRegression
-      requires_numeric_only: true
+      enabled: false
+      profile: scaled
+      trials: 50
       base_params: {}
       fit_params: {}
       search_space: {}
     ridge:
       enabled: true
-      profile: null
-      trials: null
-      class_path: null
-      requires_numeric_only: true
+      profile: scaled
+      trials: 50
       base_params: {}
       fit_params: {}
       search_space:
         alpha: {type: float, low: 0.001, high: 100.0, log: true}
     lasso:
-      enabled: true
-      profile: null
-      trials: null
-      class_path: null
-      requires_numeric_only: true
+      enabled: false
+      profile: scaled
+      trials: 50
       base_params: {}
       fit_params: {}
       search_space:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
     elasticnet:
-      enabled: true
-      profile: null
-      trials: null
-      class_path: null
-      requires_numeric_only: true
+      enabled: false
+      profile: scaled
+      trials: 50
       base_params: {}
       fit_params: {}
       search_space:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
         l1_ratio: {type: float, low: 0.0, high: 1.0}
     knn:
-      enabled: true
-      profile: null
-      trials: null
-      class_path: null
-      requires_numeric_only: true
+      enabled: false
+      profile: scaled
+      trials: 50
       base_params: {}
       fit_params: {}
       search_space:
@@ -240,11 +174,9 @@ training:
         weights: {type: categorical, choices: ["uniform", "distance"]}
         p: {type: int, low: 1, high: 2}
     svr:
-      enabled: true
-      profile: null
-      trials: null
-      class_path: null
-      requires_numeric_only: true
+      enabled: false
+      profile: scaled
+      trials: 50
       base_params: {}
       fit_params: {}
       search_space:
@@ -254,11 +186,9 @@ training:
         gamma: {type: categorical, choices: ["scale", "auto"]}
         degree: {type: int, low: 2, high: 5}
     dt:
-      enabled: true
-      profile: null
-      trials: null
-      class_path: null
-      requires_numeric_only: true
+      enabled: false
+      profile: tree
+      trials: 100
       base_params: {}
       fit_params: {}
       search_space:
@@ -266,11 +196,9 @@ training:
         min_samples_split: {type: int, low: 2, high: 20}
         min_samples_leaf: {type: int, low: 1, high: 20}
     rf:
-      enabled: true
-      profile: null
-      trials: null    # usa defaults.trials_advanced
-      class_path: null
-      requires_numeric_only: true
+      enabled: false
+      profile: tree
+      trials: 100
       base_params: {}
       fit_params: {}
       search_space:
@@ -280,11 +208,9 @@ training:
         min_samples_leaf: {type: int, low: 1, high: 20}
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
     gbr:
-      enabled: true
-      profile: null
-      trials: null
-      class_path: null
-      requires_numeric_only: true
+      enabled: false
+      profile: tree
+      trials: 100
       base_params: {}
       fit_params: {}
       search_space:
@@ -294,11 +220,9 @@ training:
         subsample: {type: float, low: 0.5, high: 1.0}
         min_samples_leaf: {type: int, low: 1, high: 20}
     hgbt:
-      enabled: true
-      profile: null
-      trials: null
-      class_path: null
-      requires_numeric_only: true
+      enabled: false
+      profile: tree
+      trials: 100
       base_params: {}
       fit_params: {}
       search_space:
@@ -307,11 +231,9 @@ training:
         max_leaf_nodes: {type: int, low: 7, high: 255}
         l2_regularization: {type: float, low: 0.000001, high: 10.0, log: true}
     xgboost:
-      enabled: true
-      profile: null
-      trials: null
-      class_path: null
-      requires_numeric_only: true
+      enabled: false
+      profile: tree
+      trials: 100
       base_params: {}
       fit_params: {}
       search_space:
@@ -324,11 +246,9 @@ training:
         reg_alpha: {type: float, low: 1e-8, high: 10.0, log: true}
         reg_lambda: {type: float, low: 1e-8, high: 10.0, log: true}
     lightgbm:
-      enabled: true
-      profile: null
-      trials: null
-      class_path: null
-      requires_numeric_only: true
+      enabled: false
+      profile: tree
+      trials: 100
       base_params: {}
       fit_params: {}
       search_space:
@@ -341,11 +261,9 @@ training:
         reg_alpha: {type: float, low: 1e-8, high: 10.0, log: true}
         reg_lambda: {type: float, low: 1e-8, high: 10.0, log: true}
     catboost:
-      enabled: true
-      profile: null
-      trials: null
-      class_path: catboost.CatBoostRegressor
-      requires_numeric_only: false
+      enabled: false
+      profile: catboost
+      trials: 100
       base_params: {}
       fit_params:
         cat_features: __categorical_indices__
