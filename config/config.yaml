@@ -132,7 +132,7 @@ training:
   # Definizione per-modello (schema minimale)
   models:
     linear:
-      enabled: false
+      enabled: true
       profile: scaled
       trials: 50
       base_params: {}
@@ -147,7 +147,7 @@ training:
       search_space:
         alpha: {type: float, low: 0.001, high: 100.0, log: true}
     lasso:
-      enabled: false
+      enabled: true
       profile: scaled
       trials: 50
       base_params: {}
@@ -155,7 +155,7 @@ training:
       search_space:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
     elasticnet:
-      enabled: false
+      enabled: true
       profile: scaled
       trials: 50
       base_params: {}
@@ -164,7 +164,7 @@ training:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
         l1_ratio: {type: float, low: 0.0, high: 1.0}
     knn:
-      enabled: false
+      enabled: true
       profile: scaled
       trials: 50
       base_params: {}
@@ -174,7 +174,7 @@ training:
         weights: {type: categorical, choices: ["uniform", "distance"]}
         p: {type: int, low: 1, high: 2}
     svr:
-      enabled: false
+      enabled: true
       profile: scaled
       trials: 50
       base_params: {}
@@ -186,7 +186,7 @@ training:
         gamma: {type: categorical, choices: ["scale", "auto"]}
         degree: {type: int, low: 2, high: 5}
     dt:
-      enabled: false
+      enabled: true
       profile: tree
       trials: 100
       base_params: {}
@@ -196,7 +196,7 @@ training:
         min_samples_split: {type: int, low: 2, high: 20}
         min_samples_leaf: {type: int, low: 1, high: 20}
     rf:
-      enabled: false
+      enabled: true
       profile: tree
       trials: 100
       base_params: {}
@@ -208,7 +208,7 @@ training:
         min_samples_leaf: {type: int, low: 1, high: 20}
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
     gbr:
-      enabled: false
+      enabled: true
       profile: tree
       trials: 100
       base_params: {}
@@ -220,7 +220,7 @@ training:
         subsample: {type: float, low: 0.5, high: 1.0}
         min_samples_leaf: {type: int, low: 1, high: 20}
     hgbt:
-      enabled: false
+      enabled: true
       profile: tree
       trials: 100
       base_params: {}
@@ -231,7 +231,7 @@ training:
         max_leaf_nodes: {type: int, low: 7, high: 255}
         l2_regularization: {type: float, low: 0.000001, high: 10.0, log: true}
     xgboost:
-      enabled: false
+      enabled: true
       profile: tree
       trials: 100
       base_params: {}
@@ -246,7 +246,7 @@ training:
         reg_alpha: {type: float, low: 1e-8, high: 10.0, log: true}
         reg_lambda: {type: float, low: 1e-8, high: 10.0, log: true}
     lightgbm:
-      enabled: false
+      enabled: true
       profile: tree
       trials: 100
       base_params: {}
@@ -261,7 +261,7 @@ training:
         reg_alpha: {type: float, low: 1e-8, high: 10.0, log: true}
         reg_lambda: {type: float, low: 1e-8, high: 10.0, log: true}
     catboost:
-      enabled: false
+      enabled: true
       profile: catboost
       trials: 100
       base_params: {}

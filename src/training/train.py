@@ -14,7 +14,6 @@ from .model_zoo import build_estimator
 from .metrics import regression_metrics, overfit_diagnostics
 from .ensembles import build_voting, build_stacking
 from .shap_utils import compute_shap, save_shap_plots
-from .model_zoo import default_params
 import importlib
 
 logger = get_logger(__name__)
