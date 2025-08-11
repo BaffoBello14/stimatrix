@@ -110,6 +110,14 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         base = {}
         # merge con base_params espliciti del modello
         base.update(model_entry.get("base_params", {}) or {})
+        # Imposta seed di riproducibilità se supportato e non già presente
+        mk = model_key.lower()
+        if mk in {"dt", "rf", "gbr", "hgbt"} and "random_state" not in base:
+            base["random_state"] = seed
+        if mk in {"xgboost", "lightgbm"} and "random_state" not in base:
+            base["random_state"] = seed
+        if mk == "catboost" and "random_seed" not in base:
+            base["random_seed"] = seed
         # trials: se specificato per modello, altrimenti in base alla categoria
         n_trials = int(model_entry.get("trials", 50))
         timeout = None

@@ -296,6 +296,12 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_te = transform_with_encoders(X_te, encoders)
         if X_va is not None:
             X_va = transform_with_encoders(X_va, encoders)
+        # Riempie eventuali NaN introdotti dall'encoding ordinale (categorie sconosciute) con sentinel -1
+        for _df in (X_tr, X_te, X_va):
+            if _df is not None:
+                _ord_cols = [c for c in _df.columns if c.endswith("__ord")]
+                if _ord_cols:
+                    _df[_ord_cols] = _df[_ord_cols].fillna(-1).astype(float)
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         X_tr, removed_nd = drop_non_descriptive(X_tr)
         logger.info(f"[tree] Drop non descrittive: {len(removed_nd)}")
