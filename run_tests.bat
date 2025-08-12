@@ -77,12 +77,12 @@ goto end
 
 :run_quick
 echo ⚡ Test veloce...
-python test_basic.py
+python tests/test_basic.py
 goto end
 
 :run_basic
 echo 🔧 Test di base (senza dipendenze pesanti)...
-python test_basic.py
+python tests/test_basic.py
 goto end
 
 :run_verbose
