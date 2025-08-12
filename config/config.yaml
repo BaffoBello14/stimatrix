@@ -134,7 +134,7 @@ training:
     linear:
       enabled: true
       profile: scaled
-      trials: 50
+      trials: 1
       base_params: {}
       fit_params: {}
       search_space: {}
@@ -174,7 +174,7 @@ training:
         weights: {type: categorical, choices: ["uniform", "distance"]}
         p: {type: int, low: 1, high: 2}
     svr:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: 50
       base_params: {}
@@ -291,7 +291,7 @@ training:
   # SHAP feature importance
   shap:
     enabled: true
-    sample_size: 200
+    sample_size: 20
     max_display: 30
     save_plots: true
     save_values: false
