@@ -9,6 +9,7 @@ from sqlalchemy import inspect
 from sqlalchemy.exc import SAWarning
 
 from utils.io import ensure_parent_dir
+from db.connect import DatabaseConnector
 
 unrecognized_types: Dict[str, str] = defaultdict(str)
 SA_TYPE_REGEX = re.compile(r"Did not recognize type '(\w+)' of column '(\w+)'")
@@ -101,3 +102,18 @@ def extract_schema(engine, schema_name: Optional[str] = None) -> Dict[str, Any]:
             )
 
     return schema
+
+
+def run_schema_from_config(config: Dict[str, Any]) -> None:
+    catch_unrecognized_types()
+
+    out = config.get("paths", {}).get("schema", "data/db_schema.json")
+    ensure_parent_dir(out)
+
+    schema_name = config.get("database", {}).get("schema_name", None)
+
+    engine = DatabaseConnector().engine
+    schema_dict = extract_schema(engine, schema_name=schema_name)
+
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(schema_dict, f, indent=4, ensure_ascii=False)
