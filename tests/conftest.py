@@ -82,7 +82,7 @@ def sample_real_estate_data() -> pd.DataFrame:
         
         # JSON-like columns
         "PC_PoligonoGeoJson": [
-            f'{{"type": "Feature", "geometry": {{"type": "Polygon"}}, "properties": {{"areaMq": {np.random.uniform(50, 200):.1f}}}}'
+            f'{{"type": "Feature", "geometry": {{"type": "Polygon"}}, "properties": {{"areaMq": {np.random.uniform(50, 200):.1f}}}}}'
             for _ in range(n_samples)
         ],
         
