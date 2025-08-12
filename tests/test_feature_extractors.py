@@ -83,9 +83,9 @@ class TestWKTExtraction:
         
         # First multipolygon should have 2 polygons
         assert stats.columns.tolist() == [
-            '__wkt_mpoly_count',
-            '__wkt_mpoly_vertices',
-            '__wkt_mpoly_outer_vertices_avg'
+            'wkt_mpoly_count',
+            'wkt_mpoly_vertices',
+            'wkt_mpoly_outer_vertices_avg'
         ]
         
         # Check if basic structure is correct

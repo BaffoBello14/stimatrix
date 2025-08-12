@@ -23,7 +23,7 @@ class TestModelZoo:
     
     def test_build_estimator_linear(self):
         """Test building linear models."""
-        estimator = build_estimator("linear", {}, 42)
+        estimator = build_estimator("linear", {})
         
         from sklearn.linear_model import LinearRegression
         assert isinstance(estimator, LinearRegression)
@@ -31,7 +31,7 @@ class TestModelZoo:
     def test_build_estimator_ridge(self):
         """Test building ridge regression."""
         params = {"alpha": 1.0}
-        estimator = build_estimator("ridge", params, 42)
+        estimator = build_estimator("ridge", params)
         
         from sklearn.linear_model import Ridge
         assert isinstance(estimator, Ridge)
@@ -39,8 +39,8 @@ class TestModelZoo:
     
     def test_build_estimator_random_forest(self):
         """Test building random forest."""
-        params = {"n_estimators": 100, "max_depth": 5}
-        estimator = build_estimator("rf", params, 42)
+        params = {"n_estimators": 100, "max_depth": 5, "random_state": 42}
+        estimator = build_estimator("rf", params)
         
         from sklearn.ensemble import RandomForestRegressor
         assert isinstance(estimator, RandomForestRegressor)
@@ -50,8 +50,8 @@ class TestModelZoo:
     
     def test_build_estimator_xgboost(self):
         """Test building XGBoost model."""
-        params = {"n_estimators": 100, "learning_rate": 0.1}
-        estimator = build_estimator("xgboost", params, 42)
+        params = {"n_estimators": 100, "learning_rate": 0.1, "random_state": 42}
+        estimator = build_estimator("xgboost", params)
         
         import xgboost as xgb
         assert isinstance(estimator, xgb.XGBRegressor)
@@ -61,7 +61,7 @@ class TestModelZoo:
     def test_build_estimator_unknown(self):
         """Test building unknown model type."""
         with pytest.raises(ValueError, match="Modello sconosciuto"):
-            build_estimator("unknown_model", {}, 42)
+            build_estimator("unknown_model", {})
 
 
 class TestMetrics:
@@ -223,7 +223,7 @@ class TestTuning:
         }
         
         best_params, best_score = tune_model(
-            "ridge", X, y, search_space, {}, {}, "r2", 10, "tpe", 42
+            "ridge", X, y, None, None, "r2", 10, None, "tpe", 42, {}, search_space
         )
         
         assert best_params == {"alpha": 1.0}
@@ -413,7 +413,7 @@ class TestErrorHandling:
     def test_invalid_model_type(self):
         """Test handling of invalid model types."""
         with pytest.raises(ValueError):
-            build_estimator("invalid_model", {}, 42)
+            build_estimator("invalid_model", {})
     
     def test_metrics_with_invalid_data(self):
         """Test metrics calculation with invalid data."""
