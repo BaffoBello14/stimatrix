@@ -105,6 +105,13 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     X_val = X_val.reindex(columns=numeric_cols, fill_value=0)
 
         # Tuning
+        # Final NaN guard for numeric-only models (some estimators like GBR cannot handle NaN)
+        if requires_numeric_only:
+            if np.isnan(X_train.values).any() or (X_val is not None and np.isnan(X_val.values).any()) or np.isnan(X_test.values).any():
+                X_train = X_train.fillna(0)
+                X_test = X_test.fillna(0)
+                if X_val is not None:
+                    X_val = X_val.fillna(0)
         space = model_entry.get("search_space", {})
         base = {}
         # merge con base_params espliciti del modello
