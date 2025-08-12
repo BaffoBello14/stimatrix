@@ -16,7 +16,7 @@ from utils.exceptions import (
 logger = get_logger(__name__)
 
 # Regex for basic WKT parsing without external spatial deps
-_WKT_POINT_RE = re.compile(r"^POINT\s*\(\s*([+-]?[0-9]*\.?[0-9]+)\s+([+-]?[0-9]*\.?[0-9]+)\s*\)$", re.IGNORECASE)
+_WKT_POINT_RE = re.compile(r"^POINT\s*\(\s*([+-]?[0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]+)?)\s+([+-]?[0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]+)?)\s*\)$", re.IGNORECASE)
 _WKT_POLYGON_RE = re.compile(r"^POLYGON\s*\(\((.*?)\)\)$", re.IGNORECASE)
 
 
@@ -40,10 +40,7 @@ def extract_point_xy_from_wkt(series: pd.Series) -> Tuple[pd.Series, pd.Series]:
                     x_coord = float(match.group(1))
                     y_coord = float(match.group(2))
                     
-                    # Validate coordinate ranges (basic sanity check)
-                    if abs(x_coord) > 180 or abs(y_coord) > 90:
-                        logger.warning(f"Suspicious coordinates at index {idx}: ({x_coord}, {y_coord})")
-                    
+                    # Allow all coordinate values - validation removed for flexibility
                     xs.append(x_coord)
                     ys.append(y_coord)
                 except (ValueError, TypeError) as e:
@@ -125,13 +122,14 @@ def detect_geometry_wkt_columns(df: pd.DataFrame) -> Dict[str, str]:
         vals = sample[col].dropna().astype(str).str.upper().str.strip()
         if vals.empty:
             continue
-        if (vals.str.startswith("POINT(")).any():
+        # Allow for optional spaces in WKT patterns
+        if (vals.str.contains(r"^POINT\s*\(", regex=True)).any():
             geometry_cols[col] = "POINT"
-        elif (vals.str.startswith("POLYGON(")).any():
+        elif (vals.str.contains(r"^POLYGON\s*\(", regex=True)).any():
             geometry_cols[col] = "POLYGON"
-        elif (vals.str.startswith("MULTIPOLYGON(")).any():
+        elif (vals.str.contains(r"^MULTIPOLYGON\s*\(", regex=True)).any():
             geometry_cols[col] = "MULTIPOLYGON"
-        elif (vals.str.startswith("LINESTRING(")).any():
+        elif (vals.str.contains(r"^LINESTRING\s*\(", regex=True)).any():
             geometry_cols[col] = "LINESTRING"
     return geometry_cols
 
