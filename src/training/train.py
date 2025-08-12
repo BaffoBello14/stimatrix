@@ -240,6 +240,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     X=X_tr_final.values if use_values_for_final else X_tr_final,
                     sample_size=int(shap_cfg.get("sample_size", 2000)),
                     max_display=int(shap_cfg.get("max_display", 30)),
+                    keep_as_numpy=use_values_for_final,
                 )
                 if bool(shap_cfg.get("save_plots", True)):
                     save_shap_plots(str(model_dir / "shap"), shap_bundle, model_id)
