@@ -8,6 +8,7 @@ import pandas as pd
 from db.connect import DatabaseConnector
 from utils.io import load_json, save_dataframe
 from utils.logger import get_logger
+from pathlib import Path
 
 logger = get_logger(__name__)
 
@@ -377,3 +378,28 @@ class DatasetBuilder:
         save_dataframe(df, output_path, format=output_format, compression=compression)
         logger.info(f"Dati salvati in: {output_path}")
         return df
+
+
+def run_dataset(config: Dict[str, Any]) -> None:
+    db_cfg = config.get("database", {})
+    paths = config.get("paths", {})
+
+    schema_path = paths.get("schema", "data/db_schema.json")
+    raw_dir = Path(paths.get("raw_data", "data/raw"))
+    raw_dir.mkdir(parents=True, exist_ok=True)
+
+    raw_filename = paths.get("raw_filename", f"raw.{db_cfg.get('output_format', 'parquet')}")
+    out_path = str(raw_dir / raw_filename)
+
+    aliases = db_cfg.get("selected_aliases", [])
+    include_poi = bool(db_cfg.get("use_poi", True))
+    include_ztl = bool(db_cfg.get("use_ztl", True))
+
+    DatasetBuilder().retrieve_data(
+        schema_path=schema_path,
+        selected_aliases=aliases,
+        output_path=out_path,
+        include_poi=include_poi,
+        include_ztl=include_ztl,
+        poi_categories=None,
+    )

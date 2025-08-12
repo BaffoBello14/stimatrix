@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, Tuple
 
 import numpy as np
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet

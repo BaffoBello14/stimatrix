@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
 import shap
 
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, HistGradientBoostingRegressor
 

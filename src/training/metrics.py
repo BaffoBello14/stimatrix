@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Any, Optional
+from typing import Dict
 
 import numpy as np
 from sklearn import metrics as skm
