@@ -52,8 +52,10 @@ def compute_shap(
     sample_size: int = 2000,
     max_display: int = 30,
     background_size: int = 500,
+    keep_as_numpy: bool = False,
 ) -> Dict[str, Any]:
-    # Convert numpy array to DataFrame if needed
+    # Convert numpy array to DataFrame if needed, but remember original format
+    was_numpy = isinstance(X, np.ndarray)
     if isinstance(X, np.ndarray):
         X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
     elif not isinstance(X, pd.DataFrame):
@@ -71,11 +73,20 @@ def compute_shap(
     try:
         if _is_tree_based(model):
             explainer = shap.TreeExplainer(model)
-            shap_values = explainer(Xs)
+            # For tree models, use the same format as training
+            if keep_as_numpy or was_numpy:
+                shap_values = explainer(Xs.values)
+            else:
+                shap_values = explainer(Xs)
         elif _is_linear(model):
             try:
-                explainer = shap.LinearExplainer(model, X)
-                shap_values = explainer(Xs)
+                # Linear models work better with consistent format
+                if keep_as_numpy or was_numpy:
+                    explainer = shap.LinearExplainer(model, X.values)
+                    shap_values = explainer(Xs.values)
+                else:
+                    explainer = shap.LinearExplainer(model, X)
+                    shap_values = explainer(Xs)
             except Exception:
                 X_bg = X.sample(n=min(len(X), background_size), random_state=42)
                 explainer = shap.Explainer(model.predict, X_bg.values)
