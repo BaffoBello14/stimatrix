@@ -89,6 +89,16 @@ feature_extraction:
   geometry: true
   json: true
 
+# Surface handling
+surface:
+  drop_columns:
+    - 'A_ImmobiliPrincipaliConSuperficieValorizzata'
+    - 'AI_SuperficieCalcolata'
+    - 'AI_SuperficieVisuraTotale'
+    - 'AI_SuperficieVisuraTotaleE'
+    - 'AI_SuperficieVisuraTotaleAttuale'
+    - 'AI_SuperficieVisuraTotaleEAttuale'
+
 # Scaling configuration
 scaling: &scaling_defaults
   scaler_type: 'standard'   # 'standard' | 'robust' | 'none'

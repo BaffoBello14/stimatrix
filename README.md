@@ -59,7 +59,7 @@ python main.py --config config/config.yaml --steps all
    - `MULTIPOLYGON`: `__wkt_mpoly_count`, `__wkt_mpoly_vertices`, `__wkt_mpoly_outer_vertices_avg` e drop raw.
    - GeoJSON (es. `PC_PoligonoGeoJson`): estrae `areaMq`, `perimetroM`, `codiceCatastale`, `foglio`, `sezione`, `particella` e bbox (`minx,miny,maxx,maxy`), poi drop raw.
 3) Normalizzazioni mirate:
-   - Superfici: si mantiene solo `AI_Superficie` (m²). Droppate tutte le altre colonne di superficie (`AI_SuperficieCalcolata`, `AI_SuperficieVisura*`, ecc.).
+   - Superfici: si mantiene solo `AI_Superficie` (m²). Le colonne da droppare sono configurabili in `surface.drop_columns` (default include `AI_SuperficieCalcolata`, `AI_SuperficieVisura*`, ecc.).
    - `AI_Piano`: feature engineering robusto (min/max/n_floors/span, pesata, flag basement/ground/upper, conteggi) e drop della colonna raw `AI_Piano`.
    - `AI_Civico`: estrazione parte numerica in `AI_Civico_num` e drop della colonna raw.
    - Geo SRID costante: drop `PC_PoligonoMetricoSrid`.

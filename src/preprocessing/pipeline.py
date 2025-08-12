@@ -94,14 +94,18 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     logger.info(f"Estrazione feature: aggiunte/derivate, dropped_raw={len(cols_to_drop_now)} -> cols={len(df.columns)}")
 
     # Keep only canonical surface in m²
-    surface_cols_to_drop = [
-        "A_ImmobiliPrincipaliConSuperficieValorizzata",
-        "AI_SuperficieCalcolata",
-        "AI_SuperficieVisuraTotale",
-        "AI_SuperficieVisuraTotaleE",
-        "AI_SuperficieVisuraTotaleAttuale",
-        "AI_SuperficieVisuraTotaleEAttuale",
-    ]
+    surface_cfg = config.get("surface", {})
+    surface_cols_to_drop = surface_cfg.get(
+        "drop_columns",
+        [
+            "A_ImmobiliPrincipaliConSuperficieValorizzata",
+            "AI_SuperficieCalcolata",
+            "AI_SuperficieVisuraTotale",
+            "AI_SuperficieVisuraTotaleE",
+            "AI_SuperficieVisuraTotaleAttuale",
+            "AI_SuperficieVisuraTotaleEAttuale",
+        ],
+    )
     df = df.drop(columns=[c for c in surface_cols_to_drop if c in df.columns], errors="ignore")
     # Drop useless geo SRID (constant)
     df = df.drop(columns=[c for c in ["PC_PoligonoMetricoSrid"] if c in df.columns], errors="ignore")
