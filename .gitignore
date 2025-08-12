@@ -1,70 +1,256 @@
-# Python cache & artifacts
-__pycache__/
-*.py[codz]
-*$py.class
+# ====================================
+# Stimatrix ML Pipeline - .gitignore
+# ====================================
 
-# Environments
+# ----------------
+# Python & General
+# ----------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.dylib
+
+# Virtual Environments
 .env
 .env.*
 .venv/
 venv/
 ENV/
+env/
+.python-version
 
-# Build/dist
+# Distribution / packaging
 build/
 dist/
 .eggs/
 *.egg-info/
 .wheels/
+*.egg
 
-# Tools caches
+# ----------------
+# Development Tools
+# ----------------
+
+# IDE/Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vim/
+
+# Testing & Coverage
 .cache/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.ipynb_checkpoints/
-
-# Test artifacts
+.tox/
 htmlcov/
 .coverage
-**/test_output/
-**/test_temp_*
-test_lightgbm_fix.py
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.nox/
 
-# Editors/IDE
-.vscode/
-.idea/
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
 
-# Logs & reports
+# ----------------
+# ML Pipeline Specific
+# ----------------
+
+# Raw Data (comment out lines below if you want to track sample data)
+data/raw/
+data/interim/
+data/external/
+
+# Processed Data 
+data/preprocessed/
+data/processed/
+
+# Model artifacts
+models/
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.hdf5
+*.pb
+saved_model/
+
+# Training outputs
+experiments/
+runs/
+outputs/
+checkpoints/
+wandb/
+mlruns/
+
+# SHAP artifacts (can be very large)
+shap/
+**/shap_values.npy
+**/shap/*.png
+**/shap/*.html
+
+# Feature engineering outputs
+features/
+feature_store/
+
+# ----------------
+# Hyperparameter Tuning
+# ----------------
+
+# Optuna study files
+optuna_studies/
+**/optuna_trials.csv
+*.db
+*.sqlite3
+study.db
+
+# Ray Tune
+ray_results/
+
+# ----------------
+# Logging & Reports
+# ----------------
 logs/
 *.log
 **/reports/
+*.out
 
-# Data outputs
-# Raw and preprocessed data folders
-#/data/raw/
-#/data/preprocessed/
-!data/.gitkeep
+# Profiling
+*.prof
+*.lprof
 
-# Models & artifacts
-/models/
-!models/.gitkeep
+# ----------------
+# Configuration & Secrets
+# ----------------
 
-# SHAP artifacts (can be very large)
-**/shap/*.png
-**/shap_values.npy
+# Environment variables
+.env.local
+.env.development
+.env.production
 
-# Optuna/Study artifacts (if exported)
-**/optuna_trials.csv
+# Database credentials
+database.ini
+db_config.yaml
 
-# Local DB or temp files
-*.sqlite3
-*.db
+# API keys and secrets
+secrets/
+.secrets/
+credentials/
+*.key
+*.pem
 
-# System / OS
+# ----------------
+# Temporary Files
+# ----------------
+
+# Test artifacts
+**/test_output/
+**/test_temp_*
+test_lightgbm_fix.py
+tmp/
+temp/
+
+# Backup files
+*.bak
+*.backup
+
+# ----------------
+# System Files
+# ----------------
+
+# macOS
 .DS_Store
-Thumbs.db
+.AppleDouble
+.LSOverride
 
-# Cursor
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# ----------------
+# Documentation
+# ----------------
+
+# Sphinx documentation
+docs/_build/
+docs/source/_autosummary/
+
+# ----------------
+# Keep Essential Structure
+# ----------------
+
+# Keep directory structure but ignore contents
+!data/.gitkeep
+!models/.gitkeep
+!logs/.gitkeep
+!experiments/.gitkeep
+
+# ----------------
+# Editor Specific
+# ----------------
+
+# Cursor AI
 .cursorignore
 .cursorindexingignore
+
+# VS Code
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# PyCharm
+*.iml
+*.ipr
+*.iws
+
+# ----------------
+# Performance & Monitoring
+# ----------------
+
+# Memory profiling
+*.mprof
+memory_profiler.log
+
+# Performance monitoring
+*.speedscope
+
+# ----------------
+# Deployment
+# ----------------
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Cloud specific
+.gcloudignore
+.aws/
+.azure/
+
+# ----------------
+# Project Specific Exclusions
+# ----------------
+
+# Large datasets (add specific patterns)
+**/large_dataset_*.parquet
+**/backup_*.parquet
+
+# Temporary analysis files
+scratch/
+sandbox/
+analysis_*.py
+explore_*.py
+
+# Generated config files
+config_generated.yaml
+local_config.yaml
