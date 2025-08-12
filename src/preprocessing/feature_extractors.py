@@ -7,6 +7,11 @@ from typing import Dict, List, Tuple
 import pandas as pd
 
 from utils.logger import get_logger
+from utils.exceptions import (
+    FeatureExtractionError, 
+    with_error_handling, 
+    raise_for_data_validation
+)
 
 logger = get_logger(__name__)
 
@@ -15,21 +20,47 @@ _WKT_POINT_RE = re.compile(r"^POINT\s*\(\s*([+-]?[0-9]*\.?[0-9]+)\s+([+-]?[0-9]*
 _WKT_POLYGON_RE = re.compile(r"^POLYGON\s*\(\((.*?)\)\)$", re.IGNORECASE)
 
 
+@with_error_handling(error_types=FeatureExtractionError)
 def extract_point_xy_from_wkt(series: pd.Series) -> Tuple[pd.Series, pd.Series]:
+    """Extract X,Y coordinates from WKT POINT geometries with robust error handling."""
+    raise_for_data_validation(
+        isinstance(series, pd.Series), 
+        "Input must be a pandas Series",
+        column=getattr(series, 'name', 'unknown')
+    )
+    
     xs: List[float | None] = []
     ys: List[float | None] = []
-    for val in series.astype(str).fillna(""):
-        match = _WKT_POINT_RE.match(val)
-        if match:
-            try:
-                xs.append(float(match.group(1)))
-                ys.append(float(match.group(2)))
-            except Exception:
+    
+    try:
+        for idx, val in enumerate(series.astype(str).fillna("")):
+            match = _WKT_POINT_RE.match(val)
+            if match:
+                try:
+                    x_coord = float(match.group(1))
+                    y_coord = float(match.group(2))
+                    
+                    # Validate coordinate ranges (basic sanity check)
+                    if abs(x_coord) > 180 or abs(y_coord) > 90:
+                        logger.warning(f"Suspicious coordinates at index {idx}: ({x_coord}, {y_coord})")
+                    
+                    xs.append(x_coord)
+                    ys.append(y_coord)
+                except (ValueError, TypeError) as e:
+                    logger.debug(f"Failed to parse coordinates at index {idx}: {e}")
+                    xs.append(None)
+                    ys.append(None)
+            else:
                 xs.append(None)
                 ys.append(None)
-        else:
-            xs.append(None)
-            ys.append(None)
+                
+    except Exception as e:
+        raise FeatureExtractionError(
+            f"Failed to extract point coordinates: {e}",
+            feature_type="wkt_point",
+            column=getattr(series, 'name', 'unknown')
+        )
+    
     return pd.Series(xs, index=series.index), pd.Series(ys, index=series.index)
 
 
