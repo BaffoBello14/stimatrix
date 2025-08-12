@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from db.connect import get_engine, DatabaseConnector
+from db.connect import DatabaseConnector
 from utils.io import load_json, save_dataframe
 from utils.logger import get_logger
 
@@ -377,43 +377,3 @@ class DatasetBuilder:
         save_dataframe(df, output_path, format=output_format, compression=compression)
         logger.info(f"Dati salvati in: {output_path}")
         return df
-
-
-# Backward-compatible functional wrappers
-
-def build_select_clause_dual_omi(schema: Dict[str, Any], selected_aliases: Optional[List[str]] = None) -> str:
-    return DatasetBuilder().build_select_clause_dual_omi(schema, selected_aliases)
-
-
-def retrieve_data(
-    schema_path: str,
-    selected_aliases: List[str],
-    output_path: str,
-    include_poi: bool = True,
-    include_ztl: bool = True,
-    poi_categories: Optional[List[str]] = None,
-) -> pd.DataFrame:
-
-    # Read format and compression from config if available
-    output_format = "parquet"
-    compression = None
-    try:
-        from yaml import safe_load  # type: ignore
-        with open("config/config.yaml", "r", encoding="utf-8") as f:
-            cfg = safe_load(f)
-            db_cfg = cfg.get("database", {})
-            output_format = db_cfg.get("output_format", "parquet")
-            compression = db_cfg.get("compression", None)
-    except Exception:
-        pass
-
-    return DatasetBuilder().retrieve_data(
-        schema_path=schema_path,
-        selected_aliases=selected_aliases,
-        output_path=output_path,
-        include_poi=include_poi,
-        include_ztl=include_ztl,
-        poi_categories=poi_categories,
-        output_format=output_format,
-        compression=compression,
-    )

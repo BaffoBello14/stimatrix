@@ -8,7 +8,6 @@ from typing import Dict, Any, Optional
 from sqlalchemy import inspect
 from sqlalchemy.exc import SAWarning
 
-from db.connect import get_engine
 from utils.io import ensure_parent_dir
 
 unrecognized_types: Dict[str, str] = defaultdict(str)
@@ -102,24 +101,3 @@ def extract_schema(engine, schema_name: Optional[str] = None) -> Dict[str, Any]:
             )
 
     return schema
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Estrai schema DB e salvalo in JSON")
-    parser.add_argument("--output", type=str, default="data/db_schema.json", help="Path file JSON di output")
-    parser.add_argument("--schema", type=str, default=None, help="Schema DB (opzionale)")
-    args = parser.parse_args()
-
-    catch_unrecognized_types()
-    engine = get_engine()
-    schema_dict = extract_schema(engine, schema_name=args.schema)
-
-    ensure_parent_dir(args.output)
-    with open(args.output, "w", encoding="utf-8") as f:
-        json.dump(schema_dict, f, indent=4, ensure_ascii=False)
-
-    print(f"✅ Schema esportato in {args.output}")
-
-
-if __name__ == "__main__":
-    main()

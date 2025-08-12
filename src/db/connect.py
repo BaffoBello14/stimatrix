@@ -12,8 +12,7 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Carica variabili d'ambiente da .env se presente (override per evitare conflitti con USER di sistema)
-load_dotenv(override=True)
+load_dotenv()
 
 
 def _get_env(var_name: str) -> str | None:
@@ -32,15 +31,15 @@ class DatabaseConfig:
     def from_env() -> "DatabaseConfig":
         server = _get_env("SERVER")
         database = _get_env("DATABASE")
-        user = _get_env("DB_USER") or _get_env("USER")
-        password = _get_env("DB_PASSWORD") or _get_env("PASSWORD")
+        user = _get_env("DB_USER")
+        password = _get_env("DB_PASSWORD")
         missing = [
             var
             for var, val in (
                 ("SERVER", server),
                 ("DATABASE", database),
-                ("DB_USER/USER", user),
-                ("DB_PASSWORD/PASSWORD", password),
+                ("DB_USER", user),
+                ("DB_PASSWORD", password),
             )
             if not val
         ]
@@ -86,12 +85,3 @@ class DatabaseConnector:
         except Exception as exc:
             logger.error(f"Test connessione database: FALLITO - {exc}")
             return False
-
-
-# Backward-compatible functional API
-def get_engine() -> Engine:
-    return DatabaseConnector().engine
-
-
-def test_connection() -> bool:
-    return DatabaseConnector().test_connection()

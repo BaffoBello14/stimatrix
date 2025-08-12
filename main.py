@@ -12,8 +12,8 @@ _src_path = str(Path(__file__).resolve().parent / "src")
 if _src_path not in _sys.path:
     _sys.path.append(_src_path)
 
-from db.schema_extract import main as schema_main
-from dataset_builder.retrieval import retrieve_data
+from db.connect import DatabaseConnector
+from dataset_builder.retrieval import DatasetBuilder
 from preprocessing.pipeline import run_preprocessing
 from training.train import run_training
 from utils.logger import setup_logger
@@ -42,7 +42,6 @@ def run_schema(config) -> None:
     # Reuse CLI entry of schema module by setting args
     # Simpler: call function directly replicating defaults
     from db.schema_extract import extract_schema, catch_unrecognized_types
-    from db.connect import get_engine
     from utils.io import ensure_parent_dir
 
     # Attiva intercettazione SAWarning per tipi non riconosciuti
@@ -53,7 +52,7 @@ def run_schema(config) -> None:
 
     schema_name = config.get("database", {}).get("schema_name", None)
 
-    engine = get_engine()
+    engine = DatabaseConnector().engine
     schema_dict = extract_schema(engine, schema_name=schema_name)
     import json
 
@@ -77,7 +76,7 @@ def run_dataset(config) -> None:
     include_ztl = bool(db_cfg.get("use_ztl", True))
 
     # retrieval salva con formato interno; passiamo via config usando globali
-    retrieve_data(
+    DatasetBuilder().retrieve_data(
         schema_path=schema_path,
         selected_aliases=aliases,
         output_path=out_path,
