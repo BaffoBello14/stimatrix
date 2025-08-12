@@ -112,7 +112,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         # n_jobs default from config for supported models
         n_jobs_default = int(tr_cfg.get("n_jobs_default", -1))
         mk_lower = model_key.lower()
-        if mk_lower in {"rf", "gbr", "xgboost", "lightgbm", "catboost"} and "n_jobs" not in base and mk_lower != "catboost":
+        if mk_lower in {"rf", "knn", "xgboost", "lightgbm"} and "n_jobs" not in base:
             base["n_jobs"] = n_jobs_default
         # CatBoost uses thread_count
         if mk_lower == "catboost" and "thread_count" not in base:
