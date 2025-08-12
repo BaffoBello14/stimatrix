@@ -143,14 +143,21 @@ class TestJSONExtraction:
             "regular_col": [1, 2, 3]
         })
         
+        # Store original column count before modification
+        original_cols = len(df.columns)
+        
         df_result, dropped_cols = maybe_extract_json_features(df)
         
-        # Should extract JSON features but not drop original column
-        assert "json_col" in df_result.columns  # Original preserved
-        assert len(dropped_cols) == 0  # No columns dropped by default
+        # Should extract JSON features and drop original column
+        assert "json_col" in dropped_cols  # Original column marked for dropping
+        assert len(dropped_cols) == 1  # One column dropped
         
-        # Check if any new columns were added (implementation dependent)
-        assert len(df_result.columns) >= len(df.columns)
+        # Check if new columns were added (original + extracted features)
+        new_cols = len(df_result.columns)
+        assert new_cols > original_cols  # Should have more columns due to extracted features
+        
+        # Check for expected extracted columns
+        assert any(col.startswith("json_col__") for col in df_result.columns)
     
     def test_extract_json_features_invalid(self):
         """Test handling of invalid JSON."""

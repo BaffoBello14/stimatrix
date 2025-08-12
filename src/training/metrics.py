@@ -16,13 +16,23 @@ def _safe_mape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
-    mse = skm.mean_squared_error(y_true, y_pred)
+    
+    # Filter out NaN values to avoid sklearn errors
+    mask = ~(np.isnan(y_true) | np.isnan(y_pred))
+    if not mask.any():
+        # All values are NaN or empty, raise ValueError
+        raise ValueError("Cannot compute metrics: all values are NaN or data is empty")
+    
+    y_true_clean = y_true[mask]
+    y_pred_clean = y_pred[mask]
+    
+    mse = skm.mean_squared_error(y_true_clean, y_pred_clean)
     rmse = float(np.sqrt(mse))
-    mae = skm.mean_absolute_error(y_true, y_pred)
-    r2 = skm.r2_score(y_true, y_pred)
-    evs = skm.explained_variance_score(y_true, y_pred)
-    medae = skm.median_absolute_error(y_true, y_pred)
-    mape = _safe_mape(y_true, y_pred)
+    mae = skm.mean_absolute_error(y_true_clean, y_pred_clean)
+    r2 = skm.r2_score(y_true_clean, y_pred_clean)
+    evs = skm.explained_variance_score(y_true_clean, y_pred_clean)
+    medae = skm.median_absolute_error(y_true_clean, y_pred_clean)
+    mape = _safe_mape(y_true_clean, y_pred_clean)
     return {
         "r2": float(r2),
         "mse": float(mse),
