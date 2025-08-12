@@ -53,6 +53,13 @@ def compute_shap(
     max_display: int = 30,
     background_size: int = 500,
 ) -> Dict[str, Any]:
+    # Convert numpy array to DataFrame if needed
+    if isinstance(X, np.ndarray):
+        X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
+    elif not isinstance(X, pd.DataFrame):
+        # Handle other array-like objects
+        X = pd.DataFrame(X)
+    
     if len(X) > sample_size:
         Xs = X.sample(n=sample_size, random_state=42)
     else:

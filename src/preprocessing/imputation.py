@@ -72,18 +72,18 @@ def _apply_fill_values(df: pd.DataFrame, fitted: FittedImputers) -> pd.DataFrame
         # Categorical
         for col, series_vals in fitted.categorical_fill_values.items():
             try:
-                result[col] = grouped[col].transform(lambda s: s.fillna(series_vals.get(s.name, "UNKNOWN")))
+                result[col] = grouped[col].transform(lambda s: s.fillna(series_vals.get(s.name, "UNKNOWN")).infer_objects(copy=False))
             except Exception:
                 fallback = series_vals.mode().iloc[0] if isinstance(series_vals, pd.Series) and not series_vals.mode().empty else "UNKNOWN"
                 if fallback is None:
                     fallback = "UNKNOWN"
-                result[col] = result[col].fillna(fallback)
+                result[col] = result[col].fillna(fallback).infer_objects(copy=False)
     else:
         for col, val in fitted.numeric_fill_values.items():
             result[col] = result[col].fillna(val)
         for col, val in fitted.categorical_fill_values.items():
             fill_val = val if val is not None else "UNKNOWN"
-            result[col] = result[col].fillna(fill_val)
+            result[col] = result[col].fillna(fill_val).infer_objects(copy=False)
     return result
 
 
