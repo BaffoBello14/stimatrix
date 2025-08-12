@@ -109,6 +109,14 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         base = {}
         # merge con base_params espliciti del modello
         base.update(model_entry.get("base_params", {}) or {})
+        # n_jobs default from config for supported models
+        n_jobs_default = int(tr_cfg.get("n_jobs_default", -1))
+        mk_lower = model_key.lower()
+        if mk_lower in {"rf", "gbr", "xgboost", "lightgbm", "catboost"} and "n_jobs" not in base and mk_lower != "catboost":
+            base["n_jobs"] = n_jobs_default
+        # CatBoost uses thread_count
+        if mk_lower == "catboost" and "thread_count" not in base:
+            base["thread_count"] = n_jobs_default
         # Imposta seed di riproducibilità se supportato e non già presente
         mk = model_key.lower()
         if mk in {"dt", "rf", "gbr", "hgbt"} and "random_state" not in base:
@@ -135,6 +143,8 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             search_space=space,
             cat_features=cat_features,
         )
+        # Unisci best params al base per includere default come n_jobs/thread_count
+        best_params_merged = {**base, **tuning.best_params}
 
         # Retrain on train+val with best params
         if X_val is not None and y_val is not None:
@@ -144,7 +154,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             X_tr_final, y_tr_final = X_train, y_train
 
         # Build estimator (support class_path override)
-        estimator = build_estimator(model_key, tuning.best_params)
+        estimator = build_estimator(model_key, best_params_merged)
 
         # Fit params handling (e.g., cat_features)
         fit_params = model_entry.get("fit_params", {}) or {}
@@ -241,7 +251,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     if ens_cfg.get("voting", {}).get("enabled", False) and len(ranked) >= 2:
         top_n = int(ens_cfg.get("voting", {}).get("top_n", 3))
         selected = [(k, p) for (k, p, _) in ranked[:top_n]]
-        vote = build_voting(selected, tune_weights=bool(ens_cfg.get("voting", {}).get("tune_weights", True)))
+        vote = build_voting(selected, tune_weights=bool(ens_cfg.get("voting", {}).get("tune_weights", True)), n_jobs=int(tr_cfg.get("n_jobs_default", -1)))
         # Use first model's dataset as reference
         first_key = selected[0][0]
         prefix = _profile_for(first_key, config)
@@ -275,7 +285,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         final_est_key = str(ens_cfg.get("stacking", {}).get("final_estimator", "ridge"))
         cv_folds = int(ens_cfg.get("stacking", {}).get("cv_folds", 5))
         selected = [(k, p) for (k, p, _) in ranked[:top_n]]
-        stack = build_stacking(selected, final_estimator_key=final_est_key, cv_folds=cv_folds)
+        stack = build_stacking(selected, final_estimator_key=final_est_key, cv_folds=cv_folds, n_jobs=int(tr_cfg.get("n_jobs_default", -1)))
         first_key = selected[0][0]
         prefix = _profile_for(first_key, config)
         X_train, y_train, X_val, y_val, X_test, y_test = _load_xy(pre_dir, prefix)

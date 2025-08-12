@@ -48,7 +48,8 @@ python main.py --config config/config.yaml --steps all
 - `imputation`: imputazione numeriche/categoriche (anche per gruppo)
 - `encoding`: piani encoding (OHE/ordinal) con `max_ohe_cardinality`
 - `profiles`: tre profili (`scaled`, `tree`, `catboost`) con pipeline dedicate e salvataggio separato degli output
-- `training`: modelli, iperparametri, tuning, SHAP e ensemble
+- `numeric_coercion`: soglia e lista di pattern per escludere colonne da coercizione numerica
+- `training`: modelli, iperparametri, tuning, SHAP e ensemble. Include `n_jobs_default` per controllare il parallelismo dei modelli che lo supportano.
 
 ## Preprocessing: logica chiave
 1) Caricamento raw (`data/raw/*.parquet`), drop colonne completamente vuote.
@@ -68,7 +69,7 @@ python main.py --config config/config.yaml --steps all
 7) Outlier detection sul train (globale o per gruppo).
 8) Imputation (numeriche/categoriche) con fitting sul solo train.
 9) Profili:
-   - `scaled`: encoding (OHE/ordinal), coercizione numerica più sicura (soglia 0.95, blacklist di codici/ID), drop non descrittive, winsor (opzionale), scaling e PCA (opzionale), pruning correlazioni, salvataggi.
+   - `scaled`: encoding (OHE/ordinal), coercizione numerica più sicura (soglia da `numeric_coercion.threshold`, blacklist da `numeric_coercion.blacklist_patterns`), drop non descrittive, winsor (opzionale), scaling e PCA (opzionale), pruning correlazioni, salvataggi.
    - `tree`: encoding, coercizione numerica, drop non descrittive, pruning solo su numeriche e reallineamento colonne.
    - `catboost`: preserva categoriche, coercizione numerica, drop non descrittive, pruning numeriche.
 10) Salvataggi: `X_train_*`, `y_train_*`, `X_val_*`, `X_test_*`, con copia “back-compat” e `preprocessed.parquet` combinato.
@@ -76,7 +77,8 @@ python main.py --config config/config.yaml --steps all
 ## Dettagli implementativi
 - Geometrie: parsing WKT/GeoJSON senza dipendenze GIS. Per esigenze più avanzate, valutare `shapely/geopandas`.
 - `AI_Piano`: parsing robusto di token (P1..P12, S/S1/S2, PT/T/ST, RIAL/AMMEZZATO, numeri, range 1-3), aggregazioni e flag mirati.
-- Coercizione numerica: è attiva su colonne object con ratio conversione ≥0.95, esclusi pattern di codici/ID (`II_*`, `AI_Id*`, `Foglio`, `Particella*`, `Subalterno`, `SezioneAmministrativa`, `ZonaOmi`, `*COD*`).
+- Coercizione numerica: attiva su colonne object con ratio conversione ≥ soglia (default 0.95). La blacklist di pattern è configurabile in `config.yaml` alla chiave `numeric_coercion.blacklist_patterns` (esempi inclusi: `II_*`, `AI_Id*`, `Foglio`, `Particella*`, `Subalterno`, `SezioneAmministrativa`, `ZonaOmi`, `*COD*`).
+- Parallelismo: per i modelli che lo supportano si usa `n_jobs = -1` (o `thread_count` per CatBoost) configurabile da `training.n_jobs_default`.
 
 ## Output
 - `data/preprocessed/` contiene file per ogni profilo.

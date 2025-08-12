@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Tuple
 import numpy as np
 import pandas as pd
 import re
+import fnmatch
 
 from utils.logger import get_logger
 from preprocessing.feature_extractors import extract_geometry_features, maybe_extract_json_features
@@ -229,21 +230,33 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Helper: numeric coercion based on train
     def coerce_numeric_like(train_df: pd.DataFrame, other_dfs: List[pd.DataFrame | None]) -> Tuple[pd.DataFrame, List[pd.DataFrame | None]]:
-        BLACKLIST_RE = re.compile(
-            r"^(II_.*|AI_(Id.*|Foglio|Particella.*|Subalterno|SezioneAmministrativa|ZonaOmi)|.*COD.*)$",
-            re.IGNORECASE,
-        )
+        numc_cfg = config.get("numeric_coercion", {})
+        enabled = bool(numc_cfg.get("enabled", True))
+        threshold = float(numc_cfg.get("threshold", 0.95))
+        patterns = [str(p) for p in numc_cfg.get("blacklist_patterns", [
+            "II_*",
+            "AI_Id*",
+            "Foglio",
+            "Particella*",
+            "Subalterno",
+            "SezioneAmministrativa",
+            "ZonaOmi",
+            "*COD*",
+        ])]
+        patterns_upper = [p.upper() for p in patterns]
         train = train_df.copy()
         cols_to_coerce: List[str] = []
-        for col in train.select_dtypes(include=["object"]).columns:
-            if BLACKLIST_RE.match(col or ""):
-                continue
-            coerced = pd.to_numeric(train[col].astype(str).str.replace(",", "."), errors="coerce")
-            if coerced.notna().mean() >= 0.95:
-                cols_to_coerce.append(col)
-                train[col] = coerced
+        if enabled:
+            for col in train.select_dtypes(include=["object"]).columns:
+                name_upper = (col or "").upper()
+                if any(fnmatch.fnmatchcase(name_upper, pat) for pat in patterns_upper):
+                    continue
+                coerced = pd.to_numeric(train[col].astype(str).str.replace(",", "."), errors="coerce")
+                if coerced.notna().mean() >= threshold:
+                    cols_to_coerce.append(col)
+                    train[col] = coerced
         if cols_to_coerce:
-            logger.info(f"Coercizione numerica da stringhe: {len(cols_to_coerce)} colonne (soglia 0.95, blacklist attiva)")
+            logger.info(f"Coercizione numerica da stringhe: {len(cols_to_coerce)} colonne (soglia {threshold}, blacklist da config)")
         outs: List[pd.DataFrame | None] = []
         for df_ in other_dfs:
             if df_ is None:
