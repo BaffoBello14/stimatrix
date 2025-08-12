@@ -313,7 +313,7 @@ training:
   # SHAP feature importance
   shap:
     enabled: true
-    sample_size: 20
+    sample_size: 500
     max_display: 30
     save_plots: true
     save_values: false
