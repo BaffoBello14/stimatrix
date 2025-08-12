@@ -213,11 +213,14 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     base_test = X_test.copy()
     base_val = X_val.copy() if X_val is not None else None
 
-    profiles_cfg = config.get("profiles", {
-        "scaled": {"enabled": True, "output_prefix": "scaled"},
-        "tree": {"enabled": False, "output_prefix": "tree"},
-        "catboost": {"enabled": False, "output_prefix": "catboost"},
-    })
+    profiles_cfg = config.get("profiles", {})
+    # Provide fallback defaults only if profiles is completely missing from config
+    if not profiles_cfg:
+        profiles_cfg = {
+            "scaled": {"enabled": True, "output_prefix": "scaled"},
+            "tree": {"enabled": False, "output_prefix": "tree"},
+            "catboost": {"enabled": False, "output_prefix": "catboost"},
+        }
     logger.info(f"Profili attivi: {[k for k,v in profiles_cfg.items() if v.get('enabled', False)]}")
 
     first_profile_saved = None
@@ -374,6 +377,19 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_te = X_te.reindex(columns=cols, fill_value=0)
         if X_va is not None:
             X_va = X_va.reindex(columns=cols, fill_value=0)
+        
+        # Fill any remaining NaN values to ensure compatibility with all sklearn models
+        for _df in (X_tr, X_te, X_va):
+            if _df is not None:
+                # Fill numeric NaN values with 0
+                numeric_cols = _df.select_dtypes(include=[np.number]).columns
+                if len(numeric_cols) > 0:
+                    _df[numeric_cols] = _df[numeric_cols].fillna(0)
+                # Fill categorical NaN values with "UNKNOWN"
+                cat_cols = _df.select_dtypes(include=["object", "category"]).columns
+                if len(cat_cols) > 0:
+                    _df[cat_cols] = _df[cat_cols].fillna("UNKNOWN")
+        
         # Optional numeric-only correlation prune
         corr_thr = float(profiles_cfg.get("tree", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
         X_tr_num = X_tr.select_dtypes(include=[np.number])
@@ -403,6 +419,19 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
         if X_va is not None:
             X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
+        
+        # Fill any remaining NaN values to ensure compatibility with all sklearn models
+        for _df in (X_tr, X_te, X_va):
+            if _df is not None:
+                # Fill numeric NaN values with 0
+                numeric_cols = _df.select_dtypes(include=[np.number]).columns
+                if len(numeric_cols) > 0:
+                    _df[numeric_cols] = _df[numeric_cols].fillna(0)
+                # Fill categorical NaN values with "UNKNOWN"
+                cat_cols = _df.select_dtypes(include=["object", "category"]).columns
+                if len(cat_cols) > 0:
+                    _df[cat_cols] = _df[cat_cols].fillna("UNKNOWN")
+        
         # Numeric-only correlation prune
         corr_thr = float(profiles_cfg.get("catboost", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
         X_tr_num = X_tr.select_dtypes(include=[np.number])
