@@ -60,11 +60,11 @@ case "${1:-all}" in
         ;;
     "quick")
         echo "⚡ Test veloce..."
-        python3 test_basic.py
+        python3 tests/test_basic.py
         ;;
     "basic")
         echo "🔧 Test di base (senza dipendenze pesanti)..."
-        python3 test_basic.py
+        python3 tests/test_basic.py
         ;;
     "verbose")
         echo "📝 Test verbosi con dettagli..."

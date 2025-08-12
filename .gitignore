@@ -24,6 +24,13 @@ dist/
 .ruff_cache/
 .ipynb_checkpoints/
 
+# Test artifacts
+htmlcov/
+.coverage
+**/test_output/
+**/test_temp_*
+test_lightgbm_fix.py
+
 # Editors/IDE
 .vscode/
 .idea/
