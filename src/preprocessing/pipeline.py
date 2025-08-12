@@ -229,21 +229,27 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Helper: numeric coercion based on train
     def coerce_numeric_like(train_df: pd.DataFrame, other_dfs: List[pd.DataFrame | None]) -> Tuple[pd.DataFrame, List[pd.DataFrame | None]]:
-        BLACKLIST_RE = re.compile(
-            r"^(II_.*|AI_(Id.*|Foglio|Particella.*|Subalterno|SezioneAmministrativa|ZonaOmi)|.*COD.*)$",
-            re.IGNORECASE,
-        )
+        nc_cfg = config.get("numeric_coercion", {})
+        # Default patterns replicano la blacklist attuale
+        default_patterns = [
+            r"^II_.*",
+            r"^AI_(Id.*|Foglio|Particella.*|Subalterno|SezioneAmministrativa|ZonaOmi)$",
+            r".*COD.*",
+        ]
+        patterns: List[str] = nc_cfg.get("excluded_patterns", default_patterns)
+        min_ratio: float = float(nc_cfg.get("min_ratio", 0.95))
+        combined_re = re.compile("|".join([f"({p})" for p in patterns]), re.IGNORECASE) if patterns else None
         train = train_df.copy()
         cols_to_coerce: List[str] = []
         for col in train.select_dtypes(include=["object"]).columns:
-            if BLACKLIST_RE.match(col or ""):
+            if combined_re is not None and combined_re.match(col or ""):
                 continue
             coerced = pd.to_numeric(train[col].astype(str).str.replace(",", "."), errors="coerce")
-            if coerced.notna().mean() >= 0.95:
+            if coerced.notna().mean() >= min_ratio:
                 cols_to_coerce.append(col)
                 train[col] = coerced
         if cols_to_coerce:
-            logger.info(f"Coercizione numerica da stringhe: {len(cols_to_coerce)} colonne (soglia 0.95, blacklist attiva)")
+            logger.info(f"Coercizione numerica da stringhe: {len(cols_to_coerce)} colonne (soglia {min_ratio}, blacklist attiva)")
         outs: List[pd.DataFrame | None] = []
         for df_ in other_dfs:
             if df_ is None:
@@ -418,31 +424,9 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             X_val_bc = pd.read_parquet(pre_dir / f"X_val_{first_profile_saved}.parquet")
             y_val_bc = pd.read_parquet(pre_dir / f"y_val_{first_profile_saved}.parquet")[target_col]
             frames.append(X_val_bc.assign(**{target_col: y_val_bc}))
-        frames.append(X_test_bc.assign(**{target_col: y_test_bc}))
         combined = pd.concat(frames, axis=0)
-        out_path = pre_dir / paths.get("preprocessed_filename", "preprocessed.parquet")
-        combined.to_parquet(out_path, index=False)
-        # Default names without suffix
-        (pre_dir / "X_train.parquet").write_bytes((pre_dir / f"X_train_{first_profile_saved}.parquet").read_bytes())
-        (pre_dir / "X_test.parquet").write_bytes((pre_dir / f"X_test_{first_profile_saved}.parquet").read_bytes())
-        (pre_dir / "y_train.parquet").write_bytes((pre_dir / f"y_train_{first_profile_saved}.parquet").read_bytes())
-        (pre_dir / "y_test.parquet").write_bytes((pre_dir / f"y_test_{first_profile_saved}.parquet").read_bytes())
-        if (pre_dir / f"X_val_{first_profile_saved}.parquet").exists():
-            (pre_dir / "X_val.parquet").write_bytes((pre_dir / f"X_val_{first_profile_saved}.parquet").read_bytes())
-        if (pre_dir / f"y_val_{first_profile_saved}.parquet").exists():
-            (pre_dir / "y_val.parquet").write_bytes((pre_dir / f"y_val_{first_profile_saved}.parquet").read_bytes())
-        logger.info(f"Back-compat: copiati file del profilo '{first_profile_saved}' nei nomi default e combinati in {out_path}")
+        combined.to_parquet(pre_dir / "preprocessed.parquet", index=False)
+        save_report(dataframe_profile(combined), str(reports_dir / f"profile_{first_profile_saved}.html"))
 
-    # Report
-    save_report(
-        reports_dir / "preprocessing.md",
-        sections={
-            "Raw profile": dataframe_profile(df),
-            "After feature extraction": dataframe_profile(base_train),
-            "Train features": dataframe_profile(base_train),
-            "Test features": dataframe_profile(base_test),
-        },
-    )
-
-    logger.info(f"Preprocessing completato. Output in {pre_dir}")
-    return out_path
+    logger.info("Preprocessing completato.")
+    return pre_dir

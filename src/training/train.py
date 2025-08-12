@@ -65,6 +65,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     report_metrics: List[str] = tr_cfg.get("report_metrics", ["r2", "rmse", "mse", "mae", "mape"])
     sampler_name = tr_cfg.get("sampler", "auto")
     seed = int(tr_cfg.get("seed", 42))
+    global_n_jobs = tr_cfg.get("n_jobs", None)
 
     shap_cfg = tr_cfg.get("shap", {"enabled": True})
 
@@ -118,6 +119,16 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             base["random_state"] = seed
         if mk == "catboost" and "random_seed" not in base:
             base["random_seed"] = seed
+        # Imposta n_jobs/thread_count da configurazione se richiesto e supportato
+        if global_n_jobs is not None:
+            try:
+                if mk in {"rf", "knn", "xgboost", "lightgbm"}:
+                    base.setdefault("n_jobs", int(global_n_jobs))
+                elif mk == "catboost":
+                    base.setdefault("thread_count", int(global_n_jobs))
+            except Exception:
+                # Non bloccare in caso di valori non castabili
+                pass
         # trials: se specificato per modello, altrimenti in base alla categoria
         n_trials = int(model_entry.get("trials", 50))
         timeout = None
@@ -242,7 +253,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     if ens_cfg.get("voting", {}).get("enabled", False) and len(ranked) >= 2:
         top_n = int(ens_cfg.get("voting", {}).get("top_n", 3))
         selected = [(k, p) for (k, p, _) in ranked[:top_n]]
-        vote = build_voting(selected, tune_weights=bool(ens_cfg.get("voting", {}).get("tune_weights", True)))
+        vote = build_voting(selected, tune_weights=bool(ens_cfg.get("voting", {}).get("tune_weights", True)), n_jobs=global_n_jobs)
         # Use first model's dataset as reference
         first_key = selected[0][0]
         prefix = _profile_for(first_key, config)
@@ -276,7 +287,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         final_est_key = str(ens_cfg.get("stacking", {}).get("final_estimator", "ridge"))
         cv_folds = int(ens_cfg.get("stacking", {}).get("cv_folds", 5))
         selected = [(k, p) for (k, p, _) in ranked[:top_n]]
-        stack = build_stacking(selected, final_estimator_key=final_est_key, cv_folds=cv_folds)
+        stack = build_stacking(selected, final_estimator_key=final_est_key, cv_folds=cv_folds, n_jobs=global_n_jobs)
         first_key = selected[0][0]
         prefix = _profile_for(first_key, config)
         X_train, y_train, X_val, y_val, X_test, y_test = _load_xy(pre_dir, prefix)
