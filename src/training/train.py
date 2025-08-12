@@ -104,6 +104,20 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                 if X_val is not None:
                     X_val = X_val.reindex(columns=numeric_cols, fill_value=0)
 
+        # Safety check: ensure no NaN values for models that don't support them
+        # (particularly important for GradientBoostingRegressor and similar sklearn models)
+        if model_key.lower() in ['gbr', 'hgbt', 'svr', 'linear', 'ridge', 'lasso', 'elasticnet', 'knn', 'dt', 'rf']:
+            # Fill any remaining NaN values in numeric columns
+            if X_train.isnull().any().any():
+                logger.warning(f"Found NaN values in training data for {model_key}, filling with 0")
+                X_train = X_train.fillna(0)
+            if X_test.isnull().any().any():
+                logger.warning(f"Found NaN values in test data for {model_key}, filling with 0")
+                X_test = X_test.fillna(0)
+            if X_val is not None and X_val.isnull().any().any():
+                logger.warning(f"Found NaN values in validation data for {model_key}, filling with 0")
+                X_val = X_val.fillna(0)
+
         # Tuning
         space = model_entry.get("search_space", {})
         base = {}
