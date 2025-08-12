@@ -374,6 +374,12 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_te = X_te.reindex(columns=cols, fill_value=0)
         if X_va is not None:
             X_va = X_va.reindex(columns=cols, fill_value=0)
+        # Ensure no NaN remain in numeric columns (coercion may introduce NaN)
+        num_cols = X_tr.select_dtypes(include=[np.number]).columns
+        X_tr[num_cols] = X_tr[num_cols].fillna(0)
+        X_te[num_cols] = X_te[num_cols].fillna(0)
+        if X_va is not None:
+            X_va[num_cols] = X_va[num_cols].fillna(0)
         # Optional numeric-only correlation prune
         corr_thr = float(profiles_cfg.get("tree", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
         X_tr_num = X_tr.select_dtypes(include=[np.number])
