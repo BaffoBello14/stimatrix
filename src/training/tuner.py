@@ -100,7 +100,7 @@ def tune_model(
                                 "neg_mean_absolute_percentage_error": "mape",
                             }
                             eval_metric = metric_map.get(primary_metric.lower(), None)
-                            fit_kwargs: Dict[str, Any] = {"eval_set": [(X_va, y_va)]}
+                            fit_kwargs: Dict[str, Any] = {"eval_set": [(X_va.values if hasattr(X_va, 'values') else X_va, y_va.values if hasattr(y_va, 'values') else y_va)]}
                             if eval_metric is not None:
                                 fit_kwargs["eval_metric"] = eval_metric
                             try:
@@ -108,7 +108,7 @@ def tune_model(
                                 fit_kwargs["callbacks"] = [lgb.early_stopping(50, verbose=False)]
                             except Exception:
                                 fit_kwargs["early_stopping_rounds"] = 50
-                            est.fit(X_tr, y_tr, **fit_kwargs)
+                            est.fit(X_tr.values if hasattr(X_tr, 'values') else X_tr, y_tr.values if hasattr(y_tr, 'values') else y_tr, **fit_kwargs)
                         elif mk == "catboost":
                             if cat_features is not None:
                                 est.fit(X_tr, y_tr, cat_features=cat_features, eval_set=(X_va, y_va), verbose=False, early_stopping_rounds=50)
@@ -151,7 +151,7 @@ def tune_model(
                         "neg_mean_absolute_percentage_error": "mape",
                     }
                     eval_metric = metric_map.get(primary_metric.lower(), None)
-                    fit_kwargs = {"eval_set": [(X_val, y_val)]}
+                    fit_kwargs = {"eval_set": [(X_val.values if hasattr(X_val, 'values') else X_val, y_val.values if hasattr(y_val, 'values') else y_val)]}
                     if eval_metric is not None:
                         fit_kwargs["eval_metric"] = eval_metric
                     # callbacks per early stopping silenzioso
@@ -160,7 +160,7 @@ def tune_model(
                         fit_kwargs["callbacks"] = [lgb.early_stopping(50, verbose=False)]
                     except Exception:
                         fit_kwargs["early_stopping_rounds"] = 50
-                    est.fit(X_train, y_train, **fit_kwargs)
+                    est.fit(X_train.values if hasattr(X_train, 'values') else X_train, y_train.values if hasattr(y_train, 'values') else y_train, **fit_kwargs)
                 elif mk == "catboost":
                     if cat_features is not None:
                         est.fit(X_train, y_train, cat_features=cat_features, eval_set=(X_val, y_val), verbose=False, early_stopping_rounds=50)

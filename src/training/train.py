@@ -85,7 +85,9 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             continue
 
         # Determina se richiede solo numeriche
-        requires_numeric_only = bool(model_entry.get("requires_numeric_only", model_key.lower() != "catboost"))
+        # LightGBM should always use .values to avoid feature names warnings
+        default_numeric_only = model_key.lower() not in ["catboost"]
+        requires_numeric_only = bool(model_entry.get("requires_numeric_only", default_numeric_only))
 
         cat_features: Optional[List[int]] = None
         if model_key.lower() == "catboost":
@@ -142,11 +144,14 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         # trials: se specificato per modello, altrimenti in base alla categoria
         n_trials = int(model_entry.get("trials", 50))
         timeout = None
+        # For LightGBM, always use .values to avoid feature names warnings
+        use_values_for_tuning = requires_numeric_only or model_key.lower() == "lightgbm"
+        
         tuning = tune_model(
             model_key=model_key,
-            X_train=X_train.values if requires_numeric_only else X_train,
+            X_train=X_train.values if use_values_for_tuning else X_train,
             y_train=y_train.values,
-            X_val=None if X_val is None else (X_val.values if requires_numeric_only else X_val),
+            X_val=None if X_val is None else (X_val.values if use_values_for_tuning else X_val),
             y_val=None if y_val is None else y_val.values,
             primary_metric=primary_metric,
             n_trials=n_trials,
@@ -188,14 +193,17 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     except Exception:
                         pass
 
-        if requires_numeric_only:
+        # For LightGBM, always use .values to avoid feature names warnings
+        use_values_for_final = requires_numeric_only or model_key.lower() == "lightgbm"
+        
+        if use_values_for_final:
             estimator.fit(X_tr_final.values, y_tr_final.values, **fit_params)
         else:
             estimator.fit(X_tr_final, y_tr_final, **fit_params)
 
         # Evaluate
-        y_pred_test = estimator.predict(X_test.values if requires_numeric_only else X_test)
-        y_pred_train = estimator.predict(X_tr_final.values if requires_numeric_only else X_tr_final)
+        y_pred_test = estimator.predict(X_test.values if use_values_for_final else X_test)
+        y_pred_train = estimator.predict(X_tr_final.values if use_values_for_final else X_tr_final)
 
         m_test = regression_metrics(y_test.values, y_pred_test)
         m_train = regression_metrics(y_tr_final.values, y_pred_train)
@@ -229,7 +237,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 shap_bundle = compute_shap(
                     model=estimator,
-                    X=X_tr_final if requires_numeric_only else X_tr_final,
+                    X=X_tr_final.values if use_values_for_final else X_tr_final,
                     sample_size=int(shap_cfg.get("sample_size", 2000)),
                     max_display=int(shap_cfg.get("max_display", 30)),
                 )
