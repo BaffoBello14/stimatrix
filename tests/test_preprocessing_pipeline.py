@@ -222,7 +222,7 @@ class TestOutlierDetection:
 class TestImputationLogic:
     """Test missing value imputation."""
     
-        def test_imputation_numeric(self):
+    def test_imputation_numeric(self):
         """Test numeric imputation."""
         df = pd.DataFrame({
             "numeric_col": [1.0, 2.0, np.nan, 4.0, np.nan],
@@ -241,7 +241,7 @@ class TestImputationLogic:
         # Median of [1, 2, 4] is 2
         assert df_imputed["numeric_col"].iloc[2] == 2.0
     
-        def test_imputation_categorical(self):
+    def test_imputation_categorical(self):
         """Test categorical imputation."""
         df = pd.DataFrame({
             "cat_col": ["A", "B", None, "A", None],
@@ -260,7 +260,7 @@ class TestImputationLogic:
         # Most frequent is "A"
         assert df_imputed["cat_col"].iloc[2] == "A"
     
-        def test_imputation_grouped(self):
+    def test_imputation_grouped(self):
         """Test grouped imputation."""
         df = pd.DataFrame({
             "numeric_col": [1.0, 2.0, np.nan, 10.0, np.nan],
