@@ -87,39 +87,25 @@ winsorization:
   lower_quantile: 0.01
   upper_quantile: 0.99
 
+# Numeric coercion configuration (object -> numeric)
+numeric_coercion:
+  min_ratio: 0.95
+  excluded_patterns:
+    - "^II_.*"
+    - "^AI_(Id.*|Foglio|Particella.*|Subalterno|SezioneAmministrativa|ZonaOmi)$"
+    - ".*COD.*"
+
 # Profiles: generate multiple datasets tailored to model families
 profiles:
   scaled:
     enabled: true
     output_prefix: 'scaled'
-    encoding:
-      max_ohe_cardinality: 12
-    winsorization:
-      enabled: false
-      lower_quantile: 0.01
-      upper_quantile: 0.99
-    scaling:
-      scaler_type: 'standard'   # 'standard' | 'robust' | 'none'
-      with_mean: true
-      with_std: true
-    pca:
-      enabled: false
-      n_components: 0.95
-      random_state: 42
-    correlation:
-      numeric_threshold: 0.98
   tree:
     enabled: true
     output_prefix: 'tree'
-    encoding:
-      max_ohe_cardinality: 12
-    correlation:
-      numeric_threshold: 0.98
   catboost:
     enabled: true
     output_prefix: 'catboost'
-    correlation:
-      numeric_threshold: 0.98
 
 # Training configuration
 training:
@@ -128,6 +114,7 @@ training:
   report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
   sampler: "auto"   # auto (OptunaHub) | tpe
   seed: 42
+  n_jobs: -1
 
   # Definizione per-modello (schema minimale)
   models:

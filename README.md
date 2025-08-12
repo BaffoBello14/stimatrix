@@ -76,7 +76,7 @@ python main.py --config config/config.yaml --steps all
 ## Dettagli implementativi
 - Geometrie: parsing WKT/GeoJSON senza dipendenze GIS. Per esigenze più avanzate, valutare `shapely/geopandas`.
 - `AI_Piano`: parsing robusto di token (P1..P12, S/S1/S2, PT/T/ST, RIAL/AMMEZZATO, numeri, range 1-3), aggregazioni e flag mirati.
-- Coercizione numerica: è attiva su colonne object con ratio conversione ≥0.95, esclusi pattern di codici/ID (`II_*`, `AI_Id*`, `Foglio`, `Particella*`, `Subalterno`, `SezioneAmministrativa`, `ZonaOmi`, `*COD*`).
+- Coercizione numerica: è attiva su colonne object con ratio conversione ≥0.95, esclusi pattern di codici/ID configurabili in `config/config.yaml` sotto `numeric_coercion.excluded_patterns` (default: `II_*`, `AI_Id*`, `Foglio`, `Particella*`, `Subalterno`, `SezioneAmministrativa`, `ZonaOmi`, `*COD*`). Soglia configurabile con `numeric_coercion.min_ratio`.
 
 ## Output
 - `data/preprocessed/` contiene file per ogni profilo.
