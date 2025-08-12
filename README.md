@@ -49,7 +49,7 @@ python main.py --config config/config.yaml --steps all
 - `encoding`: piani encoding (OHE/ordinal) con `max_ohe_cardinality`
 - `profiles`: tre profili (`scaled`, `tree`, `catboost`) con pipeline dedicate e salvataggio separato degli output
 - `numeric_coercion`: soglia e lista di pattern per escludere colonne da coercizione numerica
-- `training`: modelli, iperparametri, tuning, SHAP e ensemble. Include `n_jobs_default` per controllare il parallelismo dei modelli che lo supportano.
+- `training`: modelli, iperparametri, tuning, SHAP e ensemble. Include `n_jobs_default` per il parallelismo e `cv_when_no_val` per abilitare la cross-validation quando non si crea un validation set esterno.
 
 ## Preprocessing: logica chiave
 1) Caricamento raw (`data/raw/*.parquet`), drop colonne completamente vuote.

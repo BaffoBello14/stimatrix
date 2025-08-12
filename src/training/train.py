@@ -142,6 +142,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             base_params=base,
             search_space=space,
             cat_features=cat_features,
+            cv_config=(tr_cfg.get("cv_when_no_val", {}) if X_val is None else None),
         )
         # Unisci best params al base per includere default come n_jobs/thread_count
         best_params_merged = {**base, **tuning.best_params}

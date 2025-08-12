@@ -144,6 +144,12 @@ training:
   sampler: "auto"   # auto (OptunaHub) | tpe
   seed: 42
   n_jobs_default: -1
+  # Cross-validation usata quando non esiste un validation set esterno (valid_fraction=0)
+  cv_when_no_val:
+    enabled: true
+    kind: timeseries   # 'timeseries' | 'kfold'
+    n_splits: 5
+    shuffle: false     # usato solo per kfold
 
   # Definizione per-modello (schema minimale)
   models:

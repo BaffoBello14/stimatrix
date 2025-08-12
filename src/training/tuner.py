@@ -7,7 +7,7 @@ import numpy as np
 import optuna
 import optunahub
 from sklearn.base import RegressorMixin
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold, TimeSeriesSplit
 
 from .model_zoo import build_estimator
 from .metrics import select_primary_value
@@ -50,6 +50,7 @@ def tune_model(
     base_params: Dict[str, Any],
     search_space: Optional[Dict[str, Any]] = None,
     cat_features: Optional[List[int]] = None,
+    cv_config: Optional[Dict[str, Any]] = None,
 ) -> TuningResult:
     direction = "maximize"
 
@@ -71,7 +72,61 @@ def tune_model(
             if k not in {"poly", "sigmoid"}:
                 params.pop("coef0", None)
         est: RegressorMixin = build_estimator(model_key, params)
+        # Nessuna validation esterna -> opzionale cross-validation
         if X_val is None or y_val is None:
+            use_cv = bool((cv_config or {}).get("enabled", False))
+            if use_cv:
+                kind = str((cv_config or {}).get("kind", "timeseries")).lower()
+                n_splits = int((cv_config or {}).get("n_splits", 5))
+                shuffle = bool((cv_config or {}).get("shuffle", False))
+                if kind == "kfold":
+                    splitter = KFold(n_splits=n_splits, shuffle=shuffle, random_state=seed if shuffle else None)
+                else:
+                    splitter = TimeSeriesSplit(n_splits=n_splits)
+                scores: List[float] = []
+                for tr_idx, va_idx in splitter.split(X_train):
+                    X_tr, X_va = X_train[tr_idx], X_train[va_idx]
+                    y_tr, y_va = y_train[tr_idx], y_train[va_idx]
+                    mk = model_key.lower()
+                    try:
+                        if mk == "xgboost":
+                            est.fit(X_tr, y_tr, eval_set=[(X_va, y_va)], verbose=False, early_stopping_rounds=50)
+                        elif mk == "lightgbm":
+                            metric_map = {
+                                "r2": "r2",
+                                "neg_mean_squared_error": "l2",
+                                "neg_root_mean_squared_error": "rmse",
+                                "neg_mean_absolute_error": "mae",
+                                "neg_mean_absolute_percentage_error": "mape",
+                            }
+                            eval_metric = metric_map.get(primary_metric.lower(), None)
+                            fit_kwargs: Dict[str, Any] = {"eval_set": [(X_va, y_va)]}
+                            if eval_metric is not None:
+                                fit_kwargs["eval_metric"] = eval_metric
+                            try:
+                                import lightgbm as lgb  # type: ignore
+                                fit_kwargs["callbacks"] = [lgb.early_stopping(50, verbose=False)]
+                            except Exception:
+                                fit_kwargs["early_stopping_rounds"] = 50
+                            est.fit(X_tr, y_tr, **fit_kwargs)
+                        elif mk == "catboost":
+                            if cat_features is not None:
+                                est.fit(X_tr, y_tr, cat_features=cat_features, eval_set=(X_va, y_va), verbose=False, early_stopping_rounds=50)
+                            else:
+                                est.fit(X_tr, y_tr, eval_set=(X_va, y_va), verbose=False, early_stopping_rounds=50)
+                        else:
+                            if mk == "catboost" and cat_features is not None:
+                                est.fit(X_tr, y_tr, cat_features=cat_features, verbose=False)
+                            else:
+                                est.fit(X_tr, y_tr)
+                    except Exception:
+                        if mk == "catboost" and cat_features is not None:
+                            est.fit(X_tr, y_tr, cat_features=cat_features, verbose=False)
+                        else:
+                            est.fit(X_tr, y_tr)
+                    y_pred = est.predict(X_va)
+                    scores.append(select_primary_value(primary_metric, y_va, y_pred))
+                return float(np.mean(scores)) if scores else -np.inf
             X_tr, X_va, y_tr, y_va = train_test_split(X_train, y_train, test_size=0.2, random_state=seed, shuffle=False)
             # Fit con eventuale early stopping non applicabile senza validation esterna coerente; esegue fit semplice
             if model_key.lower() == "catboost" and cat_features is not None:
