@@ -26,6 +26,7 @@ from preprocessing.transformers import (
     drop_non_descriptive,
 )
 from preprocessing.report import dataframe_profile, save_report
+from joblib import dump
 
 logger = get_logger(__name__)
 
@@ -210,12 +211,17 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     X_test = transform_with_imputers(X_test, fitted_imputers)
     if X_val is not None:
         X_val = transform_with_imputers(X_val, fitted_imputers)
+    # Save imputers for inference reuse
+    artifacts_dir = pre_dir / "artifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    dump(fitted_imputers, artifacts_dir / "imputers.joblib")
 
     # Prepare base copies before per-profile transformations
     base_train = X_train.copy()
     base_test = X_test.copy()
     base_val = X_val.copy() if X_val is not None else None
 
+    # Optional profile-level thresholds
     profiles_cfg = config.get("profiles", {})
     # Provide fallback defaults only if profiles is completely missing from config
     if not profiles_cfg:
@@ -224,6 +230,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             "tree": {"enabled": False, "output_prefix": "tree"},
             "catboost": {"enabled": False, "output_prefix": "catboost"},
         }
+    # NA threshold for dropping non-descriptive columns
+    na_thr = float(config.get("drop_non_descriptive", {}).get("na_threshold", 0.98))
     logger.info(f"Profili attivi: {[k for k,v in profiles_cfg.items() if v.get('enabled', False)]}")
 
     first_profile_saved = None
@@ -287,13 +295,17 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
         plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
         X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
+        # Persist encoders
+        _prof_dir = artifacts_dir / profiles_cfg.get("scaled", {}).get("output_prefix", "scaled")
+        _prof_dir.mkdir(parents=True, exist_ok=True)
+        dump(encoders, _prof_dir / "encoders.joblib")
         # Transform test and validation using fitted encoders (no leakage)
         X_te = transform_with_encoders(X_te, encoders)
         if X_va is not None:
             X_va = transform_with_encoders(X_va, encoders)
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         prev_cols = len(X_tr.columns)
-        X_tr, removed_nd = drop_non_descriptive(X_tr)
+        X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
         logger.info(f"[scaled] Drop non descrittive: {len(removed_nd)}")
         X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
         if X_va is not None:
@@ -315,6 +327,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if wins_cfg.enabled:
             logger.info(f"[scaled] Winsorization: q=({wins_cfg.lower_quantile}, {wins_cfg.upper_quantile})")
         winsorizer = fit_winsorizer(X_tr_num, wins_cfg)
+        # Persist winsorizer
+        dump(winsorizer, _prof_dir / "winsorizer.joblib")
         X_tr_num = apply_winsorizer(X_tr_num, winsorizer)
         X_te_num = apply_winsorizer(X_te_num, winsorizer)
         if X_va_num is not None:
@@ -334,6 +348,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         )
         logger.info(f"[scaled] Scaling: {scaling_cfg.scaler_type}, PCA: {pca_cfg.enabled}")
         X_tr_f, X_te_f, fitted = scale_and_pca(X_tr_num, X_te_num, scaling_cfg, pca_cfg)
+        # Persist transforms (scaler + pca)
+        dump(fitted, _prof_dir / "transforms.joblib")
         if X_va_num is not None:
             X_va_scaled = pd.DataFrame(fitted.scaler.transform(X_va_num), columns=X_va_num.columns, index=X_va_num.index) if fitted.scaler is not None else X_va_num
             if fitted.pca is not None:
@@ -363,6 +379,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
         plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
         X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
+        # Persist encoders
+        _prof_dir = artifacts_dir / profiles_cfg.get("tree", {}).get("output_prefix", "tree")
+        _prof_dir.mkdir(parents=True, exist_ok=True)
+        dump(encoders, _prof_dir / "encoders.joblib")
         # Transform test and validation using fitted encoders (no leakage)
         X_te = transform_with_encoders(X_te, encoders)
         if X_va is not None:
@@ -374,7 +394,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 if _ord_cols:
                     _df[_ord_cols] = _df[_ord_cols].fillna(-1).astype(float)
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
-        X_tr, removed_nd = drop_non_descriptive(X_tr)
+        X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
         logger.info(f"[tree] Drop non descrittive: {len(removed_nd)}")
         X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
         if X_va is not None:
@@ -421,7 +441,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         # Coerce numeric-like strings to numeric
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         # Drop non-descriptive
-        X_tr, removed_nd = drop_non_descriptive(X_tr)
+        X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
         logger.info(f"[catboost] Drop non descrittive: {len(removed_nd)}")
         X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
         if X_va is not None:

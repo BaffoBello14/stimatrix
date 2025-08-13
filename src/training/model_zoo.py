@@ -9,10 +9,6 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.svm import SVR
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, HistGradientBoostingRegressor
 
-import xgboost as xgb
-import lightgbm as lgb
-import catboost as cb
-
 
 ModelSpec = Tuple[str, Dict[str, Any]]  # (name, params)
 
@@ -40,9 +36,21 @@ def build_estimator(model_key: str, params: Dict[str, Any]):
     if mk == "hgbt":
         return HistGradientBoostingRegressor(**params)
     if mk == "xgboost":
+        try:
+            import xgboost as xgb  # type: ignore
+        except Exception as exc:  # pragma: no cover
+            raise ImportError("xgboost non installato. Installa 'xgboost' o disabilita il modello nel config.") from exc
         return xgb.XGBRegressor(**params)
     if mk == "lightgbm":
+        try:
+            import lightgbm as lgb  # type: ignore
+        except Exception as exc:  # pragma: no cover
+            raise ImportError("lightgbm non installato. Installa 'lightgbm' o disabilita il modello nel config.") from exc
         return lgb.LGBMRegressor(**params)
     if mk == "catboost":
+        try:
+            import catboost as cb  # type: ignore
+        except Exception as exc:  # pragma: no cover
+            raise ImportError("catboost non installato. Installa 'catboost' o disabilita il modello nel config.") from exc
         return cb.CatBoostRegressor(**params)
     raise ValueError(f"Unknown model key: {model_key}")

@@ -186,16 +186,16 @@ def remove_highly_correlated(X: pd.DataFrame, threshold: float = 0.98) -> Tuple[
     return X.drop(columns=to_drop, errors="ignore"), to_drop
 
 
-def drop_non_descriptive(X: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
+def drop_non_descriptive(X: pd.DataFrame, na_threshold: float = 0.98) -> Tuple[pd.DataFrame, List[str]]:
     to_drop: List[str] = []
     # Drop constant columns
     nunique = X.nunique(dropna=False)
     constants = nunique[nunique <= 1].index.tolist()
     if constants:
         to_drop.extend(constants)
-    # Drop columns with excessive missingness (> 98%)
+    # Drop columns with excessive missingness (> na_threshold)
     na_frac = X.isna().mean()
-    too_missing = na_frac[na_frac > 0.98].index.tolist()
+    too_missing = na_frac[na_frac > na_threshold].index.tolist()
     if too_missing:
         to_drop.extend(too_missing)
     return X.drop(columns=to_drop, errors="ignore"), to_drop

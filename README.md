@@ -42,6 +42,26 @@ python main.py --config config/config.yaml --steps all
 python main.py --config config/config.yaml --steps preprocessing training
 ```
 
+## 📦 Dipendenze per Modello
+
+Per alcuni modelli sono richieste librerie opzionali. Installa quelle che ti servono:
+
+```bash
+# Gradient boosting librerie esterne (opzionali)
+pip install xgboost lightgbm catboost
+```
+
+- **xgboost**: necessario per `training.models.xgboost`
+- **lightgbm**: necessario per `training.models.lightgbm`
+- **catboost**: necessario per `training.models.catboost` e richiede il profilo `profiles.catboost.enabled: true` nel preprocessing.
+
+Abilitare il profilo CatBoost in `config_fast_test.yaml`:
+```yaml
+profiles:
+  catboost:
+    enabled: true
+```
+
 ## 📂 Struttura del Progetto
 
 ```
@@ -115,7 +135,8 @@ Il file `config/config.yaml` controlla tutti gli aspetti della pipeline:
 - **`imputation`**: Strategie di imputazione per numeriche/categoriche
 - **`encoding`**: Piani di encoding (OHE/ordinal) con gestione cardinalità
 - **`profiles`**: Tre profili predefiniti (`scaled`, `tree`, `catboost`)
-- **`training`**: Configurazione modelli, tuning e valutazione
+- **`drop_non_descriptive`**: Soglia NA per il drop di colonne poco informative
+- **`training`**: Configurazione modelli, tuning e valutazione (opzione `timeout` supportata)
 
 ### Profili di Preprocessing
 
