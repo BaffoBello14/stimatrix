@@ -10,12 +10,8 @@ _src_path = str(Path(__file__).resolve().parent / "src")
 if _src_path not in _sys.path:
     _sys.path.append(_src_path)
 
-from dataset_builder.retrieval import run_dataset
-from preprocessing.pipeline import run_preprocessing
-from training.train import run_training
 from utils.config import load_config
 from utils.logger import setup_logger
-from db.schema_extract import run_schema
 
 
 def parse_args() -> argparse.Namespace:
@@ -49,12 +45,16 @@ def main() -> None:
 
     for step in steps:
         if step == "schema":
+            from db.schema_extract import run_schema  # lazy import
             run_schema(config)
         elif step == "dataset":
+            from dataset_builder.retrieval import run_dataset  # lazy import
             run_dataset(config)
         elif step == "preprocessing":
+            from preprocessing.pipeline import run_preprocessing  # lazy import
             run_preprocessing(config)
         elif step == "training":
+            from training.train import run_training  # lazy import
             run_training(config)
 
 

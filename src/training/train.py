@@ -79,7 +79,6 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
 
     # Per-model loop
     for model_key in selected_models:
-        # Profilo preferito: specifico del modello
         model_entry = models_cfg.get(model_key, {})
         prefix = model_entry.get("profile", None)
         try:
@@ -89,7 +88,6 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             continue
 
         # Determina se richiede solo numeriche
-        # LightGBM should always use .values to avoid feature names warnings
         default_numeric_only = model_key.lower() not in ["catboost"]
         requires_numeric_only = bool(model_entry.get("requires_numeric_only", default_numeric_only))
 
@@ -110,10 +108,8 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                 if X_val is not None:
                     X_val = X_val.reindex(columns=numeric_cols, fill_value=0)
 
-        # Safety check: ensure no NaN values for models that don't support them
-        # (particularly important for GradientBoostingRegressor and similar sklearn models)
+        # Safety check NaN
         if model_key.lower() in ['gbr', 'hgbt', 'svr', 'linear', 'ridge', 'lasso', 'elasticnet', 'knn', 'dt', 'rf']:
-            # Fill any remaining NaN values in numeric columns
             if X_train.isnull().any().any():
                 logger.warning(f"Found NaN values in training data for {model_key}, filling with 0")
                 X_train = X_train.fillna(0)
@@ -127,69 +123,65 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         # Tuning
         space = model_entry.get("search_space", {})
         base = {}
-        # merge con base_params espliciti del modello
         base.update(model_entry.get("base_params", {}) or {})
-        # n_jobs default from config for supported models
         n_jobs_default = int(tr_cfg.get("n_jobs_default", -1))
         mk_lower = model_key.lower()
         if mk_lower in {"rf", "knn", "xgboost", "lightgbm"} and "n_jobs" not in base:
             base["n_jobs"] = n_jobs_default
-        # CatBoost uses thread_count
         if mk_lower == "catboost" and "thread_count" not in base:
             base["thread_count"] = n_jobs_default
-        # Imposta seed di riproducibilità se supportato e non già presente
-        mk = model_key.lower()
-        if mk in {"dt", "rf", "gbr", "hgbt"} and "random_state" not in base:
+        # seeds
+        if mk_lower in {"dt", "rf", "gbr", "hgbt"} and "random_state" not in base:
             base["random_state"] = seed
-        if mk in {"xgboost", "lightgbm"} and "random_state" not in base:
+        if mk_lower in {"xgboost", "lightgbm"} and "random_state" not in base:
             base["random_state"] = seed
-        if mk == "catboost" and "random_seed" not in base:
+        if mk_lower == "catboost" and "random_seed" not in base:
             base["random_seed"] = seed
-        # trials: se specificato per modello, altrimenti in base alla categoria
         n_trials = int(model_entry.get("trials", 50))
         timeout = None
-        # For LightGBM, always use .values to avoid feature names warnings
-        use_values_for_tuning = requires_numeric_only or model_key.lower() == "lightgbm"
-        
-        tuning = tune_model(
-            model_key=model_key,
-            X_train=X_train.values if use_values_for_tuning else X_train,
-            y_train=y_train.values,
-            X_val=None if X_val is None else (X_val.values if use_values_for_tuning else X_val),
-            y_val=None if y_val is None else y_val.values,
-            primary_metric=primary_metric,
-            n_trials=n_trials,
-            timeout=timeout,
-            sampler_name=sampler_name,
-            seed=seed,
-            base_params=base,
-            search_space=space,
-            cat_features=cat_features,
-            cv_config=(tr_cfg.get("cv_when_no_val", {}) if X_val is None else None),
-            tuning_split_fraction=tuning_split_fraction,
-        )
-        # Unisci best params al base per includere default come n_jobs/thread_count
+        use_values_for_tuning = requires_numeric_only or mk_lower == "lightgbm"
+
+        try:
+            tuning = tune_model(
+                model_key=model_key,
+                X_train=X_train.values if use_values_for_tuning else X_train,
+                y_train=y_train.values,
+                X_val=None if X_val is None else (X_val.values if use_values_for_tuning else X_val),
+                y_val=None if y_val is None else y_val.values,
+                primary_metric=primary_metric,
+                n_trials=n_trials,
+                timeout=timeout,
+                sampler_name=sampler_name,
+                seed=seed,
+                base_params=base,
+                search_space=space,
+                cat_features=cat_features,
+                cv_config=(tr_cfg.get("cv_when_no_val", {}) if X_val is None else None),
+                tuning_split_fraction=tuning_split_fraction,
+            )
+        except ImportError as e:
+            logger.warning(f"Dipendenza mancante per modello {model_key}: {e}. Skip del modello.")
+            continue
+
         best_params_merged = {**base, **tuning.best_params}
 
-        # Retrain on train+val with best params
         if X_val is not None and y_val is not None:
             X_tr_final = pd.concat([X_train, X_val], axis=0)
             y_tr_final = pd.concat([y_train, y_val], axis=0)
         else:
             X_tr_final, y_tr_final = X_train, y_train
 
-        # Build estimator (support class_path override)
-        estimator = build_estimator(model_key, best_params_merged)
+        try:
+            estimator = build_estimator(model_key, best_params_merged)
+        except ImportError as e:
+            logger.warning(f"Dipendenza mancante per modello {model_key}: {e}. Skip del modello.")
+            continue
 
-        # Fit params handling (e.g., cat_features)
         fit_params = model_entry.get("fit_params", {}) or {}
         if "__categorical_indices__" in str(fit_params):
-            # Replace placeholder
             if cat_features is None:
                 cat_features = _catboost_cat_features(pre_dir, prefix or "catboost", X_tr_final)
-            # deep copy-like replace
             fit_params = json.loads(json.dumps(fit_params).replace("__categorical_indices__", json.dumps(cat_features)))
-        # Flatten json dumps artifact if numbers got quoted
         if isinstance(fit_params, dict):
             for k, v in list(fit_params.items()):
                 if isinstance(v, str) and v.startswith("[") and v.endswith("]"):
@@ -198,15 +190,12 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     except Exception:
                         pass
 
-        # For LightGBM, always use .values to avoid feature names warnings
-        use_values_for_final = requires_numeric_only or model_key.lower() == "lightgbm"
-        
+        use_values_for_final = requires_numeric_only or mk_lower == "lightgbm"
         if use_values_for_final:
             estimator.fit(X_tr_final.values, y_tr_final.values, **fit_params)
         else:
             estimator.fit(X_tr_final, y_tr_final, **fit_params)
 
-        # Evaluate
         y_pred_test = estimator.predict(X_test.values if use_values_for_final else X_test)
         y_pred_train = estimator.predict(X_tr_final.values if use_values_for_final else X_tr_final)
 
@@ -217,7 +206,6 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         model_id = f"{model_key}"
         model_dir = models_dir / model_id
         model_dir.mkdir(parents=True, exist_ok=True)
-        # Save model and metadata
         dump(estimator, model_dir / "model.pkl")
         meta = {
             "model_key": model_key,
@@ -230,14 +218,12 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "overfit": diag,
         }
         (model_dir / "metrics.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
-        # Save study
         try:
             df_trials = tuning.study.trials_dataframe()
             df_trials.to_csv(model_dir / "optuna_trials.csv", index=False)
         except Exception:
             pass
 
-        # SHAP
         if bool(shap_cfg.get("enabled", True)):
             try:
                 shap_bundle = compute_shap(
@@ -251,7 +237,6 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                 if bool(shap_cfg.get("save_plots", True)):
                     save_shap_plots(str(model_dir / "shap"), shap_bundle, model_id)
                 if bool(shap_cfg.get("save_values", False)):
-                    # Beware: large files
                     np.save(model_dir / "shap_values.npy", shap_bundle["values"].values, allow_pickle=False)
                     shap_bundle["data_sample"].to_parquet(model_dir / "shap_sample.parquet", index=False)
             except Exception as e:
@@ -268,7 +253,6 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
 
     # ENSEMBLES
     ens_cfg = tr_cfg.get("ensembles", {})
-    # Collect top models by their validation best score (we used primary metric on val)
     ranked = sorted(
         [
             (k, v["best_params"], v["best_primary_value"]) for k, v in results.get("models", {}).items()
@@ -277,12 +261,10 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         reverse=True,
     )
 
-    # Voting
     if ens_cfg.get("voting", {}).get("enabled", False) and len(ranked) >= 2:
         top_n = int(ens_cfg.get("voting", {}).get("top_n", 3))
         selected = [(k, p) for (k, p, _) in ranked[:top_n]]
         vote = build_voting(selected, tune_weights=bool(ens_cfg.get("voting", {}).get("tune_weights", True)), n_jobs=int(tr_cfg.get("n_jobs_default", -1)))
-        # Use first model's dataset as reference
         first_key = selected[0][0]
         prefix = _profile_for(first_key, config)
         X_train, y_train, X_val, y_val, X_test, y_test = _load_xy(pre_dir, prefix)
@@ -309,7 +291,6 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         results["ensembles"][ens_id] = meta
         logger.info(f"[voting] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
 
-    # Stacking
     if ens_cfg.get("stacking", {}).get("enabled", False) and len(ranked) >= 2:
         top_n = int(ens_cfg.get("stacking", {}).get("top_n", 5))
         final_est_key = str(ens_cfg.get("stacking", {}).get("final_estimator", "ridge"))
@@ -343,7 +324,6 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         results["ensembles"][ens_id] = meta
         logger.info(f"[stacking] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
 
-    # Save global summary
     (models_dir / "summary.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
 
     logger.info("Training/Tuning/Evaluation completati.")
