@@ -64,6 +64,10 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     report_metrics: List[str] = tr_cfg.get("report_metrics", ["r2", "rmse", "mse", "mae", "mape"])
     sampler_name = tr_cfg.get("sampler", "auto")
     seed = int(tr_cfg.get("seed", 42))
+    
+    # Get tuning split fraction from temporal_split config for consistency
+    temporal_cfg = config.get("temporal_split", {})
+    tuning_split_fraction = float(temporal_cfg.get("train_fraction", 0.8))
 
     shap_cfg = tr_cfg.get("shap", {"enabled": True})
 
@@ -162,6 +166,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             search_space=space,
             cat_features=cat_features,
             cv_config=(tr_cfg.get("cv_when_no_val", {}) if X_val is None else None),
+            tuning_split_fraction=tuning_split_fraction,
         )
         # Unisci best params al base per includere default come n_jobs/thread_count
         best_params_merged = {**base, **tuning.best_params}
@@ -241,6 +246,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     sample_size=int(shap_cfg.get("sample_size", 2000)),
                     max_display=int(shap_cfg.get("max_display", 30)),
                     keep_as_numpy=use_values_for_final,
+                    random_state=seed,
                 )
                 if bool(shap_cfg.get("save_plots", True)):
                     save_shap_plots(str(model_dir / "shap"), shap_bundle, model_id)
