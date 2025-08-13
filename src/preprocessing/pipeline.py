@@ -158,6 +158,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Outlier detection ONLY on train target (optionally per category)
     out_cfg_dict = config.get("outliers", {})
+    # Use global seed for reproducibility
+    global_seed = config.get("training", {}).get("seed", 42)
     out_cfg = OutlierConfig(
         method=out_cfg_dict.get("method", "iqr"),
         z_thresh=float(out_cfg_dict.get("z_thresh", 4.0)),
@@ -166,6 +168,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         group_by_col=out_cfg_dict.get("group_by_col", "AI_IdCategoriaCatastale"),
         min_group_size=int(out_cfg_dict.get("min_group_size", 30)),
         fallback_strategy=str(out_cfg_dict.get("fallback_strategy", "skip")),
+        random_state=int(out_cfg_dict.get("random_state", global_seed)),
     )
     before = len(train_df)
     inliers_mask = detect_outliers(train_df, target_col, out_cfg)
@@ -281,8 +284,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         enc_max = int(profiles_cfg.get("scaled", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
         logger.info(f"[scaled] Encoding plan con max_ohe_cardinality={enc_max}")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
+        # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
         plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
         X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
+        # Transform test and validation using fitted encoders (no leakage)
         X_te = transform_with_encoders(X_te, encoders)
         if X_va is not None:
             X_va = transform_with_encoders(X_va, encoders)
@@ -355,8 +360,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         enc_max = int(profiles_cfg.get("tree", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
         logger.info(f"[tree] Encoding plan con max_ohe_cardinality={enc_max}")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
+        # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
         plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
         X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
+        # Transform test and validation using fitted encoders (no leakage)
         X_te = transform_with_encoders(X_te, encoders)
         if X_va is not None:
             X_va = transform_with_encoders(X_va, encoders)

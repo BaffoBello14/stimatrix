@@ -7,7 +7,7 @@ import numpy as np
 import optuna
 import optunahub
 from sklearn.base import RegressorMixin
-from sklearn.model_selection import train_test_split, KFold, TimeSeriesSplit
+from sklearn.model_selection import KFold, TimeSeriesSplit
 
 from .model_zoo import build_estimator
 from .metrics import select_primary_value
@@ -127,7 +127,17 @@ def tune_model(
                     y_pred = est.predict(X_va)
                     scores.append(select_primary_value(primary_metric, y_va, y_pred))
                 return float(np.mean(scores)) if scores else -np.inf
-            X_tr, X_va, y_tr, y_va = train_test_split(X_train, y_train, test_size=0.2, random_state=seed, shuffle=False)
+            # Use temporal split instead of random split to avoid data leakage
+            # Maintain chronological order for time-series data
+            split_point = int(len(X_train) * 0.8)
+            if hasattr(X_train, 'iloc'):  # DataFrame
+                X_tr = X_train.iloc[:split_point]
+                X_va = X_train.iloc[split_point:]
+                y_tr = y_train.iloc[:split_point] if hasattr(y_train, 'iloc') else y_train[:split_point]
+                y_va = y_train.iloc[split_point:] if hasattr(y_train, 'iloc') else y_train[split_point:]
+            else:  # numpy array
+                X_tr, X_va = X_train[:split_point], X_train[split_point:]
+                y_tr, y_va = y_train[:split_point], y_train[split_point:]
             # Fit con eventuale early stopping non applicabile senza validation esterna coerente; esegue fit semplice
             if model_key.lower() == "catboost" and cat_features is not None:
                 est.fit(X_tr, y_tr, cat_features=cat_features, verbose=False)

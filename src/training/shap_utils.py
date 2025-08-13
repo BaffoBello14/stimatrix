@@ -53,6 +53,7 @@ def compute_shap(
     max_display: int = 30,
     background_size: int = 500,
     keep_as_numpy: bool = False,
+    random_state: int = 42,
 ) -> Dict[str, Any]:
     # Convert numpy array to DataFrame if needed, but remember original format
     was_numpy = isinstance(X, np.ndarray)
@@ -63,7 +64,7 @@ def compute_shap(
         X = pd.DataFrame(X)
     
     if len(X) > sample_size:
-        Xs = X.sample(n=sample_size, random_state=42)
+        Xs = X.sample(n=sample_size, random_state=random_state)
     else:
         Xs = X
 
@@ -88,17 +89,17 @@ def compute_shap(
                     explainer = shap.LinearExplainer(model, X)
                     shap_values = explainer(Xs)
             except Exception:
-                X_bg = X.sample(n=min(len(X), background_size), random_state=42)
+                X_bg = X.sample(n=min(len(X), background_size), random_state=random_state)
                 explainer = shap.Explainer(model.predict, X_bg.values)
                 shap_values = explainer(Xs.values)
         else:
             # Generic fallback: use function handle with numpy arrays to avoid feature-name warnings
-            X_bg = X.sample(n=min(len(X), background_size), random_state=42)
+            X_bg = X.sample(n=min(len(X), background_size), random_state=random_state)
             explainer = shap.Explainer(model.predict, X_bg.values)
             shap_values = explainer(Xs.values)
     except Exception:
         # Final safety fallback: force numpy arrays
-        X_bg = X.sample(n=min(len(X), background_size), random_state=42)
+        X_bg = X.sample(n=min(len(X), background_size), random_state=random_state)
         explainer = shap.Explainer(getattr(model, "predict", model), X_bg.values)
         shap_values = explainer(Xs.values)
 

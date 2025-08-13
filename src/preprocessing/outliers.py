@@ -21,6 +21,7 @@ class OutlierConfig:
     group_by_col: Optional[str] = None  # e.g., 'AI_IdCategoriaCatastale'
     min_group_size: int = 30
     fallback_strategy: str = "skip"  # 'skip' or 'global'
+    random_state: int = 42  # configurable random state for reproducibility
 
 
 def _inliers_iqr(values: pd.Series, iqr_factor: float) -> pd.Series:
@@ -45,12 +46,12 @@ def _inliers_zscore(values: pd.Series, z_thresh: float) -> pd.Series:
     return z.abs() <= z_thresh
 
 
-def _inliers_isoforest(values: pd.Series, contamination: float) -> pd.Series:
+def _inliers_isoforest(values: pd.Series, contamination: float, random_state: int = 42) -> pd.Series:
     v = values.astype(float).replace([np.inf, -np.inf], np.nan)
     valid = v.dropna()
     if valid.empty:
         return pd.Series(True, index=v.index)
-    model = IsolationForest(contamination=contamination, random_state=42)
+    model = IsolationForest(contamination=contamination, random_state=random_state)
     preds = model.fit_predict(valid.to_frame())  # 1 for inliers, -1 for outliers
     mask_valid = preds == 1
     mask = pd.Series(True, index=v.index)
@@ -61,7 +62,7 @@ def _inliers_isoforest(values: pd.Series, contamination: float) -> pd.Series:
 def _ensemble_inliers(values: pd.Series, cfg: OutlierConfig) -> pd.Series:
     m_iqr = _inliers_iqr(values, cfg.iqr_factor)
     m_z = _inliers_zscore(values, cfg.z_thresh)
-    m_iso = _inliers_isoforest(values, cfg.iso_forest_contamination)
+    m_iso = _inliers_isoforest(values, cfg.iso_forest_contamination, cfg.random_state)
     # Outlier if at least 2 methods say outlier -> inlier if at least 2 say inlier
     votes_inlier = m_iqr.astype(int) + m_z.astype(int) + m_iso.astype(int)
     return votes_inlier >= 2
@@ -73,7 +74,7 @@ def _detect_inliers_series(values: pd.Series, cfg: OutlierConfig) -> pd.Series:
     if cfg.method == "zscore":
         return _inliers_zscore(values, cfg.z_thresh)
     if cfg.method == "iso_forest":
-        return _inliers_isoforest(values, cfg.iso_forest_contamination)
+        return _inliers_isoforest(values, cfg.iso_forest_contamination, cfg.random_state)
     if cfg.method == "ensemble":
         return _ensemble_inliers(values, cfg)
     # default safe
