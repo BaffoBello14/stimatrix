@@ -176,7 +176,7 @@ training:
       search_space:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
     elasticnet:
-      enabled: false  # Disabled for speed
+      enabled: true  # Disabled for speed
       profile: scaled
       trials: 5
       base_params: {}
@@ -185,7 +185,7 @@ training:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
         l1_ratio: {type: float, low: 0.0, high: 1.0}
     knn:
-      enabled: false  # Disabled for speed
+      enabled: true  # Disabled for speed
       profile: scaled
       trials: 5
       base_params: {}
@@ -220,7 +220,7 @@ training:
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
         bootstrap: {type: categorical, choices: [true, false]}
     gbr:
-      enabled: false  # Disabled for speed
+      enabled: true  # Disabled for speed
       profile: tree
       trials: 5
       base_params: {}
@@ -268,7 +268,7 @@ training:
         min_child_samples: {type: int, low: 5, high: 50}    # Reduced range
         min_split_gain: {type: float, low: 0.0, high: 0.5}
     catboost:
-      enabled: false  # Disabled for faster tests
+      enabled: true  # Disabled for faster tests
       profile: catboost
       trials: 5
       base_params: {}
@@ -294,11 +294,11 @@ training:
   # Ensemble settings - Disabled for faster tests
   ensembles:
     voting:
-      enabled: false
+      enabled: true
       top_n: 2
-      tune_weights: false
+      tune_weights: true
     stacking:
-      enabled: false
+      enabled: true
       top_n: 3
       final_estimator: "ridge"
       cv_folds: 3

@@ -1,7 +1,7 @@
 @echo off
 REM Script per eseguire i test del progetto Stimatrix ML Pipeline su Windows
 
-echo 🧪 Stimatrix ML Pipeline - Test Runner (Windows)
+echo Stimatrix ML Pipeline - Test Runner (Windows)
 echo ======================================
 
 REM Funzione per mostrare l'aiuto
@@ -11,7 +11,7 @@ if "%1"=="" goto show_help
 REM Controlla se pytest è disponibile
 python -m pytest --version >nul 2>&1
 if errorlevel 1 (
-    echo ❌ pytest non trovato. Installazione in corso...
+    echo pytest non trovato. Installazione in corso...
     pip install pytest pytest-cov
 )
 
@@ -25,7 +25,7 @@ if "%1"=="quick" goto run_quick
 if "%1"=="basic" goto run_basic
 if "%1"=="verbose" goto run_verbose
 
-echo ❌ Opzione non riconosciuta: %1
+echo Opzione non riconosciuta: %1
 echo.
 goto show_help
 
@@ -50,43 +50,43 @@ echo   run_tests.bat coverage
 goto end
 
 :run_all
-echo 🚀 Esecuzione di tutti i test...
+echo Esecuzione di tutti i test...
 python -m pytest tests/ -v
 goto end
 
 :run_features
-echo 🔧 Test feature extractors...
+echo Test feature extractors...
 python -m pytest tests/test_feature_extractors.py -v
 goto end
 
 :run_preprocessing
-echo ⚙️ Test preprocessing pipeline...
+echo Test preprocessing pipeline...
 python -m pytest tests/test_preprocessing_pipeline.py -v
 goto end
 
 :run_training
-echo 🎯 Test training...
+echo Test training...
 python -m pytest tests/test_training.py -v
 goto end
 
 :run_coverage
-echo 📊 Test con coverage report...
+echo Test con coverage report...
 python -m pytest tests/ --cov=src --cov-report=html --cov-report=term
-echo 📈 Report HTML generato in htmlcov\index.html
+echo Report HTML generato in htmlcov\index.html
 goto end
 
 :run_quick
-echo ⚡ Test veloce...
+echo Test veloce...
 python tests/test_basic.py
 goto end
 
 :run_basic
-echo 🔧 Test di base (senza dipendenze pesanti)...
+echo Test di base (senza dipendenze pesanti)...
 python tests/test_basic.py
 goto end
 
 :run_verbose
-echo 📝 Test verbosi con dettagli...
+echo Test verbosi con dettagli...
 python -m pytest tests/ -v -s --tb=short
 goto end
 
