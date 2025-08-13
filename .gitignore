@@ -62,14 +62,14 @@ coverage.xml
 # ML Pipeline Specific
 # ----------------
 
-# Raw Data (comment out lines below if you want to track sample data)
-data/raw/
-data/interim/
-data/external/
+# DB Schema
+schema/
 
-# Processed Data 
+# Raw Data
+data/raw/
+
+# Preprocessed Data
 data/preprocessed/
-data/processed/
 
 # Model artifacts
 models/
@@ -80,6 +80,7 @@ models/
 *.hdf5
 *.pb
 saved_model/
+catboost_info/
 
 # Training outputs
 experiments/
