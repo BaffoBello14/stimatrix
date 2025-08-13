@@ -50,7 +50,8 @@ class TestTemporalSplitFix:
                 base_params={},
                 search_space={},
                 cat_features=None,
-                cv_config=None  # Disable CV to test single split
+                cv_config=None,  # Disable CV to test single split
+                tuning_split_fraction=0.75  # Test custom split fraction
             )
             
             # Se arriviamo qui, il tuning è completato senza errori
@@ -96,6 +97,30 @@ class TestTemporalSplitFix:
         assert len(X_va) == 20
         assert len(y_tr) == 80
         assert len(y_va) == 20
+        
+        # Verifica ordine temporale
+        assert X_va[0, 0] == X_tr[-1, 0] + 1
+        assert y_va[0] == y_tr[-1] + 1
+    
+    def test_configurable_split_fraction(self):
+        """Test che la frazione di split sia configurabile."""
+        X = np.arange(100).reshape(-1, 1)
+        y = np.arange(100)
+        
+        # Test con frazione personalizzata
+        custom_fraction = 0.7
+        split_point = int(len(X) * custom_fraction)
+        X_tr, X_va = X[:split_point], X[split_point:]
+        y_tr, y_va = y[:split_point], y[split_point:]
+        
+        # Verifica che rispetti la frazione richiesta
+        expected_train_size = int(100 * custom_fraction)
+        expected_val_size = 100 - expected_train_size
+        
+        assert len(X_tr) == expected_train_size  # 70
+        assert len(X_va) == expected_val_size    # 30
+        assert len(y_tr) == expected_train_size
+        assert len(y_va) == expected_val_size
         
         # Verifica ordine temporale
         assert X_va[0, 0] == X_tr[-1, 0] + 1

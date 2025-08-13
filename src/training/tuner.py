@@ -51,6 +51,7 @@ def tune_model(
     search_space: Optional[Dict[str, Any]] = None,
     cat_features: Optional[List[int]] = None,
     cv_config: Optional[Dict[str, Any]] = None,
+    tuning_split_fraction: float = 0.8,  # fraction for temporal split (consistent with preprocessing)
 ) -> TuningResult:
     direction = "maximize"
 
@@ -129,7 +130,7 @@ def tune_model(
                 return float(np.mean(scores)) if scores else -np.inf
             # Use temporal split instead of random split to avoid data leakage
             # Maintain chronological order for time-series data
-            split_point = int(len(X_train) * 0.8)
+            split_point = int(len(X_train) * tuning_split_fraction)
             if hasattr(X_train, 'iloc'):  # DataFrame
                 X_tr = X_train.iloc[:split_point]
                 X_va = X_train.iloc[split_point:]
