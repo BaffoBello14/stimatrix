@@ -85,6 +85,10 @@ pca: &pca_defaults
 correlation:
   numeric_threshold: 0.98
 
+# Non-descriptive columns pruning
+drop_non_descriptive:
+  na_threshold: 0.98
+
 # Feature extraction toggles
 feature_extraction:
   geometry: true
@@ -132,7 +136,7 @@ profiles:
     correlation:
       numeric_threshold: 0.98
   catboost:
-    enabled: false  # Disabled for faster tests
+    enabled: true
     output_prefix: 'catboost'
     correlation:
       numeric_threshold: 0.98
@@ -144,6 +148,7 @@ training:
   sampler: "tpe"  # Faster than auto
   seed: 42
   n_jobs_default: -1
+  timeout: null
   cv_when_no_val:
     enabled: true
     kind: timeseries
@@ -176,7 +181,7 @@ training:
       search_space:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
     elasticnet:
-      enabled: true  # Disabled for speed
+      enabled: true
       profile: scaled
       trials: 5
       base_params: {}
@@ -185,7 +190,7 @@ training:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
         l1_ratio: {type: float, low: 0.0, high: 1.0}
     knn:
-      enabled: true  # Disabled for speed
+      enabled: true
       profile: scaled
       trials: 5
       base_params: {}
@@ -201,9 +206,9 @@ training:
       base_params: {}
       fit_params: {}
       search_space:
-        max_depth: {type: int, low: 3, high: 15}  # Reduced range
-        min_samples_split: {type: int, low: 2, high: 10}  # Reduced range
-        min_samples_leaf: {type: int, low: 1, high: 10}   # Reduced range
+        max_depth: {type: int, low: 3, high: 15}
+        min_samples_split: {type: int, low: 2, high: 10}
+        min_samples_leaf: {type: int, low: 1, high: 10}
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
         min_impurity_decrease: {type: float, low: 0.0, high: 0.01}
     rf:
@@ -213,14 +218,14 @@ training:
       base_params: {}
       fit_params: {}
       search_space:
-        n_estimators: {type: int, low: 50, high: 200}      # Reduced range
-        max_depth: {type: int, low: 4, high: 20}           # Reduced range
-        min_samples_split: {type: int, low: 2, high: 10}   # Reduced range
-        min_samples_leaf: {type: int, low: 1, high: 10}    # Reduced range
+        n_estimators: {type: int, low: 50, high: 200}
+        max_depth: {type: int, low: 4, high: 20}
+        min_samples_split: {type: int, low: 2, high: 10}
+        min_samples_leaf: {type: int, low: 1, high: 10}
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
         bootstrap: {type: categorical, choices: [true, false]}
     gbr:
-      enabled: true  # Disabled for speed
+      enabled: true
       profile: tree
       trials: 5
       base_params: {}
@@ -241,8 +246,8 @@ training:
       base_params: {}
       fit_params: {}
       search_space:
-        n_estimators: {type: int, low: 50, high: 300}      # Reduced range
-        max_depth: {type: int, low: 3, high: 8}            # Reduced range
+        n_estimators: {type: int, low: 50, high: 300}
+        max_depth: {type: int, low: 3, high: 8}
         learning_rate: {type: float, low: 0.01, high: 0.3, log: true}
         subsample: {type: float, low: 0.7, high: 1.0}
         colsample_bytree: {type: float, low: 0.7, high: 1.0}
@@ -257,18 +262,18 @@ training:
       base_params: {}
       fit_params: {}
       search_space:
-        n_estimators: {type: int, low: 50, high: 300}      # Reduced range
+        n_estimators: {type: int, low: 50, high: 300}
         max_depth: {type: categorical, choices: [-1, 3, 4, 5, 6, 7, 8]}
         learning_rate: {type: float, low: 0.01, high: 0.3, log: true}
-        num_leaves: {type: int, low: 15, high: 100}         # Reduced range
+        num_leaves: {type: int, low: 15, high: 100}
         subsample: {type: float, low: 0.7, high: 1.0}
         colsample_bytree: {type: float, low: 0.7, high: 1.0}
         reg_alpha: {type: float, low: 1e-6, high: 1.0, log: true}
         reg_lambda: {type: float, low: 1e-6, high: 1.0, log: true}
-        min_child_samples: {type: int, low: 5, high: 50}    # Reduced range
+        min_child_samples: {type: int, low: 5, high: 50}
         min_split_gain: {type: float, low: 0.0, high: 0.5}
     catboost:
-      enabled: true  # Disabled for faster tests
+      enabled: true
       profile: catboost
       trials: 5
       base_params: {}
@@ -285,7 +290,7 @@ training:
 
   # SHAP feature importance - FAST TEST VERSION
   shap:
-    enabled: true
+    enabled: false
     sample_size: 5      # Reduced from 500
     max_display: 10     # Reduced from 30
     save_plots: true

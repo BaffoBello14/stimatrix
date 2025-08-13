@@ -58,6 +58,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     pre_dir = Path(paths.get("preprocessed_data", "data/preprocessed"))
     models_dir = Path(paths.get("models_dir", "models"))
     models_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Paths: preprocessed={pre_dir} | models_dir={models_dir}")
 
     tr_cfg = config.get("training", {})
     primary_metric: str = tr_cfg.get("primary_metric", "r2")
@@ -74,6 +75,8 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     # Raccogli definizioni per-modello
     models_cfg: Dict[str, Any] = tr_cfg.get("models", {})
     selected_models: List[str] = [k for k, v in models_cfg.items() if bool(v.get("enabled", False))]
+    logger.info(f"Modelli selezionati: {selected_models}")
+    logger.info(f"SHAP: enabled={bool(shap_cfg.get('enabled', True))} sample_size={int(shap_cfg.get('sample_size', 2000))}")
 
     results: Dict[str, Any] = {"models": {}, "ensembles": {}}
 
@@ -137,8 +140,11 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             base["random_state"] = seed
         if mk_lower == "catboost" and "random_seed" not in base:
             base["random_seed"] = seed
+        # Improve convergence for coordinate-descent models
+        if mk_lower in {"lasso", "elasticnet"} and "max_iter" not in base:
+            base["max_iter"] = 10000
         n_trials = int(model_entry.get("trials", 50))
-        timeout = None
+        timeout = tr_cfg.get("timeout", None)
         use_values_for_tuning = requires_numeric_only or mk_lower == "lightgbm"
 
         try:
