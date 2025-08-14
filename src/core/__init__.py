@@ -1,1 +1,0 @@
-# Core module for dependency injection and abstractions
