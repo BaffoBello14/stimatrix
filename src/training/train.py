@@ -112,7 +112,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     X_val = X_val.reindex(columns=numeric_cols, fill_value=0)
 
         # Safety check NaN
-        if model_key.lower() in ['gbr', 'hgbt', 'svr', 'linear', 'ridge', 'lasso', 'elasticnet', 'knn', 'dt', 'rf']:
+        if model_key.lower() in ['gbr', 'hgbt', 'svr', 'linear', 'ridge', 'lasso', 'elasticnet', 'knn', 'dt', 'rf', 'lightgbm', 'xgboost']:
             if X_train.isnull().any().any():
                 logger.warning(f"Found NaN values in training data for {model_key}, filling with 0")
                 X_train = X_train.fillna(0)

@@ -102,4 +102,9 @@ def transform_with_encoders(df: pd.DataFrame, fitted: FittedEncoders) -> pd.Data
         ohe_df = pd.DataFrame(ohe_arr, columns=ohe_cols, index=result.index)
         result = pd.concat([result.drop(columns=fitted.one_hot_input_cols, errors='ignore'), ohe_df], axis=1)
 
+    # Guard: fill ordinal-encoded NaN with sentinel -1 to avoid NaN for numeric-only models
+    ord_cols = [c for c in result.columns if c.endswith("__ord")]
+    if ord_cols:
+        result[ord_cols] = result[ord_cols].fillna(-1).astype(float)
+
     return result
