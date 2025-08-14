@@ -399,11 +399,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
         if X_va is not None:
             X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
-        # Align columns (no scaling/pca)
-        cols = X_tr.columns
-        X_te = X_te.reindex(columns=cols, fill_value=0)
-        if X_va is not None:
-            X_va = X_va.reindex(columns=cols, fill_value=0)
         
         # Fill any remaining NaN values to ensure compatibility with all sklearn models
         for _df in (X_tr, X_te, X_va):
@@ -416,6 +411,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 cat_cols = _df.select_dtypes(include=["object", "category"]).columns
                 if len(cat_cols) > 0:
                     _df[cat_cols] = _df[cat_cols].fillna("UNKNOWN")
+        # Audit: log if any NaN remain
+        for name, _df in [("X_tr", X_tr), ("X_te", X_te), ("X_va", X_va)]:
+            if _df is not None and _df.isnull().any().any():
+                logger.warning(f"[tree] Residual NaN detected after fills in {name}")
         
         # Optional numeric-only correlation prune
         corr_thr = float(profiles_cfg.get("tree", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
@@ -471,6 +470,12 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             X_va_final = pd.concat([X_va[kept_num_cols], X_va.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
         else:
             X_va_final = None
+        # Audit: ensure no NaN in numeric parts post-prune
+        for name, _df in [("X_tr_final", X_tr_final), ("X_te_final", X_te_final), ("X_va_final", X_va_final)]:
+            if _df is not None and _df.select_dtypes(include=[np.number]).isnull().any().any():
+                logger.warning(f"[catboost] Residual NaN detected in numeric columns of {name}, filling with 0")
+                num_cols = _df.select_dtypes(include=[np.number]).columns
+                _df[num_cols] = _df[num_cols].fillna(0)
         prefix = profiles_cfg.get("catboost", {}).get("output_prefix", "catboost")
         save_profile(X_tr_final, X_te_final, y_train, y_test, X_va_final, y_val, prefix)
         # Save list of categorical columns for catboost

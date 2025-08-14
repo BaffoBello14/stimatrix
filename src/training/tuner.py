@@ -94,7 +94,7 @@ def tune_model(
                             est.fit(X_tr, y_tr, eval_set=[(X_va, y_va)], verbose=False, early_stopping_rounds=50)
                         elif mk == "lightgbm":
                             metric_map = {
-                                "r2": "r2",
+                                "r2": None,  # not a native built-in; let it default
                                 "neg_mean_squared_error": "l2",
                                 "neg_root_mean_squared_error": "rmse",
                                 "neg_mean_absolute_error": "mae",
@@ -153,9 +153,9 @@ def tune_model(
                 if mk == "xgboost":
                     est.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False, early_stopping_rounds=50)
                 elif mk == "lightgbm":
-                    # Mappa metrica primaria a metrica LGBM
+                    # Map primary_metric to LGBM-native metric when possible
                     metric_map = {
-                        "r2": "r2",
+                        "r2": None,  # not a native built-in; let it default
                         "neg_mean_squared_error": "l2",
                         "neg_root_mean_squared_error": "rmse",
                         "neg_mean_absolute_error": "mae",

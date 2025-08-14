@@ -14,8 +14,8 @@ def test_imports():
         from preprocessing import pipeline
         from training import train, model_zoo, tuner
         from utils import logger
-        from db import schema_analyzer
-        from feature_extraction import extractors
+        from db import schema_extract
+        from preprocessing import feature_extractors
         print("✓ Tutti i moduli si importano correttamente")
         return True
     except ImportError as e:
@@ -57,8 +57,13 @@ def test_model_zoo():
         models_to_test = [
             ("linear", {}),
             ("ridge", {"alpha": 1.0}),
-            ("lightgbm", {"n_estimators": 10, "verbose": -1}),
         ]
+        # Add LightGBM only if importable
+        try:
+            import lightgbm  # type: ignore
+            models_to_test.append(("lightgbm", {"n_estimators": 10, "verbose": -1}))
+        except Exception:
+            pass
         
         for model_key, params in models_to_test:
             try:

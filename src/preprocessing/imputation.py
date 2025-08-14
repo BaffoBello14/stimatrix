@@ -35,12 +35,22 @@ def _fit_fill_values(df: pd.DataFrame, cfg: ImputationConfig) -> FittedImputers:
         # Compute fill series per (group, column)
         for col in df.select_dtypes(include=[np.number]).columns:
             if cfg.numeric_strategy == "mean":
-                vals = grouped[col].median() if grouped[col].median().notna().any() else grouped[col].mean()
+                vals = grouped[col].median()
+                # If a group's median is NaN (all NaN), fallback to group mean
+                vals = vals.where(vals.notna(), grouped[col].mean())
             else:
                 vals = grouped[col].median()
+                # If a group's median is NaN (all NaN), fallback to group mean
+                vals = vals.where(vals.notna(), grouped[col].mean())
+            # If still NaN (group entirely NaN), fallback to global statistic
+            global_fallback = (df[col].mean() if cfg.numeric_strategy == "mean" else df[col].median())
+            vals = vals.fillna(global_fallback)
             numeric_fill[col] = vals  # pandas Series indexed by group
         for col in df.select_dtypes(include=["object", "category"]).columns:
             modes = grouped[col].agg(lambda s: s.mode().iloc[0] if not s.mode().empty else (s.dropna().iloc[0] if not s.dropna().empty else "UNKNOWN"))
+            # Fallback to global mode/UNKNOWN for groups entirely NaN
+            global_mode = (df[col].mode().iloc[0] if not df[col].mode().empty else "UNKNOWN")
+            modes = modes.fillna(global_mode)
             categorical_fill[col] = modes
     else:
         for col in df.select_dtypes(include=[np.number]).columns:
@@ -64,9 +74,9 @@ def _apply_fill_values(df: pd.DataFrame, fitted: FittedImputers) -> pd.DataFrame
         # Numeric
         for col, series_vals in fitted.numeric_fill_values.items():
             try:
+                # Use per-group value, fallback to series median (which we pre-filled) if missing
                 result[col] = grouped[col].transform(lambda s: s.fillna(series_vals.get(s.name)))
             except Exception:
-                # Fallback to global median if any issue
                 fallback = series_vals.median() if isinstance(series_vals, pd.Series) else series_vals
                 result[col] = result[col].fillna(fallback)
         # Categorical

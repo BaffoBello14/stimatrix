@@ -402,4 +402,6 @@ def run_dataset(config: Dict[str, Any]) -> None:
         include_poi=include_poi,
         include_ztl=include_ztl,
         poi_categories=None,
+        output_format=db_cfg.get("output_format", "parquet"),
+        compression=db_cfg.get("compression", None),
     )
