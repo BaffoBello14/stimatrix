@@ -78,7 +78,8 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     logger.info(f"Modelli selezionati: {selected_models}")
     logger.info(f"SHAP: enabled={bool(shap_cfg.get('enabled', True))} sample_size={int(shap_cfg.get('sample_size', 2000))}")
 
-    results: Dict[str, Any] = {"models": {}, "ensembles": {}}
+    results: Dict[str, Any] = {"models": {}, "ensembles": {}, "baselines": {}}
+    table_rows: List[Dict[str, Any]] = []
 
     # Per-model loop
     for model_key in selected_models:
@@ -123,7 +124,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                 logger.warning(f"Found NaN values in validation data for {model_key}, filling with 0")
                 X_val = X_val.fillna(0)
 
-        # Tuning
+        # Prepare base params (also used as baseline)
         space = model_entry.get("search_space", {})
         base = {}
         base.update(model_entry.get("base_params", {}) or {})
@@ -146,6 +147,31 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         n_trials = int(model_entry.get("trials", 50))
         timeout = tr_cfg.get("timeout", None)
         use_values_for_tuning = requires_numeric_only or mk_lower == "lightgbm"
+
+        # BASELINE evaluation (no tuning)
+        try:
+            baseline_est = build_estimator(model_key, base)
+            if requires_numeric_only or mk_lower == "lightgbm":
+                baseline_est.fit(X_train.values if X_val is None else pd.concat([X_train, X_val]).values,
+                                 y_train.values if y_val is None else pd.concat([y_train, y_val]).values)
+                y_pred_test_base = baseline_est.predict(X_test.values)
+            else:
+                baseline_est.fit(X_train if X_val is None else pd.concat([X_train, X_val]),
+                                 y_train if y_val is None else pd.concat([y_train, y_val]))
+                y_pred_test_base = baseline_est.predict(X_test)
+            m_test_base = regression_metrics(y_test.values, y_pred_test_base)
+            results["baselines"][model_key] = {
+                "metrics_test": m_test_base,
+            }
+            table_rows.append({
+                "Model": f"Baseline_{model_key}",
+                "Category": "Baseline",
+                "Test_RMSE": m_test_base.get("rmse"),
+                "Test_R2": m_test_base.get("r2"),
+            })
+            logger.info(f"[baseline:{model_key}] test r2={m_test_base['r2']:.4f} rmse={m_test_base['rmse']:.4f}")
+        except Exception as e:
+            logger.warning(f"Baseline fallita per {model_key}: {e}")
 
         try:
             tuning = tune_model(
@@ -255,6 +281,12 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "metrics_train": m_train,
             "overfit": diag,
         }
+        table_rows.append({
+            "Model": f"Optimized_{model_key}",
+            "Category": "Optimized",
+            "Test_RMSE": m_test.get("rmse"),
+            "Test_R2": m_test.get("r2"),
+        })
         logger.info(f"[{model_key}] best {primary_metric}={tuning.best_value:.6f} | test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
 
     # ENSEMBLES
@@ -295,6 +327,12 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         }
         (ens_dir / "metrics.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
         results["ensembles"][ens_id] = meta
+        table_rows.append({
+            "Model": f"Ensemble_{ens_id}",
+            "Category": "Ensemble",
+            "Test_RMSE": m_test.get("rmse"),
+            "Test_R2": m_test.get("r2"),
+        })
         logger.info(f"[voting] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
 
     if ens_cfg.get("stacking", {}).get("enabled", False) and len(ranked) >= 2:
@@ -328,7 +366,23 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         }
         (ens_dir / "metrics.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
         results["ensembles"][ens_id] = meta
+        table_rows.append({
+            "Model": f"Ensemble_{ens_id}",
+            "Category": "Ensemble",
+            "Test_RMSE": m_test.get("rmse"),
+            "Test_R2": m_test.get("r2"),
+        })
         logger.info(f"[stacking] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
+
+    # Build and persist ranking table
+    try:
+        df_results = pd.DataFrame(table_rows)
+        if not df_results.empty:
+            df_results = df_results.sort_values(["Test_RMSE", "Test_R2"], ascending=[True, False]).reset_index(drop=True)
+            df_results.to_csv(models_dir / "validation_results.csv", index=False)
+            results["df_validation_results_path"] = str(models_dir / "validation_results.csv")
+    except Exception as e:
+        logger.warning(f"Impossibile generare ranking risultati: {e}")
 
     (models_dir / "summary.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
 

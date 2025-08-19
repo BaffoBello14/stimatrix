@@ -21,16 +21,20 @@ def parse_args() -> argparse.Namespace:
         "--steps",
         type=str,
         nargs="+",
-        choices=["schema", "dataset", "preprocessing", "training", "all"],
+        choices=["schema", "dataset", "preprocessing", "training", "evaluation", "all"],
         required=False,
         help="Passi da eseguire (uno o più). Usa 'all' per tutti",
     )
+    parser.add_argument("--force-reload", action="store_true", help="Forza rielaborazione anche se gli output esistono")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
+    # Propagate force-reload into config
+    if args.force_reload:
+        config.setdefault("execution", {})["force_reload"] = True
 
     # Initialize logging according to config
     setup_logger(args.config)
@@ -41,7 +45,7 @@ def main() -> None:
         user_input = input().strip()
         steps = user_input.split()
     if "all" in steps:
-        steps = ["schema", "dataset", "preprocessing", "training"]
+        steps = ["schema", "dataset", "preprocessing", "training", "evaluation"]
 
     for step in steps:
         if step == "schema":
@@ -56,6 +60,9 @@ def main() -> None:
         elif step == "training":
             from training.train import run_training  # lazy import
             run_training(config)
+        elif step == "evaluation":
+            from training.evaluation import run_evaluation  # lazy import
+            run_evaluation(config)
 
 
 if __name__ == "__main__":
