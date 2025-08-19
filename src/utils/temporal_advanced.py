@@ -1,6 +1,15 @@
 """
-Utilities temporali avanzate per gestione dati time-series.
-Ispirato al sistema temporale robusto di RealEstatePricePrediction.
+Utilities avanzate per gestione dati temporali in pipeline ML immobiliari.
+
+Questo modulo fornisce funzionalità specializzate per dati time-series immobiliari:
+- Sorting temporale con chiavi composite (anno/mese/giorno/ora)
+- Split temporale con validazione integrità anti-leakage
+- Creazione feature temporali derivate (quarter, season, cyclical)
+- Rilevamento anomalie temporali (gap, outlier periods)
+- Validazione split per prevenire data leakage temporale
+
+Le utility sono ottimizzate per dati immobiliari con timestamp discreti
+(anno/mese stipula) e gestiscono robustamente periodi mancanti o anomali.
 """
 
 from typing import Dict, Any, List, Optional, Tuple

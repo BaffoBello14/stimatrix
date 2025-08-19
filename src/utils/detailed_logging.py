@@ -1,6 +1,15 @@
 """
-Sistema di logging dettagliato con statistiche avanzate.
-Ispirato al sistema robusto di RealEstatePricePrediction.
+Sistema di logging dettagliato per pipeline ML con statistiche operative complete.
+
+Questo modulo fornisce funzionalità di logging avanzato che traccia:
+- Evoluzione del dataset attraverso gli step di preprocessing
+- Statistiche dettagliate per rimozione colonne (frequenze, correlazioni)
+- Range temporali per split dataset con validazione integrità
+- Risultati feature extraction con successi/fallimenti
+- Progress training modelli con timing e performance
+- Summary outlier detection con percentuali per metodo/categoria
+
+Il sistema è progettato per debugging, monitoring e audit di pipeline ML complesse.
 """
 
 from typing import Dict, Any, List, Optional, Union

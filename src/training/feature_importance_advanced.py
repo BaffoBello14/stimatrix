@@ -1,6 +1,15 @@
 """
-Sistema avanzato di Feature Importance con metodi multipli.
-Ispirato al sistema sofisticato di RealEstatePricePrediction.
+Sistema avanzato di Feature Importance per analisi interpretabilità modelli ML.
+
+Questo modulo combina metodi multipli per calcolare feature importance robusta:
+- Built-in importance: feature_importances_, coef_, ensemble averaging
+- Permutation importance: valutazione basata su performance degradation
+- SHAP values: spiegabilità locale e globale con explainer ottimizzati
+- Consensus importance: combinazione weighted di tutti i metodi
+- Stability analysis: consistenza importance tra modelli
+
+Il sistema gestisce automaticamente diversi tipi di modelli (lineari, tree-based,
+ensemble) e ottimizza le performance con campionamento intelligente per SHAP.
 """
 
 from typing import Dict, Any, List, Optional, Tuple, Union

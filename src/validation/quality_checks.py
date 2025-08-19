@@ -1,6 +1,16 @@
 """
-Sistema completo di Quality Checks per validazione robustezza pipeline.
-Ispirato al sistema di validazione di RealEstatePricePrediction.
+Sistema completo di Quality Checks per validazione pipeline ML immobiliari.
+
+Questo modulo implementa controlli automatici di qualità che verificano:
+- Data leakage temporale: sovrapposizioni tra train/validation/test splits
+- Target leakage: features che contengono informazioni del target
+- Drift distribuzione: cambiamenti distribuzione categorie tra splits
+- Stabilità features: consistenza durante preprocessing
+- Integrità dati: validazione strutturale DataFrame
+
+I quality checks sono progettati per essere eseguiti automaticamente durante
+la pipeline e forniscono diagnostica dettagliata per identificare problemi
+comuni che possono compromettere la validità dei modelli ML.
 """
 
 from typing import Dict, Any, List, Optional, Tuple

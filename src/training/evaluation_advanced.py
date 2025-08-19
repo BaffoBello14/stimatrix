@@ -1,6 +1,15 @@
 """
-Sistema di valutazione avanzato con supporto multi-scala.
-Ispirato al sistema robusto di evaluation di RealEstatePricePrediction.
+Sistema di valutazione avanzato per modelli ML con trasformazioni target.
+
+Questo modulo implementa evaluation sofisticata che gestisce:
+- Valutazione dual-scale: metriche su scala trasformata E originale
+- Inverse transform automatico: log, sqrt, box-cox con parametri
+- Analisi residui avanzata: test normalità, heteroscedasticity
+- Comparazione modelli: ranking multi-metrica con consensus
+- Visualizzazioni automatiche: plot performance e diagnostici
+
+Il sistema è essenziale per modelli con target trasformato (log-prezzi immobiliari)
+dove le metriche in scala originale sono più interpretabili per business.
 """
 
 from typing import Dict, Any, List, Optional, Tuple, Union

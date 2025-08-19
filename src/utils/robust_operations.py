@@ -1,6 +1,15 @@
 """
-Operazioni robuste sui dati con fallback intelligenti.
-Ispirato al sistema robusto di RealEstatePricePrediction.
+Operazioni robuste per manipolazione dati con gestione errori avanzata.
+
+Questo modulo implementa operazioni fail-safe per preprocessing che gestiscono:
+- Colonne mancanti con fallback automatici
+- Operazioni che possono fallire con strategie di recovery
+- Analisi robusta di colonne costanti e correlate
+- Validazione DataFrame con controlli qualità
+- Gestione pattern matching per identificazione colonne
+
+Le operazioni sono progettate per non interrompere mai la pipeline, fornendo
+sempre un risultato utilizzabile anche in caso di errori parziali.
 """
 
 from typing import Dict, Any, List, Optional, Tuple, Callable, Union

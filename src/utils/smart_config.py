@@ -1,6 +1,16 @@
 """
-Smart Configuration Manager con validazione intelligente e fallback robusti.
-Ispirato al sistema di configurazione robusto di RealEstatePricePrediction.
+Smart Configuration Manager per gestione automatica configurazioni pipeline ML.
+
+Questo modulo fornisce gestione intelligente delle configurazioni che include:
+- Risoluzione automatica colonne target con pattern matching
+- Detection colonne temporali per split anti-leakage
+- Analisi colonne categoriche per strategie encoding ottimali
+- Ottimizzazione configurazione basata su caratteristiche dataset
+- Validazione robusta con fallback per configurazioni incomplete
+- Default intelligenti per configurazioni mancanti
+
+Il manager adatta automaticamente la configurazione alle caratteristiche
+specifiche del dataset, riducendo la necessità di configurazione manuale.
 """
 
 from typing import Dict, Any, List, Optional, Union, Tuple

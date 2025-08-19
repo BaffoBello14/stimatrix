@@ -1,15 +1,17 @@
 # Stimatrix ML Pipeline
 
-Un pipeline modulare di machine learning per la stima automatica dei prezzi immobiliari, con funzionalità avanzate di preprocessing, feature engineering e training di modelli.
+Un pipeline modulare e robusto di machine learning per la stima automatica dei prezzi immobiliari, con funzionalità enterprise-grade di preprocessing, quality checks, tracking e evaluation avanzata.
 
 ## 🎯 Obiettivo
 
-Questo progetto implementa un sistema completo per l'analisi e la predizione di prezzi immobiliari attraverso:
-- **Feature extraction** automatica da geometrie WKT e dati GeoJSON
-- **Preprocessing** modulare con imputazione, encoding e scaling
-- **Training** di modelli ML (alberi decisionali, linear models, boosting, CatBoost)
-- **Ottimizzazione** degli iperparametri con Optuna
-- **Valutazione** con metriche avanzate e SHAP analysis
+Questo progetto implementa un sistema enterprise-grade per l'analisi e la predizione di prezzi immobiliari attraverso:
+- **Feature extraction** automatica da geometrie WKT e dati GeoJSON con fallback robusti
+- **Preprocessing** modulare con tracking evoluzione dataset e quality checks automatici
+- **Training** di modelli ML multipli con profili ottimizzati per algoritmo
+- **Ottimizzazione** degli iperparametri con Optuna e sampler avanzati
+- **Evaluation** dual-scale con feature importance multi-metodo e SHAP analysis
+- **Quality assurance** con validazione data leakage e monitoring pipeline
+- **Tracking completo** con report automatici e alerting performance
 
 ## 🚀 Quick Start
 
@@ -35,10 +37,22 @@ pip install -r requirements.txt
 
 ### Esecuzione
 ```bash
-# Esegui l'intera pipeline
+# Pipeline completa con configurazione standard
 python main.py --config config/config.yaml --steps all
 
-# Oppure step specifici
+# Pipeline con quality checks forzati
+python main.py --config config/config.yaml --steps all --enable-quality-checks
+
+# Pipeline con configurazione avanzata (tutte le funzionalità)
+python main.py --config config/config_enhanced.yaml --steps all
+
+# Validazione configurazione senza esecuzione
+python main.py --config config/config.yaml --validate-config
+
+# Debug mode per troubleshooting
+python main.py --config config/config.yaml --steps preprocessing --debug
+
+# Step specifici
 python main.py --config config/config.yaml --steps preprocessing training
 ```
 
@@ -66,39 +80,98 @@ profiles:
 
 ```
 stimatrix-ml-pipeline/
-├── main.py                 # 🎮 Orchestratore CLI principale
+├── main.py                 # 🎮 Orchestratore CLI con quality checks e debug
+├── Makefile                # 🔧 Automazione comandi sviluppo e testing
 ├── config/
-│   └── config.yaml         # ⚙️ Configurazione pipeline
+│   ├── config.yaml         # ⚙️ Configurazione standard
+│   └── config_enhanced.yaml # 🚀 Configurazione con tutte le funzionalità avanzate
 ├── src/                    # 📦 Codice sorgente
 │   ├── dataset_builder/    # 🗄️ Retrieval dati dal database
 │   ├── db/                 # 🔌 Utilità database e schema extraction
-│   ├── preprocessing/      # 🔧 Pipeline preprocessing e feature engineering
-│   ├── training/           # 🤖 Training, tuning e valutazione modelli
-│   └── utils/              # 🛠️ Logging, I/O e utilità generali
-├── tests/                  # 🧪 Test suite completa
+│   ├── preprocessing/      # 🔧 Pipeline preprocessing con tracking e robust ops
+│   │   ├── pipeline.py     # Pipeline integrata con quality checks
+│   │   └── pipeline_tracker.py # 📊 Tracking evoluzione dataset
+│   ├── training/           # 🤖 Training con feature importance e evaluation avanzata
+│   │   ├── train.py        # Training integrato con sistemi avanzati
+│   │   ├── feature_importance_advanced.py # 🧠 Feature importance multi-metodo
+│   │   └── evaluation_advanced.py # 📈 Evaluation dual-scale
+│   ├── validation/         # 🔍 Quality checks e validazione robustezza
+│   │   └── quality_checks.py # Sistema completo quality assurance
+│   └── utils/              # 🛠️ Utilità avanzate
+│       ├── detailed_logging.py # 📝 Logging con statistiche operative
+│       ├── robust_operations.py # 🛡️ Operazioni fail-safe con fallback
+│       ├── temporal_advanced.py # ⏰ Utilities temporali anti-leakage
+│       └── smart_config.py # ⚙️ Configuration manager intelligente
+├── tests/                  # 🧪 Test suite completa con integration tests
+│   ├── test_quality_checks.py # Test quality assurance
+│   ├── test_robust_operations.py # Test operazioni robuste
+│   ├── test_temporal_advanced.py # Test utilities temporali
+│   └── test_pipeline_integration.py # Test integrazione completa
 ├── data/                   # 📊 Dati (ignorati da git)
 │   ├── raw/                # Dati grezzi
-│   └── preprocessed/       # Dati processati
-└── models/                 # 🎯 Modelli salvati (ignorati da git)
+│   └── preprocessed/       # Dati processati + tracking reports
+│       └── tracking_reports/ # 📋 Report evoluzione pipeline
+└── models/                 # 🎯 Modelli salvati con artifacts avanzati
+    ├── feature_importance/ # 🧠 Plot e analisi feature importance
+    └── evaluation/         # 📈 Report comparativi e visualizzazioni
 ```
+
+## 🆕 Funzionalità Avanzate Integrate
+
+### 🔍 **Quality Checks Automatici**
+- **Data Leakage Detection**: Previene sovrapposizioni temporali e target leakage
+- **Category Drift Monitoring**: Rileva cambiamenti distribuzione tra splits
+- **Feature Stability Validation**: Verifica consistenza durante preprocessing
+
+### 📊 **Pipeline Tracking Completo**
+- **Evolution Monitoring**: Traccia shape, memoria, timing per ogni step
+- **Performance Alerting**: Notifiche automatiche per anomalie performance
+- **Report Multi-formato**: Export JSON/CSV/Excel per analisi post-execution
+
+### 🛡️ **Operazioni Robuste**
+- **Fallback Automatici**: Gestione colonne mancanti senza interruzioni
+- **Error Recovery**: Continuazione pipeline anche con errori parziali
+- **Validation Avanzata**: Controlli strutturali DataFrame automatici
+
+### 🧠 **Feature Importance Multi-Metodo**
+- **Consensus Analysis**: Combina Built-in + Permutation + SHAP
+- **Model-Specific Optimization**: Explainer ottimizzati per tipo modello
+- **Stability Metrics**: Consistenza importance tra modelli
+
+### 📈 **Evaluation Dual-Scale**
+- **Transform-Aware Metrics**: Metriche su scala trasformata E originale
+- **Residual Analysis**: Test statistici per validazione assunzioni
+- **Comparative Visualization**: Plot automatici performance modelli
 
 ## 🧪 Testing
 
 ### Test Rapidi (Raccomandato)
 ```bash
+# Con Makefile (raccomandato)
+make test-fast              # Test veloci
+make test-quality           # Test quality checks e robust operations
+make diagnose              # Diagnostica completa sistema
+
+# Tradizionali
 # Linux/macOS
 ./run_tests.sh basic
 
-# Windows
+# Windows  
 run_tests.bat basic
 ```
 
-I test di base verificano:
-- ✅ Import di tutti i moduli
-- ✅ Feature extraction da geometrie WKT
-- ✅ Validazione e preprocessing dati
-- ✅ Training dei modelli
-- ✅ Sistema di logging
+I test verificano:
+- ✅ Import di tutti i moduli (inclusi sistemi avanzati)
+- ✅ Feature extraction da geometrie WKT con fallback robusti
+- ✅ Quality checks per data leakage prevention
+- ✅ Operazioni robuste con gestione colonne mancanti
+- ✅ Temporal utilities per split anti-leakage
+- ✅ Pipeline tracking con evolution monitoring
+- ✅ Smart configuration con risoluzione automatica
+- ✅ Feature importance multi-metodo
+- ✅ Evaluation dual-scale per target trasformati
+- ✅ Training dei modelli con profili ottimizzati
+- ✅ Sistema di logging dettagliato
 
 ### Test Completi
 ```bash

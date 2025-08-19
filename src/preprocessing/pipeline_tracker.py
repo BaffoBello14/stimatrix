@@ -1,6 +1,16 @@
 """
-Sistema di tracking evoluzione pipeline per monitoraggio completo.
-Ispirato al sistema di tracking dettagliato di RealEstatePricePrediction.
+Sistema di tracking completo per monitoraggio evoluzione pipeline ML.
+
+Questo modulo traccia l'intero lifecycle della pipeline registrando:
+- Evoluzione shape dataset step-by-step con memoria e timing
+- Feature engineering: colonne aggiunte/rimosse per ogni operazione
+- Outlier detection: campioni rimossi per metodo e categoria
+- Encoding results: trasformazioni categoriche applicate
+- Model training: iperparametri, performance, tempo training
+- Performance metrics: efficienza step, bottleneck identification
+
+Il tracker genera report automatici (JSON/CSV/Excel) per analisi post-execution
+e monitoring real-time con alerting per performance anomale.
 """
 
 from typing import Dict, Any, List, Optional, Union

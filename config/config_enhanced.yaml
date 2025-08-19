@@ -1,0 +1,357 @@
+# Configurazione Stimatrix ML Pipeline - Versione Avanzata
+# ========================================================
+# 
+# Questa configurazione include tutte le funzionalità avanzate integrate:
+# - Quality checks automatici per data leakage prevention
+# - Pipeline tracking per monitoraggio evoluzione dataset
+# - Smart configuration con risoluzione automatica colonne
+# - Feature importance multi-metodo con SHAP ottimizzato
+# - Evaluation dual-scale per target trasformati
+# - Operazioni robuste con fallback automatici
+
+# Logging Configuration - Sistema dettagliato con statistiche
+logging:
+  level: INFO  # DEBUG per analisi approfondita
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  file: 'logs/pipeline.log'
+
+# Quality Checks - Validazione automatica robustezza pipeline
+quality_checks:
+  # Data leakage prevention
+  check_temporal_leakage: true      # Verifica sovrapposizioni temporali tra splits
+  check_target_leakage: true        # Rileva features che contengono info target
+  check_category_distribution: true # Controlla drift categorie tra train/val/test
+  check_feature_stability: true     # Valida stabilità features durante preprocessing
+  
+  # Soglie configurabili
+  max_category_drift: 0.05          # Max differenza % distribuzione categorie
+  max_feature_drift: 0.1            # Max variazione features durante processing
+  min_temporal_gap_months: 1        # Gap minimo mesi tra splits temporali
+
+# Pipeline Tracking - Monitoraggio evoluzione completa
+tracking:
+  enabled: true                     # Abilita tracking evoluzione dataset
+  save_intermediate: false          # Salva snapshot intermedi (aumenta spazio disco)
+
+# Monitoring e Alerting - Soglie performance
+monitoring:
+  alerts:
+    max_step_duration_minutes: 30   # Alert se step supera 30 minuti
+    max_memory_usage_mb: 2000       # Alert se memoria supera 2GB
+    min_samples_threshold: 1000     # Warning se campioni finali < 1000
+
+# Paths Configuration
+paths:
+  raw_data: 'data/raw'
+  preprocessed_data: 'data/preprocessed'
+  schema: 'schema/db_schema.json'
+  models_dir: 'models'
+  raw_filename: 'raw.parquet'
+  preprocessed_filename: 'preprocessed.parquet'
+
+# Database Configuration (for data retrieval)
+database:
+  schema_name: null
+  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV']
+  use_poi: true
+  use_ztl: true
+  output_format: 'parquet'
+  compression: 'snappy'
+
+# Target Configuration - Smart resolution
+target:
+  # Smart config risolve automaticamente da questa lista
+  column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo', 'prezzo']
+  log_transform: false              # Trasformazione log del target
+
+# Outlier Detection - Stratificata per categoria con fallback
+outliers:
+  method: 'ensemble'                # 'iqr' | 'zscore' | 'iso_forest' | 'ensemble'
+  z_thresh: 3.0                     # Soglia Z-score (standard deviations)
+  iqr_factor: 1.5                   # Fattore IQR per outlier detection
+  iso_forest_contamination: 0.02    # % outlier attesi per Isolation Forest
+  group_by_col: 'AI_IdCategoriaCatastale'  # Colonna per stratificazione
+  min_group_size: 30                # Min campioni per detection per gruppo
+  fallback_strategy: 'global'       # 'skip' | 'global' per gruppi piccoli
+
+# Missing Value Imputation - Strategica per tipo
+imputation:
+  numeric_strategy: 'median'        # 'median' | 'mean' per numeriche
+  categorical_strategy: 'most_frequent'  # Strategia per categoriche
+  group_by_col: 'AI_IdCategoriaCatastale'  # Imputazione per gruppo
+
+# Categorical Encoding - Adattivo per cardinalità
+encoding:
+  max_ohe_cardinality: 12           # Max categorie per One-Hot Encoding
+
+# Temporal Split - Anti-leakage con validazione
+temporal_split:
+  year_col: 'A_AnnoStipula'         # Colonna anno (auto-risolto da smart config)
+  month_col: 'A_MeseStipula'        # Colonna mese (auto-risolto da smart config)
+  mode: 'fraction'                  # 'date' | 'fraction'
+  train_fraction: 0.7               # 70% training
+  valid_fraction: 0.15              # 15% validation
+  # test_fraction: 0.15 (automatico)  # 15% test
+  test_start_year: 2023             # Usato solo se mode='date'
+  test_start_month: 1
+
+# Numeric Coercion - Conversione intelligente stringhe->numeri
+numeric_coercion:
+  enabled: true
+  threshold: 0.95                   # % conversioni valide richieste
+  blacklist_patterns:              # Pattern da escludere dalla conversione
+    - 'II_*'
+    - 'AI_Id*'
+    - 'Foglio'
+    - 'Particella*'
+    - 'Subalterno'
+    - 'SezioneAmministrativa'
+    - 'ZonaOmi'
+    - '*COD*'
+
+# Feature Extraction - Controllo granulare
+feature_extraction:
+  geometry: true                    # Estrazione da geometrie WKT
+  json: true                        # Estrazione da dati JSON/GeoJSON
+
+# Surface Handling - Pulizia colonne superficie ridondanti
+surface:
+  drop_columns:                     # Mantieni solo AI_Superficie canonica
+    - 'A_ImmobiliPrincipaliConSuperficieValorizzata'
+    - 'AI_SuperficieCalcolata'
+    - 'AI_SuperficieVisuraTotale'
+    - 'AI_SuperficieVisuraTotaleE'
+    - 'AI_SuperficieVisuraTotaleAttuale'
+    - 'AI_SuperficieVisuraTotaleEAttuale'
+
+# Correlation Analysis
+correlation:
+  numeric_threshold: 0.98           # Soglia correlazione Pearson
+
+# Non-descriptive Columns - Rimozione colonne poco informative
+drop_non_descriptive:
+  na_threshold: 0.98                # Rimuovi se >98% valori mancanti
+
+# PCA Configuration (per profilo scaled)
+pca: &pca_defaults
+  enabled: false                    # Disabilitato di default per performance
+  n_components: 0.95                # 95% varianza o numero fisso
+  random_state: 42
+
+# Scaling Configuration (per profilo scaled)
+scaling: &scaling_defaults
+  scaler_type: 'standard'           # 'standard' | 'robust' | 'none'
+  with_mean: true
+  with_std: true
+
+# Winsorization - Clipping quantili estremi
+winsorization: &winsor_defaults
+  enabled: false                    # Disabilitato di default
+  lower_quantile: 0.01              # 1° percentile
+  upper_quantile: 0.99              # 99° percentile
+
+# Profiles - Dataset ottimizzati per famiglie di modelli
+profiles:
+  # Profilo per modelli lineari (scaling + PCA opzionale)
+  scaled:
+    enabled: true
+    output_prefix: 'scaled'
+    encoding:
+      max_ohe_cardinality: 12       # One-hot per bassa cardinalità
+    winsorization: *winsor_defaults
+    scaling: *scaling_defaults      # StandardScaler
+    pca: *pca_defaults             # PCA opzionale
+    correlation:
+      numeric_threshold: 0.98       # Rimuovi correlazioni >98%
+  
+  # Profilo per modelli ad albero (no scaling, encoding semplificato)  
+  tree:
+    enabled: true
+    output_prefix: 'tree'
+    encoding:
+      max_ohe_cardinality: 12       # Stesso encoding ma no scaling
+    correlation:
+      numeric_threshold: 0.98       # Solo pruning correlazioni numeriche
+  
+  # Profilo per CatBoost (preserva categoriche native)
+  catboost:
+    enabled: true
+    output_prefix: 'catboost'
+    # Nessun encoding - CatBoost gestisce categoriche nativamente
+    correlation:
+      numeric_threshold: 0.98       # Solo correlazioni numeriche
+
+# Training Configuration - Sistema avanzato
+training:
+  # Metriche e ottimizzazione
+  primary_metric: "r2"              # Metrica principale per ranking
+  report_metrics: ["r2", "rmse", "mse", "mae", "mape"]  # Metriche complete
+  sampler: "auto"                   # OptunaHub auto-selection | "tpe"
+  seed: 42                          # Seed globale per riproducibilità
+  n_jobs_default: -1                # Parallelizzazione (-1 = tutti i core)
+  timeout: null                     # Timeout globale training (secondi)
+  
+  # Cross-validation quando non c'è validation set esterno
+  cv_when_no_val:
+    enabled: true
+    kind: timeseries                # 'timeseries' | 'kfold'
+    n_splits: 5                     # Numero fold
+    shuffle: false                  # Solo per kfold
+
+  # SHAP Analysis - Ottimizzato per performance
+  shap:
+    enabled: true                   # Feature importance interpretabile
+    sample_size: 500                # Campioni per background (ridotto per velocità)
+    max_display: 20                 # Max features nei plot
+    save_plots: true                # Salva visualizzazioni automaticamente
+    save_values: false              # Non salvare raw SHAP values (spazio)
+
+  # Ensemble Models - Combinazione top performer
+  ensembles:
+    voting:
+      enabled: true                 # Voting regressor
+      top_n: 3                      # Top 3 modelli
+      tune_weights: true            # Ottimizza pesi voting
+    stacking:
+      enabled: true                 # Stacking regressor  
+      top_n: 5                      # Top 5 modelli come base learners
+      final_estimator: "ridge"      # Meta-learner
+      cv_folds: 5                   # CV per stacking
+
+  # Modelli individuali con configurazione per-modello
+  models:
+    # Modelli lineari - Profilo scaled
+    linear:
+      enabled: true
+      profile: scaled               # Usa dataset scaled
+      trials: 1                     # No tuning per baseline
+      base_params: {}
+      fit_params: {}
+      search_space: {}
+      
+    ridge:
+      enabled: true
+      profile: scaled
+      trials: 50                    # Tuning iperparametri
+      base_params: {}
+      fit_params: {}
+      search_space:
+        alpha: {type: float, low: 0.000001, high: 1000.0, log: true}
+        
+    lasso:
+      enabled: true
+      profile: scaled
+      trials: 50
+      base_params: {}
+      fit_params: {}
+      search_space:
+        alpha: {type: float, low: 0.0001, high: 10.0, log: true}
+        
+    elasticnet:
+      enabled: true
+      profile: scaled
+      trials: 50
+      base_params: {}
+      fit_params: {}
+      search_space:
+        alpha: {type: float, low: 0.0001, high: 10.0, log: true}
+        l1_ratio: {type: float, low: 0.0, high: 1.0}
+
+    # Modelli ad albero - Profilo tree
+    dt:
+      enabled: true
+      profile: tree                 # Usa dataset tree (no scaling)
+      trials: 100
+      base_params: {}
+      fit_params: {}
+      search_space:
+        max_depth: {type: int, low: 3, high: 30}
+        min_samples_split: {type: int, low: 2, high: 20}
+        min_samples_leaf: {type: int, low: 1, high: 20}
+        max_features: {type: categorical, choices: ["sqrt", "log2", null]}
+        
+    rf:
+      enabled: true
+      profile: tree
+      trials: 100
+      base_params: {}
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 200, high: 1200}
+        max_depth: {type: int, low: 4, high: 40}
+        min_samples_split: {type: int, low: 2, high: 20}
+        min_samples_leaf: {type: int, low: 1, high: 20}
+        max_features: {type: categorical, choices: ["sqrt", "log2", null]}
+        bootstrap: {type: categorical, choices: [true, false]}
+
+    # Gradient Boosting
+    gbr:
+      enabled: true
+      profile: tree
+      trials: 100
+      base_params: {}
+      fit_params: {}
+      search_space:
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        n_estimators: {type: int, low: 200, high: 1500}
+        max_depth: {type: int, low: 2, high: 8}
+        subsample: {type: float, low: 0.5, high: 1.0}
+        
+    xgboost:
+      enabled: true
+      profile: tree
+      trials: 100
+      base_params: {}
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 300, high: 1500}
+        max_depth: {type: int, low: 3, high: 12}
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        subsample: {type: float, low: 0.5, high: 1.0}
+        colsample_bytree: {type: float, low: 0.5, high: 1.0}
+        
+    lightgbm:
+      enabled: true
+      profile: tree
+      trials: 100
+      base_params: {}
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 300, high: 1500}
+        max_depth: {type: categorical, choices: [-1, 3, 4, 5, 6, 7, 8, 9, 10]}
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        num_leaves: {type: int, low: 15, high: 255}
+        
+    # CatBoost - Gestione categoriche native
+    catboost:
+      enabled: true
+      profile: catboost             # Usa dataset con categoriche preservate
+      trials: 100
+      base_params: {}
+      fit_params:
+        cat_features: __categorical_indices__  # Auto-risolto da pipeline
+      search_space:
+        depth: {type: int, low: 4, high: 10}
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        l2_leaf_reg: {type: float, low: 1.0, high: 15.0}
+        bagging_temperature: {type: float, low: 0.0, high: 5.0}
+
+# Feature Importance - Sistema multi-metodo avanzato
+feature_importance:
+  enable_shap: true                 # SHAP values per interpretabilità
+  enable_permutation: true          # Permutation importance
+  max_features_plot: 20             # Max features nelle visualizzazioni
+  
+# Evaluation - Multi-scala per target trasformati  
+evaluation:
+  metrics: ['mae', 'mse', 'rmse', 'r2', 'mape', 'explained_variance']
+  dual_scale_evaluation: true       # Metriche su scala trasformata E originale
+  residual_analysis: true           # Analisi residui con test statistici
+  save_plots: true                  # Salva visualizzazioni automaticamente
+
+# Advanced Features - Funzionalità sperimentali
+advanced:
+  auto_config_optimization: true    # Ottimizza config basata su dataset
+  temporal_feature_engineering: true # Crea feature temporali derivate
+  robust_column_operations: true    # Usa operazioni robuste con fallback
+  comprehensive_reporting: true     # Report dettagliati multi-formato
