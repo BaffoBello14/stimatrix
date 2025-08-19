@@ -6,6 +6,10 @@ logging:
   level: INFO
   format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
   file: 'logs/pipeline.log'
+  file_output: true
+  console_output: true
+  max_file_size: '10MB'
+  backup_count: 5
 
 # Paths Configuration
 paths:
@@ -334,3 +338,12 @@ training:
       top_n: 5
       final_estimator: "ridge"
       cv_folds: 5
+
+# Evaluation configuration
+evaluation:
+  metrics: ['mae', 'rmse', 'r2', 'mape']
+  feature_importance:
+    enable_shap: true
+    enable_permutation: true
+    max_features_plot: 20
+  outputs_dir: 'models/evaluation'
