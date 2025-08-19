@@ -27,6 +27,7 @@ from preprocessing.transformers import (
 )
 from preprocessing.report import dataframe_profile, save_report
 from joblib import dump
+from utils.data_validation import validate_dataframe
 
 logger = get_logger(__name__)
 
@@ -156,6 +157,21 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     logger.info(
         f"Split temporale ({split_cfg.mode}) -> train={len(train_df)}, val={len(val_df)}, test={len(test_df)}"
     )
+
+    # Quality checks e validazione base sui tre split
+    try:
+        qc_dir = pre_dir / "reports"
+        qc_dir.mkdir(parents=True, exist_ok=True)
+        train_report = validate_dataframe(train_df, dataset_name="train")
+        (qc_dir / "quality_train.json").write_text(json.dumps(train_report.to_dict(), indent=2), encoding="utf-8")
+        test_report = validate_dataframe(test_df, dataset_name="test")
+        (qc_dir / "quality_test.json").write_text(json.dumps(test_report.to_dict(), indent=2), encoding="utf-8")
+        if not val_df.empty:
+            val_report = validate_dataframe(val_df, dataset_name="val")
+            (qc_dir / "quality_val.json").write_text(json.dumps(val_report.to_dict(), indent=2), encoding="utf-8")
+        logger.info("Quality checks salvati (reports JSON)")
+    except Exception as _qc_exc:
+        logger.warning(f"Quality checks non eseguiti: {_qc_exc}")
 
     # Outlier detection ONLY on train target (optionally per category)
     out_cfg_dict = config.get("outliers", {})

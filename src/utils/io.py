@@ -41,3 +41,13 @@ def load_json(path: str) -> Dict[str, Any]:
     with open(path, "r", encoding="utf-8") as f:
         data: Dict[str, Any] = json.load(f)
     return data
+
+
+def ensure_dir(path: str | os.PathLike) -> None:
+    """Ensure a directory exists."""
+    Path(path).mkdir(parents=True, exist_ok=True)
+
+
+def check_file_exists(path: str | os.PathLike) -> bool:
+    """Check if a file exists on disk."""
+    return Path(path).exists()
