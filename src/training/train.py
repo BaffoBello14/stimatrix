@@ -9,11 +9,14 @@ import pandas as pd
 from joblib import dump
 
 from utils.logger import get_logger
+from utils.detailed_logging import DetailedLogger
 from .tuner import tune_model
 from .model_zoo import build_estimator
 from .metrics import regression_metrics, overfit_diagnostics
 from .ensembles import build_voting, build_stacking
 from .shap_utils import compute_shap, save_shap_plots
+from .feature_importance_advanced import AdvancedFeatureImportance
+from .evaluation_advanced import MultiScaleEvaluation, ResidualAnalyzer
 
 logger = get_logger(__name__)
 
@@ -54,31 +57,77 @@ def _catboost_cat_features(pre_dir: Path, prefix: str, X: pd.DataFrame) -> List[
 
 
 def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Esegue training completo di modelli multipli con evaluation avanzata.
+    
+    La funzione implementa:
+    - Training modelli multipli con profili specifici
+    - Ottimizzazione iperparametri con Optuna
+    - Feature importance multi-metodo (Built-in + Permutation + SHAP)
+    - Evaluation dual-scale (trasformata + originale)
+    - Ensemble models con voting e stacking
+    - Tracking performance e salvataggio artifacts
+    
+    Args:
+        config: Configurazione completa con sezioni training, paths, target, etc.
+                Include configurazioni per modelli, profili, SHAP, ensemble
+                
+    Returns:
+        Dict con risultati training, metriche, modelli addestrati e artifacts
+    """
+    # Setup paths e directories
     paths = config.get("paths", {})
     pre_dir = Path(paths.get("preprocessed_data", "data/preprocessed"))
     models_dir = Path(paths.get("models_dir", "models"))
     models_dir.mkdir(parents=True, exist_ok=True)
-    logger.info(f"Paths: preprocessed={pre_dir} | models_dir={models_dir}")
+    
+    # Inizializza sistemi avanzati
+    feature_importance_system = AdvancedFeatureImportance(config)
+    multi_scale_evaluator = MultiScaleEvaluation(config)
+    
+    logger.info(f"🚀 Training inizializzato - Output: {models_dir}")
 
+    # Configurazione training
     tr_cfg = config.get("training", {})
     primary_metric: str = tr_cfg.get("primary_metric", "r2")
     report_metrics: List[str] = tr_cfg.get("report_metrics", ["r2", "rmse", "mse", "mae", "mape"])
     sampler_name = tr_cfg.get("sampler", "auto")
     seed = int(tr_cfg.get("seed", 42))
     
-    # Get tuning split fraction from temporal_split config for consistency
+    # Frazione split per tuning (consistenza con preprocessing)
     temporal_cfg = config.get("temporal_split", {})
     tuning_split_fraction = float(temporal_cfg.get("train_fraction", 0.8))
 
+    # Configurazione SHAP ottimizzata
     shap_cfg = tr_cfg.get("shap", {"enabled": True})
+    shap_enabled = bool(shap_cfg.get('enabled', True))
+    shap_sample_size = int(shap_cfg.get('sample_size', 500))  # Ridotto per performance
 
-    # Raccogli definizioni per-modello
+    # Raccolta modelli abilitati con validazione
     models_cfg: Dict[str, Any] = tr_cfg.get("models", {})
     selected_models: List[str] = [k for k, v in models_cfg.items() if bool(v.get("enabled", False))]
-    logger.info(f"Modelli selezionati: {selected_models}")
-    logger.info(f"SHAP: enabled={bool(shap_cfg.get('enabled', True))} sample_size={int(shap_cfg.get('sample_size', 2000))}")
+    
+    if not selected_models:
+        logger.warning("⚠️ Nessun modello abilitato - abilito linear come fallback")
+        selected_models = ["linear"]
+    
+    logger.info(f"🤖 Modelli da addestrare: {selected_models}")
+    logger.info(f"📊 Metrica primaria: {primary_metric}")
+    logger.info(f"🔍 SHAP abilitato: {shap_enabled} (sample_size={shap_sample_size})")
 
-    results: Dict[str, Any] = {"models": {}, "ensembles": {}}
+    # Inizializza risultati con tracking avanzato
+    results: Dict[str, Any] = {
+        "models": {}, 
+        "ensembles": {},
+        "training_summary": {
+            "models_requested": selected_models,
+            "models_completed": [],
+            "models_failed": [],
+            "start_time": pd.Timestamp.now().isoformat()
+        },
+        "feature_importance": {},
+        "evaluation_results": {}
+    }
 
     # Per-model loop
     for model_key in selected_models:
@@ -330,7 +379,126 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         results["ensembles"][ens_id] = meta
         logger.info(f"[stacking] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
 
-    (models_dir / "summary.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
+    # Feature Importance Analysis Avanzata
+    logger.info("🧠 Calcolo feature importance avanzata...")
+    
+    try:
+        # Carica dati per feature importance (usa primo profilo disponibile)
+        first_profile = None
+        for model_key in selected_models:
+            model_entry = models_cfg.get(model_key, {})
+            profile = model_entry.get("profile", None)
+            if profile:
+                first_profile = profile
+                break
+        
+        if first_profile and results["models"]:
+            X_train_fi, y_train_fi, X_val_fi, y_val_fi, X_test_fi, y_test_fi = _load_xy(pre_dir, first_profile)
+            
+            # Prepara modelli per feature importance
+            trained_models = {}
+            for model_id, model_results in results["models"].items():
+                if "model" in model_results:
+                    trained_models[model_id] = {
+                        'model': model_results["model"],
+                        'name': model_id,
+                        'type': model_results.get('type', 'unknown')
+                    }
+            
+            # Calcola feature importance comprehensive
+            if trained_models:
+                comprehensive_importance = feature_importance_system.calculate_comprehensive_importance(
+                    trained_models, X_train_fi, X_test_fi, y_test_fi, list(X_train_fi.columns)
+                )
+                
+                results["feature_importance"] = comprehensive_importance
+                
+                # Salva plot feature importance
+                fi_output_dir = models_dir / "feature_importance"
+                fi_output_dir.mkdir(exist_ok=True)
+                feature_importance_system.save_importance_plots(
+                    comprehensive_importance, str(fi_output_dir), top_n=20
+                )
+                
+                logger.info(f"✅ Feature importance calcolata per {len(trained_models)} modelli")
+            else:
+                logger.warning("⚠️ Nessun modello valido per feature importance")
+                
+    except Exception as e:
+        logger.error(f"❌ Errore feature importance: {e}")
+        results["feature_importance"] = {"error": str(e)}
 
-    logger.info("Training/Tuning/Evaluation completati.")
+    # Evaluation Multi-Scala Avanzata
+    logger.info("📈 Evaluation multi-scala...")
+    
+    try:
+        if results["models"] and first_profile:
+            # Determina se è stata applicata trasformazione log
+            target_config = config.get("target", {})
+            log_transform_applied = target_config.get("log_transform", False)
+            
+            transform_info = {"log": log_transform_applied}
+            
+            # Prepara target originale (se log applicato, y_test è già in scala log)
+            if log_transform_applied:
+                y_test_original = np.expm1(y_test_fi)  # Inverse log1p
+                y_test_transformed = y_test_fi
+            else:
+                y_test_original = y_test_fi
+                y_test_transformed = y_test_fi
+            
+            # Evaluation multi-scala per tutti i modelli
+            multi_scale_results = multi_scale_evaluator.evaluate_multiple_models_dual_scale(
+                trained_models, X_test_fi, y_test_transformed, y_test_original, transform_info
+            )
+            
+            results["evaluation_results"] = multi_scale_results
+            
+            # Salva visualizzazioni performance
+            eval_output_dir = models_dir / "evaluation"
+            eval_output_dir.mkdir(exist_ok=True)
+            
+            # Crea report comparativo
+            from .evaluation_advanced import ModelComparator
+            comparison_report = ModelComparator.create_comparison_report(
+                multi_scale_results["models"], 
+                output_file=str(eval_output_dir / "models_comparison.csv")
+            )
+            
+            # Crea visualizzazioni
+            ModelComparator.create_performance_visualization(
+                multi_scale_results["models"], str(eval_output_dir)
+            )
+            
+            logger.info(f"✅ Evaluation multi-scala completata - Report: {eval_output_dir}")
+            
+    except Exception as e:
+        logger.error(f"❌ Errore evaluation multi-scala: {e}")
+        results["evaluation_results"] = {"error": str(e)}
+
+    # Finalizza summary training
+    results["training_summary"]["end_time"] = pd.Timestamp.now().isoformat()
+    results["training_summary"]["models_completed"] = [k for k in results["models"].keys()]
+    results["training_summary"]["total_models_trained"] = len(results["models"])
+    results["training_summary"]["total_ensembles_created"] = len(results["ensembles"])
+    
+    # Salva summary completo
+    (models_dir / "training_summary.json").write_text(
+        json.dumps(results["training_summary"], indent=2, default=str), encoding="utf-8"
+    )
+    
+    # Salva risultati completi (backward compatibility)
+    (models_dir / "summary.json").write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+
+    # Log finale con statistiche
+    logger.info("=" * 60)
+    logger.info("TRAINING COMPLETATO CON SUCCESSO")
+    logger.info("=" * 60)
+    logger.info(f"🤖 Modelli addestrati: {len(results['models'])}")
+    logger.info(f"🔗 Ensemble creati: {len(results['ensembles'])}")
+    logger.info(f"🧠 Feature importance: {'✅' if 'error' not in results['feature_importance'] else '❌'}")
+    logger.info(f"📊 Evaluation multi-scala: {'✅' if 'error' not in results['evaluation_results'] else '❌'}")
+    logger.info(f"📁 Artifacts salvati in: {models_dir}")
+    logger.info("=" * 60)
+    
     return results

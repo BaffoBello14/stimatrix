@@ -9,6 +9,12 @@ import re
 import fnmatch
 
 from utils.logger import get_logger
+from utils.detailed_logging import DetailedLogger
+from utils.robust_operations import RobustDataOperations, RobustColumnAnalyzer
+from utils.temporal_advanced import AdvancedTemporalUtils, TemporalSplitter
+from utils.smart_config import SmartConfigurationManager
+from validation.quality_checks import QualityChecker
+from preprocessing.pipeline_tracker import PipelineTracker
 from preprocessing.feature_extractors import extract_geometry_features, maybe_extract_json_features
 from preprocessing.outliers import OutlierConfig, detect_outliers
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
@@ -53,6 +59,33 @@ def apply_log_target_if(config: Dict[str, Any], y: pd.Series) -> Tuple[pd.Series
 
 
 def run_preprocessing(config: Dict[str, Any]) -> Path:
+    """
+    Esegue la pipeline completa di preprocessing con tracking avanzato e quality checks.
+    
+    La pipeline include:
+    - Caricamento e validazione dati iniziali
+    - Feature extraction da geometrie WKT e dati JSON
+    - Pulizia robusta con gestione errori
+    - Split temporale con validazione integrità
+    - Quality checks automatici per data leakage
+    - Tracking completo evoluzione dataset
+    
+    Args:
+        config: Configurazione pipeline con sezioni per paths, feature_extraction,
+                quality_checks, tracking, temporal_split, etc.
+                
+    Returns:
+        Path al file preprocessed finale
+    """
+    # Inizializza smart configuration manager per risoluzione automatica
+    smart_config = SmartConfigurationManager()
+    smart_config.config = config
+    
+    # Inizializza pipeline tracker per monitoraggio evoluzione
+    tracker = PipelineTracker(config)
+    tracker.track_step_start('initialization')
+    
+    # Setup directories con creazione automatica
     paths = config.get("paths", {})
     raw_dir = Path(paths.get("raw_data", "data/raw"))
     pre_dir = Path(paths.get("preprocessed_data", "data/preprocessed"))
@@ -60,122 +93,367 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     pre_dir.mkdir(parents=True, exist_ok=True)
     reports_dir.mkdir(parents=True, exist_ok=True)
 
+    # Caricamento dati con validazione robusta
     raw_files = list(raw_dir.glob("*.parquet"))
     if not raw_files:
         raise FileNotFoundError(f"Nessun file parquet trovato in {raw_dir}")
 
-    df = pd.read_parquet(raw_files[0])
-    logger.info(f"Caricamento raw completato: rows={len(df)}, cols={len(df.columns)}")
+    df_initial = pd.read_parquet(raw_files[0])
+    logger.info(f"Dataset caricato: {len(df_initial):,} righe × {len(df_initial.columns)} colonne")
+    
+    # Risoluzione intelligente colonne target e temporali
+    target_resolution = smart_config.resolve_target_columns(df_initial)
+    temporal_resolution = smart_config.resolve_temporal_columns(df_initial)
+    
+    logger.info(f"Target risolto: {target_resolution['target_column']} "
+               f"(metodo: {target_resolution['resolution_method']})")
+    logger.info(f"Temporale disponibile: {temporal_resolution['temporal_available']}")
+    
+    df = df_initial.copy()
 
-    # Initial cleanup
-    prev_cols = len(df.columns)
-    df = df.dropna(axis=1, how="all")
-    logger.info(f"Drop colonne completamente vuote: {prev_cols - len(df.columns)} rimosse")
+    # Pulizia iniziale con tracking evoluzione
+    tracker.track_step_start('initial_cleanup')
+    df_before_cleanup = df.copy()
+    
+    # Rimuovi colonne completamente vuote usando operazioni robuste
+    empty_columns = [col for col in df.columns if df[col].isna().all()]
+    df, cleanup_info = RobustDataOperations.remove_columns_safe(
+        df, empty_columns, "PULIZIA COLONNE VUOTE"
+    )
+    
+    tracker.track_step_completion(
+        'initial_cleanup', df_before_cleanup, df, cleanup_info
+    )
 
-    # Feature extraction from JSON and geometry-like WKT columns
+    # Feature extraction con gestione robusta degli errori
+    tracker.track_step_start('feature_extraction')
+    df_before_fe = df.copy()
+    
     fe_cfg = config.get("feature_extraction", {})
-    logger.info(f"Feature extraction - geometry={bool(fe_cfg.get('geometry', True))}, json={bool(fe_cfg.get('json', True))}")
-    if bool(fe_cfg.get("geometry", True)):
-        df, drop_geom = extract_geometry_features(df)
+    extraction_results = {}
+    
+    # Estrazione da geometrie WKT se abilitata
+    if fe_cfg.get('geometry', True):
+        try:
+            df, drop_geom = extract_geometry_features(df)
+            extraction_results['geometry'] = {
+                'enabled': True,
+                'columns_dropped': drop_geom,
+                'success': True
+            }
+        except Exception as e:
+            logger.warning(f"Feature extraction geometrie fallita: {e}")
+            drop_geom = []
+            extraction_results['geometry'] = {
+                'enabled': True,
+                'success': False,
+                'error': str(e)
+            }
     else:
         drop_geom = []
-    if bool(fe_cfg.get("json", True)):
-        df, drop_json = maybe_extract_json_features(df)
+        extraction_results['geometry'] = {'enabled': False}
+    
+    # Estrazione da dati JSON se abilitata
+    if fe_cfg.get('json', True):
+        try:
+            df, drop_json = maybe_extract_json_features(df)
+            extraction_results['json'] = {
+                'enabled': True,
+                'columns_dropped': drop_json,
+                'success': True
+            }
+        except Exception as e:
+            logger.warning(f"Feature extraction JSON fallita: {e}")
+            drop_json = []
+            extraction_results['json'] = {
+                'enabled': True,
+                'success': False,
+                'error': str(e)
+            }
     else:
         drop_json = []
-    # Extract GeoJSON-derived features (Polygon Feature/FeatureCollection)
+        extraction_results['json'] = {'enabled': False}
+    
+    # Estrazione GeoJSON con fallback robusto
     try:
         from preprocessing.feature_extractors import extract_geojson_polygon_features
         df, drop_geojson = extract_geojson_polygon_features(df)
-    except Exception as _exc:
+        extraction_results['geojson'] = {
+            'enabled': True,
+            'columns_dropped': drop_geojson,
+            'success': True
+        }
+    except Exception as e:
+        logger.warning(f"Feature extraction GeoJSON fallita: {e}")
         drop_geojson = []
-    cols_to_drop_now = list(set(drop_geom + drop_json + drop_geojson))
-    if cols_to_drop_now:
-        df = df.drop(columns=cols_to_drop_now, errors="ignore")
-    logger.info(f"Estrazione feature: aggiunte/derivate, dropped_raw={len(cols_to_drop_now)} -> cols={len(df.columns)}")
+        extraction_results['geojson'] = {
+            'enabled': True,
+            'success': False,
+            'error': str(e)
+        }
+    
+    # Rimuovi colonne raw processate con operazioni sicure
+    cols_to_drop = list(set(drop_geom + drop_json + drop_geojson))
+    if cols_to_drop:
+        df, drop_info = RobustDataOperations.remove_columns_safe(
+            df, cols_to_drop, "RIMOZIONE COLONNE RAW POST-EXTRACTION"
+        )
+    
+    # Traccia risultati feature extraction
+    tracker.track_feature_engineering(
+        list(df_before_fe.columns), list(df.columns), extraction_results
+    )
+    
+    tracker.track_step_completion(
+        'feature_extraction', df_before_fe, df, extraction_results
+    )
 
-    # Keep only canonical surface in m²
+    # Pulizia colonne superficie ridondanti con tracking
+    tracker.track_step_start('surface_cleanup')
+    df_before_surface = df.copy()
+    
     surface_cfg = config.get("surface", {})
     surface_cols_to_drop = surface_cfg.get(
         "drop_columns",
         [
             "A_ImmobiliPrincipaliConSuperficieValorizzata",
-            "AI_SuperficieCalcolata",
+            "AI_SuperficieCalcolata", 
             "AI_SuperficieVisuraTotale",
             "AI_SuperficieVisuraTotaleE",
             "AI_SuperficieVisuraTotaleAttuale",
             "AI_SuperficieVisuraTotaleEAttuale",
         ],
     )
-    df = df.drop(columns=[c for c in surface_cols_to_drop if c in df.columns], errors="ignore")
-    # Drop useless geo SRID (constant)
-    df = df.drop(columns=[c for c in ["PC_PoligonoMetricoSrid"] if c in df.columns], errors="ignore")
+    
+    # Rimuovi colonne superficie ridondanti mantenendo solo AI_Superficie canonica
+    df, surface_removal_info = RobustDataOperations.remove_columns_safe(
+        df, surface_cols_to_drop, "PULIZIA COLONNE SUPERFICIE RIDONDANTI"
+    )
+    
+    # Rimuovi colonne costanti geografiche (SRID sempre uguale)
+    geo_constants = ["PC_PoligonoMetricoSrid"]
+    df, geo_removal_info = RobustDataOperations.remove_columns_safe(
+        df, geo_constants, "RIMOZIONE COSTANTI GEOGRAFICHE"
+    )
+    
+    surface_cleanup_info = {
+        'surface_columns_removed': surface_removal_info.get('existing_columns', []),
+        'geo_constants_removed': geo_removal_info.get('existing_columns', [])
+    }
+    
+    tracker.track_step_completion(
+        'surface_cleanup', df_before_surface, df, surface_cleanup_info
+    )
 
-    # AI_Piano features
+    # Processing colonna AI_Piano con feature engineering avanzato
+    tracker.track_step_start('piano_processing')
+    df_before_piano = df.copy()
+    
+    piano_features_added = []
     if "AI_Piano" in df.columns:
         try:
             from preprocessing.floor_parser import extract_floor_features_series
-        except ImportError:
-            extract_floor_features_series = None
-        if extract_floor_features_series is not None:
             floor_feats = extract_floor_features_series(df["AI_Piano"])
             df = pd.concat([df, floor_feats], axis=1)
-    # Remove AI_Piano raw after feature extraction
-    df = df.drop(columns=[c for c in ["AI_Piano"] if c in df.columns], errors="ignore")
+            piano_features_added = list(floor_feats.columns)
+            logger.info(f"Feature estratte da AI_Piano: {piano_features_added}")
+        except ImportError as e:
+            logger.warning(f"Floor parser non disponibile: {e}")
+        except Exception as e:
+            logger.warning(f"Estrazione feature piano fallita: {e}")
+    
+    # Rimuovi colonna raw AI_Piano dopo estrazione
+    df, piano_removal_info = RobustDataOperations.remove_columns_safe(
+        df, ["AI_Piano"], "RIMOZIONE AI_PIANO RAW POST-EXTRACTION"
+    )
+    
+    piano_processing_info = {
+        'features_added': piano_features_added,
+        'raw_column_removed': piano_removal_info.get('existing_columns', [])
+    }
+    
+    tracker.track_step_completion(
+        'piano_processing', df_before_piano, df, piano_processing_info
+    )
 
-    # Keep only numeric part of AI_Civico
+    # Processing AI_Civico: estrai solo parte numerica
+    tracker.track_step_start('civico_processing')
+    df_before_civico = df.copy()
+    
+    civico_processing_info = {'processed': False}
     if "AI_Civico" in df.columns:
-        civico_num = df["AI_Civico"].astype(str).str.extract(r"(\d+)", expand=False)
-        df["AI_Civico_num"] = pd.to_numeric(civico_num, errors="coerce")
-        df = df.drop(columns=["AI_Civico"], errors="ignore")
-
-    # Create temporal key to enable split later (do not leak across time)
-    if "A_AnnoStipula" in df.columns and "A_MeseStipula" in df.columns:
-        df["TemporalKey"] = df["A_AnnoStipula"].astype(int) * 100 + df["A_MeseStipula"].astype(int)
-        logger.info("Creata colonna TemporalKey (A_AnnoStipula*100 + A_MeseStipula)")
-
-    # Decide target
-    target_col = choose_target(df, config)
-    logger.info(f"Target selezionato: {target_col}")
-
-    # Create combined for split key if needed
-    Xy_full = df.copy()
-
-    # Temporal split FIRST to avoid leakage
-    split_cfg_dict = config.get("temporal_split", {})
-    split_cfg = TemporalSplitConfig(
-        year_col=split_cfg_dict.get("year_col", "A_AnnoStipula"),
-        month_col=split_cfg_dict.get("month_col", "A_MeseStipula"),
-        mode=split_cfg_dict.get("mode", "date"),
-        test_start_year=int(split_cfg_dict.get("test_start_year", 2023)),
-        test_start_month=int(split_cfg_dict.get("test_start_month", 1)),
-        train_fraction=float(split_cfg_dict.get("train_fraction", 0.8)),
-        valid_fraction=float(split_cfg_dict.get("valid_fraction", 0.0)),
-    )
-    train_df, val_df, test_df = temporal_split_3way(Xy_full, split_cfg)
-    logger.info(
-        f"Split temporale ({split_cfg.mode}) -> train={len(train_df)}, val={len(val_df)}, test={len(test_df)}"
+        try:
+            # Estrai numero civico con regex robusto
+            civico_num = df["AI_Civico"].astype(str).str.extract(r"(\d+)", expand=False)
+            df["AI_Civico_num"] = pd.to_numeric(civico_num, errors="coerce")
+            
+            # Rimuovi colonna originale
+            df = df.drop(columns=["AI_Civico"], errors="ignore")
+            
+            civico_processing_info = {
+                'processed': True,
+                'feature_created': 'AI_Civico_num',
+                'original_removed': 'AI_Civico'
+            }
+            logger.info("AI_Civico processato: estratta parte numerica")
+        except Exception as e:
+            logger.warning(f"Processing AI_Civico fallito: {e}")
+            civico_processing_info = {'processed': False, 'error': str(e)}
+    
+    tracker.track_step_completion(
+        'civico_processing', df_before_civico, df, civico_processing_info
     )
 
-    # Outlier detection ONLY on train target (optionally per category)
+    # Crea feature temporali avanzate se disponibili colonne temporali
+    if temporal_resolution['temporal_available']:
+        tracker.track_step_start('temporal_features')
+        df_before_temporal = df.copy()
+        
+        year_col = temporal_resolution['year_column']
+        month_col = temporal_resolution['month_column']
+        
+        # Crea feature temporali usando utility avanzate
+        df = AdvancedTemporalUtils.create_temporal_features(
+            df, year_col, month_col, prefix="temporal_"
+        )
+        
+        # Mantieni anche TemporalKey originale per compatibilità
+        df["TemporalKey"] = df[year_col].astype(int) * 100 + df[month_col].astype(int)
+        
+        temporal_features_info = {
+            'temporal_key_created': True,
+            'advanced_features_added': [col for col in df.columns if col.startswith('temporal_')],
+            'year_column': year_col,
+            'month_column': month_col
+        }
+        
+        tracker.track_step_completion(
+            'temporal_features', df_before_temporal, df, temporal_features_info
+        )
+    else:
+        logger.warning("Colonne temporali non disponibili - skip creazione feature temporali")
+
+    # Risoluzione target usando smart config o fallback
+    if target_resolution['target_column']:
+        target_col = target_resolution['target_column']
+    else:
+        target_col = choose_target(df, config)
+    
+    logger.info(f"Target finale: {target_col}")
+
+    # Split temporale avanzato con validazione integrità
+    tracker.track_step_start('temporal_split')
+    
+    if temporal_resolution['temporal_available']:
+        # Usa splitter temporale avanzato con validazione
+        year_col = temporal_resolution['year_column']
+        month_col = temporal_resolution['month_column']
+        
+        split_cfg_dict = config.get("temporal_split", {})
+        train_fraction = float(split_cfg_dict.get("train_fraction", 0.7))
+        valid_fraction = float(split_cfg_dict.get("valid_fraction", 0.15))
+        test_fraction = 1.0 - train_fraction - valid_fraction
+        
+        # Split con validazione automatica
+        train_df, val_df, test_df, split_info = TemporalSplitter.split_temporal_with_validation(
+            df, year_col, month_col, train_fraction, valid_fraction, test_fraction
+        )
+        
+        # Log dettagliato range temporali
+        DetailedLogger.log_split_temporal_ranges(df, year_col, month_col, len(train_df), len(train_df) + len(val_df))
+        
+        split_method = 'advanced_temporal'
+        
+    else:
+        # Fallback a split originale se temporale non disponibile
+        logger.warning("Split temporale non disponibile - usando split originale")
+        split_cfg_dict = config.get("temporal_split", {})
+        split_cfg = TemporalSplitConfig(
+            year_col=split_cfg_dict.get("year_col", "A_AnnoStipula"),
+            month_col=split_cfg_dict.get("month_col", "A_MeseStipula"),
+            mode=split_cfg_dict.get("mode", "fraction"),
+            test_start_year=int(split_cfg_dict.get("test_start_year", 2023)),
+            test_start_month=int(split_cfg_dict.get("test_start_month", 1)),
+            train_fraction=float(split_cfg_dict.get("train_fraction", 0.8)),
+            valid_fraction=float(split_cfg_dict.get("valid_fraction", 0.0)),
+        )
+        train_df, val_df, test_df = temporal_split_3way(df, split_cfg)
+        split_info = {'fallback_used': True}
+        split_method = 'legacy_temporal'
+    
+    logger.info(f"Split completato ({split_method}): train={len(train_df):,}, "
+               f"val={len(val_df):,}, test={len(test_df):,}")
+    
+    # Traccia informazioni split
+    split_tracking_info = {
+        'method': split_method,
+        'train_samples': len(train_df),
+        'val_samples': len(val_df),
+        'test_samples': len(test_df),
+        'split_info': split_info,
+        'temporal_available': temporal_resolution['temporal_available']
+    }
+    
+    tracker.track_step_completion(
+        'temporal_split', df, df, split_tracking_info  # df rimane uguale, cambia solo split
+    )
+
+    # Outlier detection robusto solo su training set per evitare leakage
+    tracker.track_step_start('outlier_detection')
+    train_df_before_outliers = train_df.copy()
+    
     out_cfg_dict = config.get("outliers", {})
-    # Use global seed for reproducibility
     global_seed = config.get("training", {}).get("seed", 42)
+    
+    # Risolvi colonna per stratificazione usando smart config
+    categorical_resolution = smart_config.resolve_categorical_columns(train_df)
+    group_by_col = categorical_resolution.get('category_column_for_outliers')
+    
+    # Se non trovata, usa fallback dalla configurazione
+    if not group_by_col:
+        group_by_col = out_cfg_dict.get("group_by_col", "AI_IdCategoriaCatastale")
+        logger.warning(f"Colonna stratificazione non trovata automaticamente, uso: {group_by_col}")
+    
     out_cfg = OutlierConfig(
         method=out_cfg_dict.get("method", "iqr"),
         z_thresh=float(out_cfg_dict.get("z_thresh", 4.0)),
         iqr_factor=float(out_cfg_dict.get("iqr_factor", 1.5)),
         iso_forest_contamination=float(out_cfg_dict.get("iso_forest_contamination", 0.02)),
-        group_by_col=out_cfg_dict.get("group_by_col", "AI_IdCategoriaCatastale"),
+        group_by_col=group_by_col,
         min_group_size=int(out_cfg_dict.get("min_group_size", 30)),
-        fallback_strategy=str(out_cfg_dict.get("fallback_strategy", "skip")),
+        fallback_strategy=str(out_cfg_dict.get("fallback_strategy", "global")),
         random_state=int(out_cfg_dict.get("random_state", global_seed)),
     )
-    before = len(train_df)
+    
+    # Esegui detection con tracking dettagliato
+    before_outliers = len(train_df)
     inliers_mask = detect_outliers(train_df, target_col, out_cfg)
     train_df = train_df.loc[inliers_mask].copy()
-    after = len(train_df)
-    logger.info(f"Outlier detection: rimossi {before - after} record dal train ({(before-after)/max(1,before)*100:.2f}%)")
+    after_outliers = len(train_df)
+    
+    outliers_removed = before_outliers - after_outliers
+    outlier_percentage = (outliers_removed / before_outliers) * 100 if before_outliers > 0 else 0
+    
+    # Crea info dettagliate per tracking
+    outliers_info = {
+        'total_outliers': outliers_removed,
+        'outlier_percentage': outlier_percentage,
+        'method_used': out_cfg.method,
+        'group_by_column': group_by_col,
+        'samples_before': before_outliers,
+        'samples_after': after_outliers,
+        'by_method': {out_cfg.method: outliers_removed}
+    }
+    
+    # Traccia risultati outlier detection
+    tracker.track_outlier_detection(outliers_info, before_outliers, outliers_removed)
+    
+    tracker.track_step_completion(
+        'outlier_detection', train_df_before_outliers, train_df, outliers_info
+    )
+    
+    logger.info(f"Outlier detection completato: rimossi {outliers_removed:,} record "
+               f"({outlier_percentage:.2f}%) dal training set")
 
     # Separate X and y
     y_train = train_df[target_col].astype(float)
@@ -305,11 +583,23 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             X_va = transform_with_encoders(X_va, encoders)
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         prev_cols = len(X_tr.columns)
-        X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
-        logger.info(f"[scaled] Drop non descrittive: {len(removed_nd)}")
-        X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
-        if X_va is not None:
-            X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
+        # Rimozione colonne non descrittive con operazioni robuste
+        non_descriptive_cols, nd_stats = RobustColumnAnalyzer.analyze_missing_values(
+            X_tr, threshold=na_thr
+        )
+        X_tr, nd_removal_info = RobustDataOperations.remove_columns_safe(
+            X_tr, non_descriptive_cols, f"[scaled] RIMOZIONE COLONNE NON DESCRITTIVE"
+        )
+        
+        # Applica rimozione anche a test e validation
+        if non_descriptive_cols:
+            X_te, _ = RobustDataOperations.remove_columns_safe(
+                X_te, non_descriptive_cols, f"[scaled] SYNC RIMOZIONE TEST"
+            )
+            if X_va is not None:
+                X_va, _ = RobustDataOperations.remove_columns_safe(
+                    X_va, non_descriptive_cols, f"[scaled] SYNC RIMOZIONE VAL"
+                )
         # Align numeric and apply winsor/scaling/pca
         X_tr_num = X_tr.select_dtypes(include=[np.number]).fillna(0)
         X_te_num = X_te.select_dtypes(include=[np.number]).fillna(0).reindex(columns=X_tr_num.columns, fill_value=0)
@@ -359,13 +649,29 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 X_va_f = X_va_scaled
         else:
             X_va_f = None
-        # Correlation prune
-        corr_thr = float(profiles_cfg.get("scaled", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
-        X_tr_f, dropped_corr = remove_highly_correlated(X_tr_f, threshold=corr_thr)
-        logger.info(f"[scaled] Pruning correlazioni: {len(dropped_corr)} colonne rimosse")
-        X_te_f = X_te_f.drop(columns=[c for c in dropped_corr if c in X_te_f.columns], errors="ignore")
-        if X_va_f is not None:
-            X_va_f = X_va_f.drop(columns=[c for c in dropped_corr if c in X_va_f.columns], errors="ignore")
+        # Pruning correlazioni con analisi robusta
+        corr_thr = float(profiles_cfg.get("scaled", {}).get("correlation", {}).get("numeric_threshold", 
+                                                           config.get("correlation", {}).get("numeric_threshold", 0.98)))
+        
+        # Usa analyzer robusto per trovare correlazioni
+        corr_cols_to_remove, corr_stats = RobustColumnAnalyzer.find_highly_correlated_columns(
+            X_tr_f, threshold=corr_thr
+        )
+        
+        # Rimuovi con operazioni robuste
+        X_tr_f, corr_removal_info = RobustDataOperations.remove_columns_safe(
+            X_tr_f, corr_cols_to_remove, f"[scaled] PRUNING CORRELAZIONI (soglia={corr_thr})"
+        )
+        
+        # Sincronizza rimozione su test e validation
+        if corr_cols_to_remove:
+            X_te_f, _ = RobustDataOperations.remove_columns_safe(
+                X_te_f, corr_cols_to_remove, "[scaled] SYNC CORRELAZIONI TEST"
+            )
+            if X_va_f is not None:
+                X_va_f, _ = RobustDataOperations.remove_columns_safe(
+                    X_va_f, corr_cols_to_remove, "[scaled] SYNC CORRELAZIONI VAL"
+                )
         prefix = profiles_cfg.get("scaled", {}).get("output_prefix", "scaled")
         save_profile(X_tr_f, X_te_f, y_train, y_test, X_va_f, y_val, prefix)
         if first_profile_saved is None:
@@ -394,11 +700,23 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 if _ord_cols:
                     _df[_ord_cols] = _df[_ord_cols].fillna(-1).astype(float)
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
-        X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
-        logger.info(f"[tree] Drop non descrittive: {len(removed_nd)}")
-        X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
-        if X_va is not None:
-            X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
+        # Rimozione colonne non descrittive con operazioni robuste
+        non_descriptive_cols, nd_stats = RobustColumnAnalyzer.analyze_missing_values(
+            X_tr, threshold=na_thr
+        )
+        X_tr, nd_removal_info = RobustDataOperations.remove_columns_safe(
+            X_tr, non_descriptive_cols, f"[tree] RIMOZIONE COLONNE NON DESCRITTIVE"
+        )
+        
+        # Sincronizza rimozione su test e validation
+        if non_descriptive_cols:
+            X_te, _ = RobustDataOperations.remove_columns_safe(
+                X_te, non_descriptive_cols, "[tree] SYNC RIMOZIONE TEST"
+            )
+            if X_va is not None:
+                X_va, _ = RobustDataOperations.remove_columns_safe(
+                    X_va, non_descriptive_cols, "[tree] SYNC RIMOZIONE VAL"
+                )
         
         # Fill any remaining NaN values to ensure compatibility with all sklearn models
         for _df in (X_tr, X_te, X_va):
@@ -416,18 +734,47 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             if _df is not None and _df.isnull().any().any():
                 logger.warning(f"[tree] Residual NaN detected after fills in {name}")
         
-        # Optional numeric-only correlation prune
-        corr_thr = float(profiles_cfg.get("tree", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
-        X_tr_num = X_tr.select_dtypes(include=[np.number])
-        X_tr_num_pruned, dropped_corr = remove_highly_correlated(X_tr_num, threshold=corr_thr)
-        logger.info(f"[tree] Pruning correlazioni numeriche: {len(dropped_corr)}")
-        kept_num_cols = X_tr_num_pruned.columns
-        X_tr_final = pd.concat([X_tr[kept_num_cols], X_tr.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
-        X_te_final = pd.concat([X_te[kept_num_cols], X_te.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
-        if X_va is not None:
-            X_va_final = pd.concat([X_va[kept_num_cols], X_va.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        # Pruning correlazioni numeriche con analisi robusta
+        corr_thr = float(profiles_cfg.get("tree", {}).get("correlation", {}).get("numeric_threshold", 
+                                                         config.get("correlation", {}).get("numeric_threshold", 0.98)))
+        
+        # Analizza correlazioni solo su colonne numeriche
+        X_tr_numeric = X_tr.select_dtypes(include=[np.number])
+        corr_cols_to_remove, corr_stats = RobustColumnAnalyzer.find_highly_correlated_columns(
+            X_tr_numeric, threshold=corr_thr
+        )
+        
+        # Rimuovi colonne correlate mantenendo struttura categoriche + numeriche
+        if corr_cols_to_remove:
+            # Rimuovi dalle numeriche
+            X_tr_num_clean, _ = RobustDataOperations.remove_columns_safe(
+                X_tr_numeric, corr_cols_to_remove, f"[tree] PRUNING CORRELAZIONI NUMERICHE (soglia={corr_thr})"
+            )
+            
+            # Ricostruisci dataset completo
+            X_tr_categorical = X_tr.select_dtypes(exclude=[np.number])
+            X_tr_final = pd.concat([X_tr_num_clean, X_tr_categorical], axis=1)
+            
+            # Sincronizza su test e validation
+            X_te_num_clean, _ = RobustDataOperations.remove_columns_safe(
+                X_te.select_dtypes(include=[np.number]), corr_cols_to_remove, "[tree] SYNC CORRELAZIONI TEST"
+            )
+            X_te_categorical = X_te.select_dtypes(exclude=[np.number])
+            X_te_final = pd.concat([X_te_num_clean, X_te_categorical], axis=1)
+            
+            if X_va is not None:
+                X_va_num_clean, _ = RobustDataOperations.remove_columns_safe(
+                    X_va.select_dtypes(include=[np.number]), corr_cols_to_remove, "[tree] SYNC CORRELAZIONI VAL"
+                )
+                X_va_categorical = X_va.select_dtypes(exclude=[np.number])
+                X_va_final = pd.concat([X_va_num_clean, X_va_categorical], axis=1)
+            else:
+                X_va_final = None
         else:
-            X_va_final = None
+            # Nessuna correlazione da rimuovere
+            X_tr_final = X_tr
+            X_te_final = X_te
+            X_va_final = X_va
         prefix = profiles_cfg.get("tree", {}).get("output_prefix", "tree")
         save_profile(X_tr_final, X_te_final, y_train, y_test, X_va_final, y_val, prefix)
         if first_profile_saved is None:
@@ -439,12 +786,23 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
         # Coerce numeric-like strings to numeric
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
-        # Drop non-descriptive
-        X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
-        logger.info(f"[catboost] Drop non descrittive: {len(removed_nd)}")
-        X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
-        if X_va is not None:
-            X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
+        # Rimozione colonne non descrittive con operazioni robuste
+        non_descriptive_cols, nd_stats = RobustColumnAnalyzer.analyze_missing_values(
+            X_tr, threshold=na_thr
+        )
+        X_tr, nd_removal_info = RobustDataOperations.remove_columns_safe(
+            X_tr, non_descriptive_cols, f"[catboost] RIMOZIONE COLONNE NON DESCRITTIVE"
+        )
+        
+        # Sincronizza rimozione preservando categoriche per CatBoost
+        if non_descriptive_cols:
+            X_te, _ = RobustDataOperations.remove_columns_safe(
+                X_te, non_descriptive_cols, "[catboost] SYNC RIMOZIONE TEST"
+            )
+            if X_va is not None:
+                X_va, _ = RobustDataOperations.remove_columns_safe(
+                    X_va, non_descriptive_cols, "[catboost] SYNC RIMOZIONE VAL"
+                )
         
         # Fill any remaining NaN values to ensure compatibility with all sklearn models
         for _df in (X_tr, X_te, X_va):
@@ -458,18 +816,47 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 if len(cat_cols) > 0:
                     _df[cat_cols] = _df[cat_cols].fillna("UNKNOWN")
         
-        # Numeric-only correlation prune
-        corr_thr = float(profiles_cfg.get("catboost", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
-        X_tr_num = X_tr.select_dtypes(include=[np.number])
-        X_tr_num_pruned, dropped_corr = remove_highly_correlated(X_tr_num, threshold=corr_thr)
-        logger.info(f"[catboost] Pruning correlazioni numeriche: {len(dropped_corr)}")
-        kept_num_cols = X_tr_num_pruned.columns
-        X_tr_final = pd.concat([X_tr[kept_num_cols], X_tr.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
-        X_te_final = pd.concat([X_te[kept_num_cols], X_te.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
-        if X_va is not None:
-            X_va_final = pd.concat([X_va[kept_num_cols], X_va.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        # Pruning correlazioni numeriche preservando categoriche per CatBoost
+        corr_thr = float(profiles_cfg.get("catboost", {}).get("correlation", {}).get("numeric_threshold", 
+                                                             config.get("correlation", {}).get("numeric_threshold", 0.98)))
+        
+        # Analizza correlazioni solo su colonne numeriche (preserva categoriche)
+        X_tr_numeric = X_tr.select_dtypes(include=[np.number])
+        corr_cols_to_remove, corr_stats = RobustColumnAnalyzer.find_highly_correlated_columns(
+            X_tr_numeric, threshold=corr_thr
+        )
+        
+        # Rimuovi correlazioni mantenendo tutte le categoriche per CatBoost
+        if corr_cols_to_remove:
+            # Rimuovi solo dalle numeriche
+            X_tr_num_clean, _ = RobustDataOperations.remove_columns_safe(
+                X_tr_numeric, corr_cols_to_remove, f"[catboost] PRUNING CORRELAZIONI NUMERICHE (soglia={corr_thr})"
+            )
+            
+            # Ricostruisci dataset completo mantenendo TUTTE le categoriche
+            X_tr_categorical = X_tr.select_dtypes(exclude=[np.number])
+            X_tr_final = pd.concat([X_tr_num_clean, X_tr_categorical], axis=1)
+            
+            # Sincronizza su test e validation
+            X_te_num_clean, _ = RobustDataOperations.remove_columns_safe(
+                X_te.select_dtypes(include=[np.number]), corr_cols_to_remove, "[catboost] SYNC CORRELAZIONI TEST"
+            )
+            X_te_categorical = X_te.select_dtypes(exclude=[np.number])
+            X_te_final = pd.concat([X_te_num_clean, X_te_categorical], axis=1)
+            
+            if X_va is not None:
+                X_va_num_clean, _ = RobustDataOperations.remove_columns_safe(
+                    X_va.select_dtypes(include=[np.number]), corr_cols_to_remove, "[catboost] SYNC CORRELAZIONI VAL"
+                )
+                X_va_categorical = X_va.select_dtypes(exclude=[np.number])
+                X_va_final = pd.concat([X_va_num_clean, X_va_categorical], axis=1)
+            else:
+                X_va_final = None
         else:
-            X_va_final = None
+            # Nessuna correlazione da rimuovere
+            X_tr_final = X_tr
+            X_te_final = X_te  
+            X_va_final = X_va
         # Audit: ensure no NaN in numeric parts post-prune
         for name, _df in [("X_tr_final", X_tr_final), ("X_te_final", X_te_final), ("X_va_final", X_va_final)]:
             if _df is not None and _df.select_dtypes(include=[np.number]).isnull().any().any():
@@ -511,16 +898,87 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             (pre_dir / "y_val.parquet").write_bytes((pre_dir / f"y_val_{first_profile_saved}.parquet").read_bytes())
         logger.info(f"Back-compat: copiati file del profilo '{first_profile_saved}' nei nomi default e combinati in {out_path}")
 
-    # Report
+    # Quality Checks finali se abilitati
+    quality_checks_enabled = config.get("quality_checks", {}).get("check_temporal_leakage", False)
+    if quality_checks_enabled:
+        logger.info("Esecuzione quality checks finali...")
+        tracker.track_step_start('quality_checks')
+        
+        try:
+            # Inizializza quality checker
+            quality_checker = QualityChecker(config)
+            
+            # Carica dati processati per quality checks
+            if first_profile_saved:
+                X_train_qc = pd.read_parquet(pre_dir / f"X_train_{first_profile_saved}.parquet")
+                X_test_qc = pd.read_parquet(pre_dir / f"X_test_{first_profile_saved}.parquet")
+                y_train_qc = pd.read_parquet(pre_dir / f"y_train_{first_profile_saved}.parquet")[target_col]
+                y_test_qc = pd.read_parquet(pre_dir / f"y_test_{first_profile_saved}.parquet")[target_col]
+                
+                X_val_qc = None
+                y_val_qc = None
+                if (pre_dir / f"X_val_{first_profile_saved}.parquet").exists():
+                    X_val_qc = pd.read_parquet(pre_dir / f"X_val_{first_profile_saved}.parquet")
+                    y_val_qc = pd.read_parquet(pre_dir / f"y_val_{first_profile_saved}.parquet")[target_col]
+                
+                # Esegui tutti i quality checks
+                quality_results = quality_checker.run_all_checks(
+                    X_train_qc, X_val_qc, X_test_qc, y_train_qc, y_val_qc, y_test_qc,
+                    preprocessing_info=tracker.generate_comprehensive_report()
+                )
+                
+                # Salva risultati quality checks
+                quality_report_path = reports_dir / "quality_checks_report.json"
+                import json
+                with open(quality_report_path, 'w', encoding='utf-8') as f:
+                    json.dump(quality_results, f, indent=2, default=str)
+                
+                logger.info(f"Quality checks completati - Status: {quality_results['overall_status']}")
+                
+                # Log warnings/errori critici
+                if quality_results['critical_errors']:
+                    logger.error(f"Quality checks - Errori critici: {quality_results['critical_errors']}")
+                if quality_results['warnings']:
+                    logger.warning(f"Quality checks - Warnings: {len(quality_results['warnings'])} rilevati")
+                
+                tracker.track_step_completion('quality_checks', df, df, quality_results)
+            else:
+                logger.warning("Quality checks saltati - nessun profilo processato")
+                
+        except Exception as e:
+            logger.error(f"Errore durante quality checks: {e}")
+    
+    # Genera report finale completo con tracking
+    final_report = tracker.generate_comprehensive_report()
+    
+    # Salva report tradizionale
     save_report(
         reports_dir / "preprocessing.md",
         sections={
-            "Raw profile": dataframe_profile(df),
-            "After feature extraction": dataframe_profile(base_train),
-            "Train features": dataframe_profile(base_train),
-            "Test features": dataframe_profile(base_test),
+            "Raw profile": dataframe_profile(df_initial),
+            "After feature extraction": dataframe_profile(base_train) if 'base_train' in locals() else {},
+            "Train features": dataframe_profile(base_train) if 'base_train' in locals() else {},
+            "Test features": dataframe_profile(base_test) if 'base_test' in locals() else {},
+            "Pipeline Summary": {
+                "Total Steps": final_report['pipeline_summary']['steps_completed'],
+                "Total Duration": final_report['pipeline_summary']['total_duration_formatted'],
+                "Final Status": "Completed Successfully"
+            }
         },
     )
+    
+    # Log summary finale
+    logger.info("=" * 60)
+    logger.info("PREPROCESSING COMPLETATO CON SUCCESSO")
+    logger.info("=" * 60)
+    logger.info(f"📊 Steps completati: {final_report['pipeline_summary']['steps_completed']}")
+    logger.info(f"⏱️  Durata totale: {final_report['pipeline_summary']['total_duration_formatted']}")
+    logger.info(f"📁 Output directory: {pre_dir}")
+    logger.info(f"📋 Report tracking: {tracker.reports_dir}")
+    
+    if quality_checks_enabled and 'quality_results' in locals():
+        logger.info(f"🔍 Quality checks: {quality_results['overall_status']}")
+    
+    logger.info("=" * 60)
 
-    logger.info(f"Preprocessing completato. Output in {pre_dir}")
     return out_path
