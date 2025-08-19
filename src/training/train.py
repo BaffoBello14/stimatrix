@@ -202,8 +202,18 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         else:
             estimator.fit(X_tr_final, y_tr_final, **fit_params)
 
+        # Predizioni e diagnostics avanzati
         y_pred_test = estimator.predict(X_test.values if use_values_for_final else X_test)
         y_pred_train = estimator.predict(X_tr_final.values if use_values_for_final else X_tr_final)
+        try:
+            if not np.isfinite(np.asarray(y_pred_test)).all():
+                n_bad = int(np.sum(~np.isfinite(np.asarray(y_pred_test))))
+                logger.warning(f"[{model_key}] Predizioni test non finite: {n_bad}")
+            if not np.isfinite(np.asarray(y_pred_train)).all():
+                n_bad = int(np.sum(~np.isfinite(np.asarray(y_pred_train))))
+                logger.warning(f"[{model_key}] Predizioni train non finite: {n_bad}")
+        except Exception:
+            pass
 
         m_test = regression_metrics(y_test.values, y_pred_test)
         m_train = regression_metrics(y_tr_final.values, y_pred_train)
@@ -255,6 +265,9 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "metrics_train": m_train,
             "overfit": diag,
         }
+        # Warning per R2 molto negativo
+        if m_test.get('r2', 0.0) < -0.5:
+            logger.warning(f"[{model_key}] R² test molto basso: {m_test['r2']:.4f}")
         logger.info(f"[{model_key}] best {primary_metric}={tuning.best_value:.6f} | test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
 
     # ENSEMBLES
