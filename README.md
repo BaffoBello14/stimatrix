@@ -233,6 +233,142 @@ models/
 | Test falliscono | Prova `./run_tests.sh basic` per verificare setup |
 | Memory error | Riduci batch size o abilita processing incrementale |
 
+### Problemi Avanzati e Soluzioni
+
+#### 🚨 Quality Checks Failures
+
+**Problema:** `QualityCheckError: Temporal leakage detected`
+```yaml
+# Soluzione: Verifica configurazione split temporale
+temporal_split:
+  mode: 'fraction'
+  train_fraction: 0.6  # Riduci se necessario
+  valid_fraction: 0.2
+```
+
+**Problema:** `Target leakage detected in features`
+```yaml
+# Soluzione: Rimuovi features sospette
+surface:
+  drop_columns:
+    - 'AI_Prezzo_Originale'  # Aggiungi colonne problematiche
+    - 'suspicious_feature'
+```
+
+#### 🔧 Feature Engineering Issues
+
+**Problema:** `GeometryError: WKT parsing failed`
+```yaml
+# Soluzione: Disabilita feature extraction problematica
+feature_extraction:
+  geometry: false  # Temporaneamente
+  json: true
+```
+
+**Problema:** `ProfileGenerationError: CatBoost profile failed`
+```yaml
+# Soluzione: Disabilita profilo problematico
+profiles:
+  catboost:
+    enabled: false  # Temporaneamente
+  tree:
+    enabled: true   # Usa profilo alternativo
+```
+
+#### 📊 Performance e Memoria
+
+**Problema:** `MemoryError during SHAP calculation`
+```yaml
+# Soluzione: Riduci sample size
+training:
+  shap:
+    enabled: true
+    sample_size: 100  # Era 500
+    max_display: 10   # Era 30
+```
+
+**Problema:** `Pipeline troppo lenta`
+```yaml
+# Soluzione: Ottimizzazioni performance
+training:
+  models:
+    catboost:
+      enabled: false  # Disabilita modelli lenti
+      trials: 10      # Riduci trials
+```
+
+#### 🏷️ Categorical Encoding Issues
+
+**Problema:** `High cardinality encoding failed`
+```yaml
+# Soluzione: Ajusta soglie encoding
+encoding:
+  max_ohe_cardinality: 5  # Era 12
+profiles:
+  scaled:
+    encoding:
+      max_ohe_cardinality: 8
+```
+
+#### ⏰ Temporal Split Problems
+
+**Problema:** `Insufficient temporal data for split`
+```yaml
+# Soluzione: Fallback a split random
+temporal_split:
+  mode: 'random'  # Invece di 'fraction'
+  train_fraction: 0.8
+```
+
+### Diagnostica Avanzata
+
+#### Verifica Stato Pipeline
+```bash
+# Controlla quality checks
+python -c "
+from src.validation.quality_checks import QualityChecker
+checker = QualityChecker({'quality_checks': {}})
+print('Quality Checker: OK')
+"
+
+# Controlla temporal utilities
+python -c "
+from src.utils.temporal_advanced import AdvancedTemporalUtils
+print('Temporal Utils: OK')
+"
+
+# Controlla robust operations
+python -c "
+from src.utils.robust_operations import RobustDataOperations
+print('Robust Operations: OK')
+"
+```
+
+#### Debug Mode Avanzato
+```bash
+# Esegui con tracking completo
+python main.py --config config/config.yaml --debug
+
+# Controlla report tracking
+ls data/preprocessed/tracking_reports/
+
+# Analizza log dettagliati
+tail -f logs/pipeline.log | grep -E "(ERROR|WARNING|CRITICAL)"
+```
+
+#### Memory Profiling
+```bash
+# Profiling memoria
+python -m memory_profiler main.py --config config/config.yaml --steps preprocessing
+
+# Monitoring risorse
+python -c "
+import psutil
+print(f'RAM disponibile: {psutil.virtual_memory().available/1e9:.1f}GB')
+print(f'CPU cores: {psutil.cpu_count()}')
+"
+```
+
 ### Logging e Debug
 
 Il sistema di logging è configurabile tramite `config.yaml`:

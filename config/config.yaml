@@ -7,6 +7,28 @@ logging:
   format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
   file: 'logs/pipeline.log'
 
+# Quality Checks Configuration (NUOVO)
+quality_checks:
+  check_temporal_leakage: true
+  check_target_leakage: true
+  check_category_distribution: true
+  check_feature_stability: true
+  max_category_drift: 0.05
+  max_feature_drift: 0.1
+  min_temporal_gap_months: 1
+
+# Pipeline Tracking Configuration (NUOVO)
+tracking:
+  enabled: true
+  save_intermediate: false
+  
+# Monitoring and Alerts (NUOVO)
+monitoring:
+  alerts:
+    max_step_duration_minutes: 30
+    max_memory_usage_mb: 2000
+    min_samples_threshold: 1000
+
 # Paths Configuration
 paths:
   raw_data: 'data/raw'
