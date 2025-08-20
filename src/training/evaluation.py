@@ -104,6 +104,10 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
 
     out = models_dir / "evaluation_summary.json"
     save_json(results, str(out))
-    logger.info(f"Evaluation completata. Report: {out}")
+    try:
+        _out_log = out.as_posix()
+    except Exception:
+        _out_log = str(out)
+    logger.info(f"Evaluation completata. Report: {_out_log}")
     return results
 

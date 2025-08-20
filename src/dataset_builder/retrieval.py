@@ -269,7 +269,10 @@ class DatasetBuilder:
             "initial_rows": initial_rows,
             "filtered_rows": filtered_rows,
             "percentage_kept": percentage_kept,
-            "acts_removed": len(grouped) - len(valid_ids),
+            # rows removed provides an immediate understanding of data size reduction
+            "acts_removed": initial_rows - filtered_rows,
+            # keep also the number of acts removed for auditability
+            "acts_removed_acts": int(len(grouped) - len(valid_ids)),
         }
         return df_filtered, stats
 
@@ -376,7 +379,11 @@ class DatasetBuilder:
             if col in df.columns:
                 df.drop(columns=[col], inplace=True)
         save_dataframe(df, output_path, format=output_format, compression=compression)
-        logger.info(f"Dati salvati in: {output_path}")
+        try:
+            _log_path = Path(output_path).as_posix()
+        except Exception:
+            _log_path = str(output_path)
+        logger.info(f"Dati salvati in: {_log_path}")
         return df
 
 

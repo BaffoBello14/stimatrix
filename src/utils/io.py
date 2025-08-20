@@ -28,7 +28,11 @@ def save_json(data: Dict[str, Any], path: str) -> None:
     ensure_parent_dir(path)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-    logger.info(f"JSON salvato: {path}")
+    try:
+        log_path = Path(path).as_posix()
+    except Exception:
+        log_path = str(path)
+    logger.info(f"JSON salvato: {log_path}")
 
 
 def save_dataframe(
@@ -41,13 +45,21 @@ def save_dataframe(
         if compression:
             kwargs["compression"] = compression
         df.to_parquet(path, index=False, **kwargs)
-        logger.info(f"DataFrame salvato come Parquet: {path}")
+        try:
+            log_path = Path(path).as_posix()
+        except Exception:
+            log_path = str(path)
+        logger.info(f"DataFrame salvato come Parquet: {log_path}")
     elif format == "csv":
         kwargs = {}
         if compression in {"gzip", "bz2", "zip", "xz"}:
             kwargs["compression"] = compression
         df.to_csv(path, index=False, **kwargs)
-        logger.info(f"DataFrame salvato come CSV: {path}")
+        try:
+            log_path = Path(path).as_posix()
+        except Exception:
+            log_path = str(path)
+        logger.info(f"DataFrame salvato come CSV: {log_path}")
     else:
         raise ValueError(f"Formato non supportato: {format}")
 
