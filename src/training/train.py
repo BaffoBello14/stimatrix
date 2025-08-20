@@ -14,6 +14,7 @@ from .model_zoo import build_estimator
 from .metrics import regression_metrics, overfit_diagnostics
 from .ensembles import build_voting, build_stacking
 from .shap_utils import compute_shap, save_shap_plots
+from utils.wandb_utils import WandbTracker
 
 logger = get_logger(__name__)
 
@@ -60,6 +61,10 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     models_dir.mkdir(parents=True, exist_ok=True)
     logger.info(f"Paths: preprocessed={pre_dir} | models_dir={models_dir}")
 
+    # Initialize W&B tracking (no-op if disabled or not installed)
+    wb = WandbTracker(config)
+    wb.start_run(job_type="training")
+
     tr_cfg = config.get("training", {})
     primary_metric: str = tr_cfg.get("primary_metric", "r2")
     report_metrics: List[str] = tr_cfg.get("report_metrics", ["r2", "rmse", "mse", "mae", "mape"])
@@ -78,6 +83,13 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     selected_models: List[str] = [k for k, v in models_cfg.items() if bool(v.get("enabled", False))]
     logger.info(f"Modelli selezionati: {selected_models}")
     logger.info(f"SHAP: enabled={bool(shap_cfg.get('enabled', True))} sample_size={int(shap_cfg.get('sample_size', 2000))}")
+    # Log basic run configuration
+    wb.log({
+        "config/primary_metric": primary_metric,
+        "config/seed": seed,
+        "config/sampler": sampler_name,
+        "config/models_count": len(selected_models),
+    })
 
     results: Dict[str, Any] = {"models": {}, "ensembles": {}, "baselines": {}}
     table_rows: List[Dict[str, Any]] = []
@@ -173,6 +185,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             results["baselines"][model_key] = {
                 "metrics_test": m_test_base,
             }
+            wb.log_prefixed_metrics(f"baseline/{model_key}", {f"test_{k}": v for k, v in m_test_base.items()})
             table_rows.append({
                 "Model": f"Baseline_{model_key}",
                 "Category": "Baseline",
@@ -244,6 +257,8 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         m_test = regression_metrics(y_test.values, y_pred_test)
         m_train = regression_metrics(y_tr_final.values, y_pred_train)
         diag = overfit_diagnostics(m_train, m_test)
+        wb.log_prefixed_metrics(f"model/{model_key}", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
+        wb.log_prefixed_metrics(f"model/{model_key}", {f"overfit_{k}": v for k, v in diag.items()})
 
         model_id = f"{model_key}"
         model_dir = models_dir / model_id
@@ -260,9 +275,14 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "overfit": diag,
         }
         (model_dir / "metrics.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        # Log Optuna trials table and model directory as artifact
         try:
             df_trials = tuning.study.trials_dataframe()
             df_trials.to_csv(model_dir / "optuna_trials.csv", index=False)
+            try:
+                wb.log({f"trials/{model_key}": df_trials})
+            except Exception:
+                pass
         except Exception:
             pass
 
@@ -278,9 +298,18 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                 )
                 if bool(shap_cfg.get("save_plots", True)):
                     save_shap_plots(str(model_dir / "shap"), shap_bundle, model_id)
+                    try:
+                        wb.log_image(key=f"shap/{model_key}_beeswarm", image_path=model_dir / "shap" / f"shap_{model_id}_beeswarm.png")
+                        wb.log_image(key=f"shap/{model_key}_bar", image_path=model_dir / "shap" / f"shap_{model_id}_bar.png")
+                    except Exception:
+                        pass
                 if bool(shap_cfg.get("save_values", False)):
                     np.save(model_dir / "shap_values.npy", shap_bundle["values"].values, allow_pickle=False)
                     shap_bundle["data_sample"].to_parquet(model_dir / "shap_sample.parquet", index=False)
+                try:
+                    wb.log_prefixed_metrics(f"shap/{model_key}", {"sample_size": int(shap_bundle.get("sample_size", 0))})
+                except Exception:
+                    pass
             except Exception as e:
                 logger.warning(f"SHAP fallito per {model_key}: {e}")
 
@@ -298,6 +327,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "Test_R2": m_test.get("r2"),
         })
         logger.info(f"[{model_key}] best {primary_metric}={tuning.best_value:.6f} | test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
+        wb.log({f"model/{model_key}/best_primary_value": tuning.best_value})
 
     # ENSEMBLES
     ens_cfg = tr_cfg.get("ensembles", {})
@@ -344,6 +374,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "Test_R2": m_test.get("r2"),
         })
         logger.info(f"[voting] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
+        wb.log_prefixed_metrics("ensemble/voting", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
 
     if ens_cfg.get("stacking", {}).get("enabled", False) and len(ranked) >= 2:
         top_n = int(ens_cfg.get("stacking", {}).get("top_n", 5))
@@ -383,6 +414,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "Test_R2": m_test.get("r2"),
         })
         logger.info(f"[stacking] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
+        wb.log_prefixed_metrics("ensemble/stacking", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
 
     # Build and persist ranking table
     try:
@@ -395,6 +427,11 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         logger.warning(f"Impossibile generare ranking risultati: {e}")
 
     (models_dir / "summary.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
+    try:
+        wb.log_artifact(models_dir, name="models_dir", type="models", description="All trained models and metrics")
+    except Exception:
+        pass
 
     logger.info("Training/Tuning/Evaluation completati.")
+    wb.finish()
     return results

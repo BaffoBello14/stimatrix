@@ -19,6 +19,17 @@ execution:
   # Se true, forza la rielaborazione anche se gli output intermedi esistono già
   force_reload: false
 
+# Experiment tracking (Weights & Biases)
+tracking:
+  wandb:
+    enabled: ${WANDB_ENABLED:-false}
+    project: ${WANDB_PROJECT:-'stimatrix'}
+    entity: ${WANDB_ENTITY:-null}
+    group: ${WANDB_GROUP:-null}
+    tags: []
+    mode: ${WANDB_MODE:-'online'}  # online | offline | disabled
+    name: null
+
 # Paths Configuration
 paths:
   raw_data: ${RAW_DATA_DIR:-'data/raw'}

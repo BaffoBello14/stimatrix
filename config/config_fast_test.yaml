@@ -17,6 +17,17 @@ execution:
   steps: ["all"]
   force_reload: false
 
+# Experiment tracking (Weights & Biases)
+tracking:
+  wandb:
+    enabled: ${WANDB_ENABLED:-false}
+    project: ${WANDB_PROJECT:-'stimatrix'}
+    entity: ${WANDB_ENTITY:-null}
+    group: ${WANDB_GROUP:-null}
+    tags: ["fast-test"]
+    mode: ${WANDB_MODE:-'disabled'}
+    name: null
+
 # Paths Configuration
 paths:
   raw_data: ${RAW_DATA_DIR:-'data/raw'}
