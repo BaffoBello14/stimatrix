@@ -41,7 +41,7 @@ def main() -> None:
 
     steps: List[str] = args.steps or []
     if not steps:
-        print("Seleziona i passi da eseguire separati da spazio (schema, dataset, preprocessing, training, all):")
+        print("Seleziona i passi da eseguire separati da spazio (schema, dataset, preprocessing, training, evaluation, all):")
         user_input = input().strip()
         steps = user_input.split()
     if "all" in steps:

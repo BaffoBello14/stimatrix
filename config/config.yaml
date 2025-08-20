@@ -149,6 +149,8 @@ training:
   seed: 42
   n_jobs_default: -1
   timeout: null
+  trials_base: &trials_base 3
+  trials_advanced: &trials_advanced 3
   # Cross-validation usata quando non esiste un validation set esterno (valid_fraction=0)
   cv_when_no_val:
     enabled: true
@@ -168,7 +170,7 @@ training:
     ridge:
       enabled: true
       profile: scaled
-      trials: 50
+      trials: *trials_base
       base_params: {}
       fit_params: {}
       search_space:
@@ -176,7 +178,7 @@ training:
     lasso:
       enabled: true
       profile: scaled
-      trials: 50
+      trials: *trials_base
       base_params: {}
       fit_params: {}
       search_space:
@@ -184,7 +186,7 @@ training:
     elasticnet:
       enabled: true
       profile: scaled
-      trials: 50
+      trials: *trials_base
       base_params: {}
       fit_params: {}
       search_space:
@@ -193,7 +195,7 @@ training:
     knn:
       enabled: true
       profile: scaled
-      trials: 50
+      trials: *trials_base
       base_params: {}
       fit_params: {}
       search_space:
@@ -203,7 +205,7 @@ training:
     svr:
       enabled: false
       profile: scaled
-      trials: 50
+      trials: *trials_base
       base_params: {}
       fit_params: {}
       search_space:
@@ -216,7 +218,7 @@ training:
     dt:
       enabled: true
       profile: tree
-      trials: 100
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
@@ -228,7 +230,7 @@ training:
     rf:
       enabled: true
       profile: tree
-      trials: 100
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
@@ -241,7 +243,7 @@ training:
     gbr:
       enabled: true
       profile: tree
-      trials: 100
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
@@ -256,7 +258,7 @@ training:
     hgbt:
       enabled: true
       profile: tree
-      trials: 100
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
@@ -269,7 +271,7 @@ training:
     xgboost:
       enabled: true
       profile: tree
-      trials: 100
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
@@ -285,7 +287,7 @@ training:
     lightgbm:
       enabled: true
       profile: tree
-      trials: 100
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
@@ -302,7 +304,7 @@ training:
     catboost:
       enabled: true
       profile: catboost
-      trials: 100
+      trials: *trials_advanced
       base_params: {}
       fit_params:
         cat_features: __categorical_indices__
@@ -318,7 +320,7 @@ training:
   # SHAP feature importance
   shap:
     enabled: true
-    sample_size: 500
+    sample_size: 5
     max_display: 30
     save_plots: true
     save_values: false
