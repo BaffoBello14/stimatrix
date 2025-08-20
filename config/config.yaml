@@ -22,7 +22,7 @@ execution:
 # Experiment tracking (Weights & Biases)
 tracking:
   wandb:
-    enabled: ${WANDB_ENABLED:-false}
+    enabled: ${WANDB_ENABLED:-true}
     project: ${WANDB_PROJECT:-'stimatrix'}
     entity: ${WANDB_ENTITY:-null}
     group: ${WANDB_GROUP:-null}
