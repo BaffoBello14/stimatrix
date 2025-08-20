@@ -16,6 +16,21 @@ def ensure_parent_dir(path: str | os.PathLike) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
 
 
+def ensure_dir(path: str | os.PathLike) -> None:
+    Path(path).mkdir(parents=True, exist_ok=True)
+
+
+def check_file_exists(path: str | os.PathLike) -> bool:
+    return Path(path).exists()
+
+
+def save_json(data: Dict[str, Any], path: str) -> None:
+    ensure_parent_dir(path)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    logger.info(f"JSON salvato: {path}")
+
+
 def save_dataframe(
     df: pd.DataFrame, path: str, format: str = "parquet", compression: Optional[str] = None
 ) -> None:

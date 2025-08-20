@@ -9,6 +9,7 @@ import re
 import fnmatch
 
 from utils.logger import get_logger
+from utils.io import save_json
 from preprocessing.feature_extractors import extract_geometry_features, maybe_extract_json_features
 from preprocessing.outliers import OutlierConfig, detect_outliers
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
@@ -188,6 +189,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         y_val = val_df[target_col].astype(float)
         X_val = val_df.drop(columns=[target_col])
 
+    # Preserve original-scale targets for evaluation
+    y_test_orig = y_test.copy()
+    y_val_orig = y_val.copy() if y_val is not None else None
+
     # Optional log-transform of target
     y_train, log_meta = apply_log_target_if(config, y_train)
     if log_meta.get("log"):
@@ -235,6 +240,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     logger.info(f"Profili attivi: {[k for k,v in profiles_cfg.items() if v.get('enabled', False)]}")
 
     first_profile_saved = None
+    saved_profiles: List[str] = []
+    feature_columns_per_profile: Dict[str, List[str]] = {}
 
     def save_profile(X_tr: pd.DataFrame, X_te: pd.DataFrame, y_tr: pd.Series, y_te: pd.Series, X_va: pd.DataFrame | None, y_va: pd.Series | None, prefix: str):
         X_tr.to_parquet(pre_dir / f"X_train_{prefix}.parquet", index=False)
@@ -244,7 +251,14 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if X_va is not None and y_va is not None:
             X_va.to_parquet(pre_dir / f"X_val_{prefix}.parquet", index=False)
             pd.DataFrame({target_col: y_va}).to_parquet(pre_dir / f"y_val_{prefix}.parquet", index=False)
+        # Save original-scale targets for evaluation
+        if y_test_orig is not None:
+            pd.DataFrame({target_col: y_test_orig}).to_parquet(pre_dir / f"y_test_orig_{prefix}.parquet", index=False)
+        if y_val_orig is not None:
+            pd.DataFrame({target_col: y_val_orig}).to_parquet(pre_dir / f"y_val_orig_{prefix}.parquet", index=False)
         logger.info(f"Profilo '{prefix}': salvati file train/val/test")
+        saved_profiles.append(prefix)
+        feature_columns_per_profile[prefix] = list(X_tr.columns)
 
     # Helper: numeric coercion based on train
     def coerce_numeric_like(train_df: pd.DataFrame, other_dfs: List[pd.DataFrame | None]) -> Tuple[pd.DataFrame, List[pd.DataFrame | None]]:
@@ -509,6 +523,11 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             (pre_dir / "X_val.parquet").write_bytes((pre_dir / f"X_val_{first_profile_saved}.parquet").read_bytes())
         if (pre_dir / f"y_val_{first_profile_saved}.parquet").exists():
             (pre_dir / "y_val.parquet").write_bytes((pre_dir / f"y_val_{first_profile_saved}.parquet").read_bytes())
+        # Default copies for original-scale targets
+        if (pre_dir / f"y_test_orig_{first_profile_saved}.parquet").exists():
+            (pre_dir / "y_test_orig.parquet").write_bytes((pre_dir / f"y_test_orig_{first_profile_saved}.parquet").read_bytes())
+        if (pre_dir / f"y_val_orig_{first_profile_saved}.parquet").exists():
+            (pre_dir / "y_val_orig.parquet").write_bytes((pre_dir / f"y_val_orig_{first_profile_saved}.parquet").read_bytes())
         logger.info(f"Back-compat: copiati file del profilo '{first_profile_saved}' nei nomi default e combinati in {out_path}")
 
     # Report
@@ -521,6 +540,18 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             "Test features": dataframe_profile(base_test),
         },
     )
+
+    # Save preprocessing info for evaluation
+    prep_info: Dict[str, Any] = {
+        "target_column": target_col,
+        "log_transformation": {"applied": bool(log_meta.get("log"))},
+        "profiles_saved": saved_profiles,
+        "feature_columns_per_profile": feature_columns_per_profile,
+    }
+    try:
+        save_json(prep_info, str(pre_dir / "preprocessing_info.json"))
+    except Exception as _e:
+        logger.warning(f"Impossibile salvare preprocessing_info.json: {_e}")
 
     logger.info(f"Preprocessing completato. Output in {pre_dir}")
     return out_path
