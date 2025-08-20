@@ -40,13 +40,12 @@ def sample_config() -> Dict[str, Any]:
             "year_col": "A_AnnoStipula",
             "month_col": "A_MeseStipula",
             "mode": "fraction",
-            "train_fraction": 0.8,
-            "valid_fraction": 0.1
+            "fraction": {"train": 0.8, "valid": 0.1}
         },
         "numeric_coercion": {
             "enabled": True,
             "threshold": 0.95,
-            "blacklist_patterns": ["*ID*", "*COD*"]
+            "blacklist_globs": ["*ID*", "*COD*"]
         }
     }
 
@@ -82,7 +81,7 @@ def sample_real_estate_data() -> pd.DataFrame:
         
         # JSON-like columns
         "PC_PoligonoGeoJson": [
-            f'{{"type": "Feature", "geometry": {{"type": "Polygon"}}, "properties": {{"areaMq": {np.random.uniform(50, 200):.1f}}}}}'
+            f'{"{"}"type": "Feature", "geometry": {"{"}"type": "Polygon"{"}"}, "properties": {"{"}"areaMq": {np.random.uniform(50, 200):.1f}{"}"}{"}"}}'
             for _ in range(n_samples)
         ],
         
