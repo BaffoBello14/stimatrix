@@ -151,7 +151,16 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         # BASELINE evaluation (no tuning)
         try:
             baseline_est = build_estimator(model_key, base)
-            if requires_numeric_only or mk_lower == "lightgbm":
+            if mk_lower == "catboost":
+                # Ensure CatBoost receives categorical feature indices to avoid coercion errors
+                if cat_features is None:
+                    cat_features = _catboost_cat_features(pre_dir, prefix or "catboost", X_train)
+                if X_val is None or y_val is None:
+                    baseline_est.fit(X_train, y_train, cat_features=cat_features)
+                else:
+                    baseline_est.fit(X_train, y_train, cat_features=cat_features)
+                y_pred_test_base = baseline_est.predict(X_test)
+            elif requires_numeric_only or mk_lower == "lightgbm":
                 baseline_est.fit(X_train.values if X_val is None else pd.concat([X_train, X_val]).values,
                                  y_train.values if y_val is None else pd.concat([y_train, y_val]).values)
                 y_pred_test_base = baseline_est.predict(X_test.values)
