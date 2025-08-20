@@ -4,16 +4,21 @@
 
 # Logging Configuration
 logging:
-  level: INFO
+  level: ${LOG_LEVEL:-INFO}
   format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-  file: 'logs/pipeline.log'
+  file: ${LOG_FILE:-'logs/pipeline.log'}
+  console: ${LOG_CONSOLE:-true}
+  rotate:
+    enabled: ${LOG_ROTATE:-false}
+    max_bytes: ${LOG_MAX_BYTES:-10485760}
+    backup_count: ${LOG_BACKUP_COUNT:-5}
 
 # Paths Configuration
 paths:
-  raw_data: 'data/raw'
-  preprocessed_data: 'data/preprocessed'
-  schema: 'schema/db_schema.json'
-  models_dir: 'models'
+  raw_data: ${RAW_DATA_DIR:-'data/raw'}
+  preprocessed_data: ${PREPROC_DIR:-'data/preprocessed'}
+  schema: ${SCHEMA_PATH:-'schema/db_schema.json'}
+  models_dir: ${MODELS_DIR:-'models'}
   raw_filename: 'raw.parquet'
   preprocessed_filename: 'preprocessed.parquet'
 
@@ -48,7 +53,7 @@ imputation:
   group_by_col: 'AI_IdCategoriaCatastale'
 
 # Categorical encoding
-encoding:
+encoding: &encoding_defaults
   max_ohe_cardinality: 12
 
 # Temporal split configuration
@@ -56,16 +61,18 @@ temporal_split:
   year_col: 'A_AnnoStipula'
   month_col: 'A_MeseStipula'
   mode: 'fraction'
-  train_fraction: 0.8
-  valid_fraction: 0.1
-  test_start_year: 2023
-  test_start_month: 1
+  fraction:
+    train: 0.8
+    valid: 0.1
+  date:
+    test_start_year: 2023
+    test_start_month: 1
 
 # Numeric coercion configuration
 numeric_coercion:
   enabled: true
   threshold: 0.95
-  blacklist_patterns:
+  blacklist_globs:
     - 'II_*'
     - 'AI_Id*'
     - 'Foglio'
@@ -82,7 +89,7 @@ pca: &pca_defaults
   random_state: 42
 
 # Correlation pruning
-correlation:
+correlation: &correlation_defaults
   numeric_threshold: 0.98
 
 # Non-descriptive columns pruning
@@ -121,34 +128,29 @@ profiles:
   scaled:
     enabled: true
     output_prefix: 'scaled'
-    encoding:
-      max_ohe_cardinality: 12
+    encoding: *encoding_defaults
     winsorization: *winsor_defaults
     scaling: *scaling_defaults
     pca: *pca_defaults
-    correlation:
-      numeric_threshold: 0.98
+    correlation: *correlation_defaults
   tree:
     enabled: true
     output_prefix: 'tree'
-    encoding:
-      max_ohe_cardinality: 12
-    correlation:
-      numeric_threshold: 0.98
+    encoding: *encoding_defaults
+    correlation: *correlation_defaults
   catboost:
     enabled: true
     output_prefix: 'catboost'
-    correlation:
-      numeric_threshold: 0.98
+    correlation: *correlation_defaults
 
 # Training configuration - FAST TEST VERSION
 training:
   primary_metric: "r2"
   report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
   sampler: "tpe"  # Faster than auto
-  seed: 42
-  n_jobs_default: -1
-  timeout: null
+  seed: ${SEED:-42}
+  n_jobs_default: ${N_JOBS:--1}
+  timeout: ${TRAIN_TIMEOUT:-null}
   cv_when_no_val:
     enabled: true
     kind: timeseries
