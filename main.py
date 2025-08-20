@@ -32,14 +32,25 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
-    # Propagate force-reload into config
+
+    # Ensure execution section exists and read defaults from config
+    execution_cfg = config.setdefault("execution", {})
+    # Initialize force_reload from config, then override via CLI if provided
+    force_reload_cfg = bool(execution_cfg.get("force_reload", False))
     if args.force_reload:
-        config.setdefault("execution", {})["force_reload"] = True
+        force_reload_cfg = True
+    execution_cfg["force_reload"] = force_reload_cfg
 
     # Initialize logging according to config
     setup_logger(args.config)
 
+    # Steps can come from CLI or from config.execution.steps
     steps: List[str] = args.steps or []
+    if not steps:
+        cfg_steps = execution_cfg.get("steps", [])
+        if isinstance(cfg_steps, str):
+            cfg_steps = [cfg_steps]
+        steps = list(cfg_steps)
     if not steps:
         print("Seleziona i passi da eseguire separati da spazio (schema, dataset, preprocessing, training, evaluation, all):")
         user_input = input().strip()
