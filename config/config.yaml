@@ -149,8 +149,8 @@ training:
   seed: 42
   n_jobs_default: -1
   timeout: null
-  trials_base: &trials_base 3
-  trials_advanced: &trials_advanced 3
+  trials_base: &trials_base 50
+  trials_advanced: &trials_advanced 100
   # Cross-validation usata quando non esiste un validation set esterno (valid_fraction=0)
   cv_when_no_val:
     enabled: true
@@ -320,7 +320,7 @@ training:
   # SHAP feature importance
   shap:
     enabled: true
-    sample_size: 5
+    sample_size: 500
     max_display: 30
     save_plots: true
     save_values: false
