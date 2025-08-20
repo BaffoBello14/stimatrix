@@ -8,6 +8,7 @@ import tempfile
 import shutil
 from typing import Dict, Any
 import yaml
+import json
 
 
 @pytest.fixture
@@ -81,7 +82,11 @@ def sample_real_estate_data() -> pd.DataFrame:
         
         # JSON-like columns
         "PC_PoligonoGeoJson": [
-            f'{"{"}"type": "Feature", "geometry": {"{"}"type": "Polygon"{"}"}, "properties": {"{"}"areaMq": {np.random.uniform(50, 200):.1f}{"}"}{"}"}}'
+            json.dumps({
+                "type": "Feature",
+                "geometry": {"type": "Polygon"},
+                "properties": {"areaMq": round(float(np.random.uniform(50, 200)), 1)}
+            })
             for _ in range(n_samples)
         ],
         
