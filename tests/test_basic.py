@@ -25,20 +25,19 @@ def test_imports():
 def test_feature_extraction_basic():
     """Test basilare di estrazione feature da geometrie."""
     try:
-        from feature_extraction.extractors import WKTFeatureExtractor
+        from preprocessing.feature_extractors import extract_geometry_features
         
         # Test POINT
-        extractor = WKTFeatureExtractor()
         point_data = {"wkt_col": ["POINT (12.4924 41.8902)", "POINT (9.1895 45.4642)"]}
         
         import pandas as pd
         df = pd.DataFrame(point_data)
-        result = extractor.extract(df)
+        out_df, dropped = extract_geometry_features(df)
         
         # Verifica che abbia estratto coordinate
-        assert "wkt_col_x" in result.data.columns
-        assert "wkt_col_y" in result.data.columns
-        assert len(result.data) == 2
+        assert "wkt_col_x" in out_df.columns
+        assert "wkt_col_y" in out_df.columns
+        assert len(out_df) == 2
         
         print("✓ Estrazione feature WKT funziona")
     except Exception as e:
