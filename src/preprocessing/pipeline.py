@@ -144,14 +144,18 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Temporal split FIRST to avoid leakage
     split_cfg_dict = config.get("temporal_split", {})
+    # Support new schema with nested fraction/date keys and keep backward compatibility
+    mode = split_cfg_dict.get("mode", "date")
+    frac = split_cfg_dict.get("fraction", {})
+    date = split_cfg_dict.get("date", {})
     split_cfg = TemporalSplitConfig(
         year_col=split_cfg_dict.get("year_col", "A_AnnoStipula"),
         month_col=split_cfg_dict.get("month_col", "A_MeseStipula"),
-        mode=split_cfg_dict.get("mode", "date"),
-        test_start_year=int(split_cfg_dict.get("test_start_year", 2023)),
-        test_start_month=int(split_cfg_dict.get("test_start_month", 1)),
-        train_fraction=float(split_cfg_dict.get("train_fraction", 0.8)),
-        valid_fraction=float(split_cfg_dict.get("valid_fraction", 0.0)),
+        mode=mode,
+        test_start_year=int(date.get("test_start_year", split_cfg_dict.get("test_start_year", 2023))),
+        test_start_month=int(date.get("test_start_month", split_cfg_dict.get("test_start_month", 1))),
+        train_fraction=float(frac.get("train", split_cfg_dict.get("train_fraction", 0.8))),
+        valid_fraction=float(frac.get("valid", split_cfg_dict.get("valid_fraction", 0.0))),
     )
     train_df, val_df, test_df = temporal_split_3way(Xy_full, split_cfg)
     logger.info(
@@ -265,7 +269,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         numc_cfg = config.get("numeric_coercion", {})
         enabled = bool(numc_cfg.get("enabled", True))
         threshold = float(numc_cfg.get("threshold", 0.95))
-        patterns = [str(p) for p in numc_cfg.get("blacklist_patterns", [
+        # Accept both new key 'blacklist_globs' and legacy 'blacklist_patterns'
+        patterns = [str(p) for p in (numc_cfg.get("blacklist_globs") or numc_cfg.get("blacklist_patterns") or [
             "II_*",
             "AI_Id*",
             "Foglio",
