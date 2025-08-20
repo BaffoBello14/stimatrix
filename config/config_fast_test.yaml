@@ -1,6 +1,5 @@
 # Configurazione Preprocessing Pipeline - FAST TEST VERSION
 # =================================
-# Versione ridotta per test rapidi: trials=5, shap sample_size=5
 
 # Logging Configuration
 logging:
@@ -145,7 +144,8 @@ profiles:
 
 # Training configuration - FAST TEST VERSION
 training:
-  primary_metric: "r2"
+  # Opzioni globali
+  primary_metric: "neg_root_mean_squared_error" # 'r2' | 'neg_root_mean_squared_error' | 'neg_mean_squared_error' | 'neg_mean_absolute_error' | 'neg_mean_absolute_percentage_error'
   report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
   sampler: "tpe"  # Faster than auto
   seed: ${SEED:-42}
@@ -154,10 +154,10 @@ training:
   cv_when_no_val:
     enabled: true
     kind: timeseries
-    n_splits: 3  # Reduced from 5
+    n_splits: 3
     shuffle: false
 
-  # Definizione per-modello - FAST TEST VERSION (trials=5)
+  # Definizione per-modello - FAST TEST VERSION
   models:
     linear:
       enabled: true
@@ -169,7 +169,7 @@ training:
     ridge:
       enabled: true
       profile: scaled
-      trials: 5  # Reduced from 50
+      trials: 3
       base_params: {}
       fit_params: {}
       search_space:
@@ -177,7 +177,7 @@ training:
     lasso:
       enabled: true
       profile: scaled
-      trials: 5  # Reduced from 50
+      trials: 3
       base_params: {}
       fit_params: {}
       search_space:
@@ -185,7 +185,7 @@ training:
     elasticnet:
       enabled: true
       profile: scaled
-      trials: 5
+      trials: 3
       base_params: {}
       fit_params: {}
       search_space:
@@ -194,7 +194,7 @@ training:
     knn:
       enabled: true
       profile: scaled
-      trials: 5
+      trials: 3
       base_params: {}
       fit_params: {}
       search_space:
@@ -204,7 +204,7 @@ training:
     dt:
       enabled: true
       profile: tree
-      trials: 5  # Reduced from 100
+      trials: 5
       base_params: {}
       fit_params: {}
       search_space:
@@ -216,7 +216,7 @@ training:
     rf:
       enabled: true
       profile: tree
-      trials: 5  # Reduced from 100
+      trials: 5
       base_params: {}
       fit_params: {}
       search_space:
@@ -244,7 +244,7 @@ training:
     xgboost:
       enabled: true
       profile: tree
-      trials: 5  # Reduced from 100
+      trials: 5
       base_params: {}
       fit_params: {}
       search_space:
@@ -260,7 +260,7 @@ training:
     lightgbm:
       enabled: true
       profile: tree
-      trials: 5  # Reduced from 100
+      trials: 5
       base_params: {}
       fit_params: {}
       search_space:
@@ -293,12 +293,12 @@ training:
   # SHAP feature importance - FAST TEST VERSION
   shap:
     enabled: false
-    sample_size: 5      # Reduced from 500
-    max_display: 10     # Reduced from 30
+    sample_size: 5
+    max_display: 10     
     save_plots: true
     save_values: false
 
-  # Ensemble settings - Disabled for faster tests
+  # Ensemble settings
   ensembles:
     voting:
       enabled: true

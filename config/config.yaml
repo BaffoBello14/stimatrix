@@ -145,7 +145,7 @@ profiles:
 # Training configuration
 training:
   # Opzioni globali
-  primary_metric: "r2"
+  primary_metric: "neg_root_mean_squared_error" # 'r2' | 'neg_root_mean_squared_error' | 'neg_mean_squared_error' | 'neg_mean_absolute_error' | 'neg_mean_absolute_percentage_error'
   report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
   sampler: "auto"   # auto (OptunaHub) | tpe
   seed: ${SEED:-42}
