@@ -12,6 +12,11 @@ logging:
     max_bytes: ${LOG_MAX_BYTES:-10485760}
     backup_count: ${LOG_BACKUP_COUNT:-5}
 
+# Execution Configuration - FAST TEST
+execution:
+  steps: ["all"]
+  force_reload: false
+
 # Paths Configuration
 paths:
   raw_data: ${RAW_DATA_DIR:-'data/raw'}
