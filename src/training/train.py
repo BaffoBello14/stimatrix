@@ -66,9 +66,10 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     sampler_name = tr_cfg.get("sampler", "auto")
     seed = int(tr_cfg.get("seed", 42))
     
-    # Get tuning split fraction from temporal_split config for consistency
+    # Get tuning split fraction from temporal_split config (supports new nested schema)
     temporal_cfg = config.get("temporal_split", {})
-    tuning_split_fraction = float(temporal_cfg.get("train_fraction", 0.8))
+    frac_cfg = temporal_cfg.get("fraction", {})
+    tuning_split_fraction = float(frac_cfg.get("train", temporal_cfg.get("train_fraction", 0.8)))
 
     shap_cfg = tr_cfg.get("shap", {"enabled": True})
 

@@ -47,7 +47,7 @@ imputation:
   group_by_col: 'AI_IdCategoriaCatastale'
 
 # Categorical encoding
-encoding:
+encoding: &encoding_defaults
   max_ohe_cardinality: 12
 
 # Temporal split configuration
@@ -55,16 +55,18 @@ temporal_split:
   year_col: 'A_AnnoStipula'
   month_col: 'A_MeseStipula'
   mode: 'fraction'      # 'date' | 'fraction'
-  train_fraction: 0.8   # fraction of time-ordered data for train
-  valid_fraction: 0.1   # fraction of time-ordered data for validation (0 disables val)
-  test_start_year: 2023 # used only if mode=='date'
-  test_start_month: 1   # used only if mode=='date'
+  fraction:
+    train: 0.8   # fraction of time-ordered data for train
+    valid: 0.1   # fraction of time-ordered data for validation (0 disables val)
+  date:
+    test_start_year: 2023 # used only if mode=='date'
+    test_start_month: 1   # used only if mode=='date'
 
 # Numeric coercion configuration
 numeric_coercion:
   enabled: true
   threshold: 0.95
-  blacklist_patterns:
+  blacklist_globs:
     - 'II_*'
     - 'AI_Id*'
     - 'Foglio'
@@ -81,7 +83,7 @@ pca: &pca_defaults
   random_state: 42
 
 # Correlation pruning
-correlation:
+correlation: &correlation_defaults
   numeric_threshold: 0.98
 
 # Feature extraction toggles
@@ -116,25 +118,20 @@ profiles:
   scaled:
     enabled: true
     output_prefix: 'scaled'
-    encoding:
-      max_ohe_cardinality: 12
+    encoding: *encoding_defaults
     winsorization: *winsor_defaults
     scaling: *scaling_defaults
     pca: *pca_defaults
-    correlation:
-      numeric_threshold: 0.98
+    correlation: *correlation_defaults
   tree:
     enabled: true
     output_prefix: 'tree'
-    encoding:
-      max_ohe_cardinality: 12
-    correlation:
-      numeric_threshold: 0.98
+    encoding: *encoding_defaults
+    correlation: *correlation_defaults
   catboost:
     enabled: true
     output_prefix: 'catboost'
-    correlation:
-      numeric_threshold: 0.98
+    correlation: *correlation_defaults
 
 # Training configuration
 training:

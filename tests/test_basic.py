@@ -17,35 +17,32 @@ def test_imports():
         from db import schema_extract
         from preprocessing import feature_extractors
         print("✓ Tutti i moduli si importano correttamente")
-        return True
     except ImportError as e:
         print(f"✗ Errore import: {e}")
-        return False
+        assert False, f"Errore import: {e}"
 
 
 def test_feature_extraction_basic():
     """Test basilare di estrazione feature da geometrie."""
     try:
-        from feature_extraction.extractors import WKTFeatureExtractor
+        from preprocessing.feature_extractors import extract_geometry_features
         
         # Test POINT
-        extractor = WKTFeatureExtractor()
         point_data = {"wkt_col": ["POINT (12.4924 41.8902)", "POINT (9.1895 45.4642)"]}
         
         import pandas as pd
         df = pd.DataFrame(point_data)
-        result = extractor.extract(df)
+        out_df, dropped = extract_geometry_features(df)
         
         # Verifica che abbia estratto coordinate
-        assert "wkt_col_x" in result.data.columns
-        assert "wkt_col_y" in result.data.columns
-        assert len(result.data) == 2
+        assert "wkt_col_x" in out_df.columns
+        assert "wkt_col_y" in out_df.columns
+        assert len(out_df) == 2
         
         print("✓ Estrazione feature WKT funziona")
-        return True
     except Exception as e:
         print(f"✗ Errore feature extraction: {e}")
-        return False
+        assert False, f"Errore feature extraction: {e}"
 
 
 def test_model_zoo():
@@ -71,12 +68,10 @@ def test_model_zoo():
                 print(f"✓ Modello {model_key} creato correttamente")
             except Exception as e:
                 print(f"✗ Errore creazione modello {model_key}: {e}")
-                return False
-        
-        return True
+                assert False, f"Errore creazione modello {model_key}: {e}"
     except Exception as e:
         print(f"✗ Errore model zoo: {e}")
-        return False
+        assert False, f"Errore model zoo: {e}"
 
 
 def test_data_validation():
@@ -105,10 +100,9 @@ def test_data_validation():
         assert empty_check
         
         print("✓ Validazione dati funziona")
-        return True
     except Exception as e:
         print(f"✗ Errore validazione dati: {e}")
-        return False
+        assert False, f"Errore validazione dati: {e}"
 
 
 def test_logger():
@@ -120,10 +114,9 @@ def test_logger():
         logger.info("Test logging message")
         
         print("✓ Sistema di logging funziona")
-        return True
     except Exception as e:
         print(f"✗ Errore logging: {e}")
-        return False
+        assert False, f"Errore logging: {e}"
 
 
 def run_basic_tests():
