@@ -77,3 +77,4 @@ tzdata==2025.2
 urllib3==2.5.0
 wheel==0.45.1
 xgboost==3.0.3
+wandb==0.18.7

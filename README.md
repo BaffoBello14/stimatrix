@@ -71,16 +71,16 @@ Il modulo `src/db/connect.py` usa `SecureCredentialManager` e `InputValidator` (
 Puoi definire i passi in `config.yaml` oppure passarli da CLI (la CLI ha priorità):
 ```bash
 # Esegui i passi da config
-python main.py --config config/config.yaml
+python main.py
 
 # Override passi da CLI
-python main.py --config config/config.yaml --steps preprocessing training evaluation
+python main.py --steps preprocessing training evaluation
 
 # Forza rielaborazione (se supportata dai passi)
-python main.py --config config/config.yaml --force-reload
+python main.py --force-reload
 
 # Config fast test
-python main.py --config config/config_fast_test.yaml
+python main.py --config fast
 ```
 Note:
 - Se `steps` non è impostato né in CLI né in config, il programma chiede input interattivo.
@@ -206,6 +206,36 @@ python main.py --config config/config.yaml --steps training
 # 5) Evaluation
 python main.py --config config/config.yaml --steps evaluation
 ```
+
+### Tracking esperimenti con Weights & Biases (W&B)
+Per abilitare il logging centralizzato di metriche, grafici SHAP e artefatti modelli su W&B:
+
+1. Installa le dipendenze (già incluse in `requirements.txt`):
+```bash
+pip install wandb
+```
+2. Aggiungi alla tua `config.yaml` la sezione `tracking.wandb`:
+```yaml
+tracking:
+  wandb:
+    enabled: true           # false per default; può essere forzato via env WANDB_ENABLED=1
+    project: "stimatrix"    # nome progetto su W&B
+    entity: "<team_o_user>" # opzionale
+    group: "local-dev"      # opzionale
+    tags: ["regression", "optuna"]
+    mode: online            # online | offline | disabled
+    name: null              # se omesso, autogenerato (training_YYYYmmdd_HHMMSS)
+```
+In alternativa, puoi usare variabili d'ambiente: `WANDB_ENABLED=1`, `WANDB_PROJECT`, `WANDB_ENTITY`, `WANDB_GROUP`, `WANDB_TAGS`, `WANDB_MODE`.
+
+Cosa viene loggato:
+- Metriche train/test per ogni modello e baseline (`model/<key>/train_rmse`, `model/<key>/test_r2`, ...)
+- Diagnostiche di overfit (`model/<key>/overfit_*`)
+- Tabella dei trial Optuna (se disponibile)
+- Grafici SHAP (beeswarm/bar) come immagini e dimensione sample
+- Artefatti: directory `models/` come artifact (modelli/metriche)
+
+L'integrazione è non-invasiva: se `enabled` è `false` o `wandb` non è installato, il training procede senza tracking.
 
 ### Riproducibilità e performance
 - Fissa `training.seed` e usa versioning dei file `config/*.yaml`
