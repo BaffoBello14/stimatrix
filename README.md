@@ -71,16 +71,16 @@ Il modulo `src/db/connect.py` usa `SecureCredentialManager` e `InputValidator` (
 Puoi definire i passi in `config.yaml` oppure passarli da CLI (la CLI ha priorità):
 ```bash
 # Esegui i passi da config
-python main.py --config config/config.yaml
+python main.py
 
 # Override passi da CLI
-python main.py --config config/config.yaml --steps preprocessing training evaluation
+python main.py --steps preprocessing training evaluation
 
 # Forza rielaborazione (se supportata dai passi)
-python main.py --config config/config.yaml --force-reload
+python main.py --force-reload
 
 # Config fast test
-python main.py --config config/config_fast_test.yaml
+python main.py --config fast
 ```
 Note:
 - Se `steps` non è impostato né in CLI né in config, il programma chiede input interattivo.

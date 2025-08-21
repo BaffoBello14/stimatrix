@@ -26,7 +26,13 @@ def parse_args() -> argparse.Namespace:
         help="Passi da eseguire (uno o più). Usa 'all' per tutti",
     )
     parser.add_argument("--force-reload", action="store_true", help="Forza rielaborazione anche se gli output esistono")
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # Mapping speciale per shorthand
+    if args.config.strip().lower() == "fast":
+        args.config = "config/config_fast_test.yaml"
+
+    return args
 
 
 def main() -> None:

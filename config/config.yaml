@@ -183,7 +183,7 @@ training:
     linear:
       enabled: true
       profile: scaled
-      trials: 1
+      trials: 1 # no hyperparams
       base_params: {}
       fit_params: {}
       search_space: {}
@@ -343,7 +343,7 @@ training:
     sample_size: 500
     max_display: 30
     save_plots: true
-    save_values: false
+    save_values: true
 
   # Ensemble settings
   ensembles:
