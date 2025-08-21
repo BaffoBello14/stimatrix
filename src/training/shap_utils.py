@@ -112,6 +112,14 @@ def compute_shap(
         explainer = shap.Explainer(getattr(model, "predict", model), X_bg.values)
         shap_values = explainer(Xs.values)
 
+    # Ensure SHAP values have correct feature names
+    if shap_values is not None and hasattr(Xs, 'columns'):
+        try:
+            # Set feature names on SHAP values for correct plotting
+            shap_values.feature_names = list(Xs.columns)
+        except Exception:
+            pass
+
     try:
         abs_mean = np.abs(shap_values.values).mean(axis=0)
         importance = (
