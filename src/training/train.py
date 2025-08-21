@@ -295,6 +295,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     max_display=int(shap_cfg.get("max_display", 30)),
                     keep_as_numpy=use_values_for_final,
                     random_state=seed,
+                    feature_names=list(X_tr_final.columns) if use_values_for_final else None,
                 )
                 if bool(shap_cfg.get("save_plots", True)):
                     save_shap_plots(str(model_dir / "shap"), shap_bundle, model_id)
