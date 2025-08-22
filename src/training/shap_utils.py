@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional, List
 
 import numpy as np
 import pandas as pd
@@ -54,14 +54,23 @@ def compute_shap(
     background_size: int = 500,
     keep_as_numpy: bool = False,
     random_state: int = 42,
+    feature_names: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     # Convert numpy array to DataFrame if needed, but remember original format
     was_numpy = isinstance(X, np.ndarray)
     if isinstance(X, np.ndarray):
-        X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
+        # Use provided feature names or generate generic ones
+        if feature_names is not None:
+            columns = feature_names
+        else:
+            columns = [f"feature_{i}" for i in range(X.shape[1])]
+        X = pd.DataFrame(X, columns=columns)
     elif not isinstance(X, pd.DataFrame):
         # Handle other array-like objects
-        X = pd.DataFrame(X)
+        if feature_names is not None:
+            X = pd.DataFrame(X, columns=feature_names)
+        else:
+            X = pd.DataFrame(X)
     
     if len(X) > sample_size:
         Xs = X.sample(n=sample_size, random_state=random_state)
@@ -102,6 +111,14 @@ def compute_shap(
         X_bg = X.sample(n=min(len(X), background_size), random_state=random_state)
         explainer = shap.Explainer(getattr(model, "predict", model), X_bg.values)
         shap_values = explainer(Xs.values)
+
+    # Ensure SHAP values have correct feature names
+    if shap_values is not None and hasattr(Xs, 'columns'):
+        try:
+            # Set feature names on SHAP values for correct plotting
+            shap_values.feature_names = list(Xs.columns)
+        except Exception:
+            pass
 
     try:
         abs_mean = np.abs(shap_values.values).mean(axis=0)
