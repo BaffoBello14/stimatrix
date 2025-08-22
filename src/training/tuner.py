@@ -56,8 +56,11 @@ def tune_model(
     direction = "maximize"
 
     if sampler_name == "auto":
-        module = optunahub.load_module(package="samplers/auto_sampler")
-        sampler = module.AutoSampler(seed=seed)
+        try:
+            module = optunahub.load_module(package="samplers/auto_sampler")
+            sampler = module.AutoSampler(seed=seed)
+        except Exception:
+            sampler = optuna.samplers.TPESampler(seed=seed)
     elif sampler_name == "tpe":
         sampler = optuna.samplers.TPESampler(seed=seed)
     else:

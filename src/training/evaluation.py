@@ -8,6 +8,8 @@ import pandas as pd
 
 from utils.logger import get_logger
 from utils.io import save_json
+from joblib import load as joblib_load
+from .metrics import regression_metrics
 
 logger = get_logger(__name__)
 
@@ -20,12 +22,73 @@ def _load_preprocessed_for_profile(pre_dir: Path, prefix: Optional[str]) -> Dict
     y_test = pd.read_parquet(name("y_test"))
     y_test_orig_path = name("y_test_orig")
     y_test_orig = pd.read_parquet(y_test_orig_path) if y_test_orig_path.exists() else y_test.copy()
+    group_keys_path = name("group_keys_test")
+    group_keys = pd.read_parquet(group_keys_path) if group_keys_path.exists() else None
 
     return {
         "X_test": X_test,
         "y_test": y_test,
         "y_test_orig": y_test_orig,
+        "group_keys": group_keys,
     }
+
+
+def _group_metrics(y_true: np.ndarray, y_pred: np.ndarray, groups: pd.Series) -> pd.DataFrame:
+    rows = []
+    ser = pd.Series(groups).astype("object")
+    for grp, idx in ser.groupby(ser).groups.items():
+        mask = np.zeros(len(y_true), dtype=bool)
+        mask[list(idx)] = True
+        try:
+            m = regression_metrics(y_true[mask], y_pred[mask])
+        except Exception:
+            m = {"mae": float(np.nan), "rmse": float(np.nan), "mape": float(np.nan), "r2": float(np.nan)}
+        rows.append({
+            "group": grp,
+            "count": int(mask.sum()),
+            "mae": m.get("mae"),
+            "rmse": m.get("rmse"),
+            "mape": m.get("mape"),
+            "r2": m.get("r2"),
+        })
+    return pd.DataFrame(rows).sort_values(by=["count"], ascending=False)
+
+
+def _expected_feature_columns(pre_dir: Path, prefix: Optional[str]) -> Optional[list[str]]:
+    def name(base: str) -> Path:
+        return pre_dir / (f"{base}_{prefix}.parquet" if prefix else f"{base}.parquet")
+    # Try X_train columns
+    try:
+        X_train = pd.read_parquet(name("X_train"))
+        return list(X_train.columns)
+    except Exception:
+        pass
+    # Fallback: preprocessing_info.json feature columns per profile
+    info_path = pre_dir / "preprocessing_info.json"
+    try:
+        import json
+        info = json.loads(info_path.read_text(encoding="utf-8"))
+        fmap = info.get("feature_columns_per_profile", {}) or {}
+        if prefix in fmap:
+            return list(fmap.get(prefix) or [])
+        # Last resort: first available list
+        if fmap:
+            return list(next(iter(fmap.values())) or [])
+    except Exception:
+        pass
+    return None
+
+
+def _align_test_to_train(pre_dir: Path, prefix: Optional[str], X_test: pd.DataFrame) -> pd.DataFrame:
+    cols = _expected_feature_columns(pre_dir, prefix)
+    if not cols:
+        return X_test
+    # Add missing columns with simple defaults, drop extras, order
+    missing = [c for c in cols if c not in X_test.columns]
+    for c in missing:
+        X_test[c] = 0
+    X_test = X_test.reindex(columns=cols, fill_value=0)
+    return X_test
 
 
 def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -51,6 +114,7 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
     # Decidi profilo di riferimento: se presente catboost, usa quello; altrimenti primo profilo salvato in preprocessing_info
     prep_info_path = pre_dir / "preprocessing_info.json"
     prefix: Optional[str] = None
+    log_applied: bool = False
     if prep_info_path.exists():
         try:
             import json
@@ -58,13 +122,23 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
             profiles = prep_info.get("profiles_saved", [])
             if profiles:
                 prefix = profiles[0]
+            log_applied = bool(prep_info.get("log_transformation", {}).get("applied", False))
         except Exception:
             pass
 
     data = _load_preprocessed_for_profile(pre_dir, prefix)
-    X_test = data["X_test"]
-    y_test = data["y_test"].iloc[:, 0].values
-    y_test_orig = data["y_test_orig"].iloc[:, 0].values
+    X_test_default = data["X_test"]
+    y_test_default = data["y_test"].iloc[:, 0].values
+    y_test_orig_default = data["y_test_orig"].iloc[:, 0].values
+    group_keys_default = data.get("group_keys")
+    # Resolve group column names from config
+    eval_cfg = config.get("evaluation", {}) if isinstance(config, dict) else {}
+    group_cfg = eval_cfg.get("group_columns", {})
+    if isinstance(group_cfg, dict):
+        col_omi = group_cfg.get("omi", "AI_ZonaOmi")
+        col_cat = group_cfg.get("cat", "AI_IdCategoriaCatastale")
+    else:
+        col_omi, col_cat = "AI_ZonaOmi", "AI_IdCategoriaCatastale"
 
     # Ricarica i migliori modelli: usiamo il ranking da validation_results.csv se presente
     ranking_csv = models_dir / "validation_results.csv"
@@ -101,6 +175,64 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
         results["test_metrics"] = extract
     except Exception as e:
         logger.warning(f"Impossibile estrarre test metrics dai risultati di training: {e}")
+
+    # Calcolo statistiche di errore per Zona OMI e Categoria Catastale per ciascun modello
+    grouped_stats: Dict[str, Any] = {}
+    for model_name in list(models.keys()) if 'models' in locals() else []:
+        model_dir = models_dir / model_name
+        model_file = model_dir / "model.pkl"
+        meta_file = model_dir / "metrics.json"
+        if not model_file.exists() or not meta_file.exists():
+            continue
+        try:
+            import json
+            meta = json.loads(meta_file.read_text(encoding="utf-8"))
+            model_prefix = meta.get("prefix", prefix)
+            pre = _load_preprocessed_for_profile(pre_dir, model_prefix)
+            X_test = pre["X_test"].copy()
+            y_test = pre["y_test"].iloc[:, 0].values
+            y_test_orig = pre["y_test_orig"].iloc[:, 0].values
+            group_keys = pre.get("group_keys")
+            # Fallback a default se non presenti file per prefisso
+            if X_test is None or X_test.empty:
+                X_test = X_test_default.copy()
+                y_test = y_test_default
+                y_test_orig = y_test_orig_default
+                group_keys = group_keys_default
+            # Align columns to training features
+            X_test = _align_test_to_train(pre_dir, model_prefix, X_test)
+
+            estimator = joblib_load(model_file)
+            try:
+                y_pred = estimator.predict(X_test)
+            except Exception:
+                y_pred = estimator.predict(X_test.values)
+
+            if log_applied:
+                y_true_for_groups = y_test_orig
+                y_pred_for_groups = np.expm1(y_pred)
+            else:
+                y_true_for_groups = y_test
+                y_pred_for_groups = y_pred
+
+            stats_entry: Dict[str, Any] = {}
+            if group_keys is not None and len(group_keys) == len(y_true_for_groups):
+                if col_omi in group_keys.columns:
+                    df_omi = _group_metrics(y_true_for_groups, y_pred_for_groups, group_keys[col_omi]) \
+                        .to_dict(orient="records")
+                    stats_entry["by_zona_omi"] = df_omi
+                if col_cat in group_keys.columns:
+                    df_cat = _group_metrics(y_true_for_groups, y_pred_for_groups, group_keys[col_cat]) \
+                        .to_dict(orient="records")
+                    stats_entry["by_categoria_catastale"] = df_cat
+            else:
+                logger.warning(f"Group keys non disponibili o non allineati per il modello {model_name}")
+
+            grouped_stats[model_name] = stats_entry
+        except Exception as e:
+            logger.warning(f"Impossibile calcolare grouped stats per {model_name}: {e}")
+
+    results["grouped_stats"] = grouped_stats
 
     out = models_dir / "evaluation_summary.json"
     save_json(results, str(out))
