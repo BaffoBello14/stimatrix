@@ -264,6 +264,25 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         saved_profiles.append(prefix)
         feature_columns_per_profile[prefix] = list(X_tr.columns)
 
+        # Persist group-by columns sidecar for evaluation (from base_* before encoding)
+        try:
+            gm_cfg = (config.get("evaluation", {}) or {}).get("group_metrics", {}) or {}
+            gb_cols = [c for c in (gm_cfg.get("group_by_columns", []) or []) if c in base_train.columns]
+            if gb_cols:
+                # Train
+                _df = base_train.loc[X_tr.index, gb_cols] if set(X_tr.index) == set(base_train.index) else base_train[gb_cols]
+                _df.to_parquet(pre_dir / f"group_cols_train_{prefix}.parquet", index=False)
+                # Test
+                _df = base_test.loc[X_te.index, gb_cols] if set(X_te.index) == set(base_test.index) else base_test[gb_cols]
+                _df.to_parquet(pre_dir / f"group_cols_test_{prefix}.parquet", index=False)
+                # Val (if exists)
+                if X_va is not None and base_val is not None:
+                    _df = base_val.loc[X_va.index, gb_cols] if set(X_va.index) == set(base_val.index) else base_val[gb_cols]
+                    _df.to_parquet(pre_dir / f"group_cols_val_{prefix}.parquet", index=False)
+                logger.info(f"Profilo '{prefix}': salvate colonne di gruppo per evaluation: {len(gb_cols)}")
+        except Exception as _e:
+            logger.warning(f"Impossibile salvare sidecar group-by columns per profilo '{prefix}': {_e}")
+
     # Helper: numeric coercion based on train
     def coerce_numeric_like(train_df: pd.DataFrame, other_dfs: List[pd.DataFrame | None]) -> Tuple[pd.DataFrame, List[pd.DataFrame | None]]:
         numc_cfg = config.get("numeric_coercion", {})

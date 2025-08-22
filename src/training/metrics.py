@@ -5,6 +5,8 @@ from typing import Dict
 import numpy as np
 from sklearn import metrics as skm
 
+import pandas as pd
+
 
 def _safe_mape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     y_true = np.asarray(y_true)
@@ -73,3 +75,79 @@ def select_primary_value(metric_name: str, y_true: np.ndarray, y_pred: np.ndarra
         return float(-_safe_mape(y_true, y_pred))
     else:
         raise ValueError(f"Unsupported primary metric: {metric_name}")
+
+
+def _build_price_bands(
+    y_true_orig: pd.Series,
+    method: str,
+    quantiles: list[float] | None = None,
+    fixed_edges: list[float] | None = None,
+    label_prefix: str = "PREZZO_",
+) -> pd.Series:
+    if method == "quantile":
+        qs = quantiles or [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+        edges = np.unique(np.quantile(y_true_orig.values, qs))
+        # ensure strictly increasing by nudging duplicates
+        edges = np.unique(edges)
+        bands = pd.cut(y_true_orig.values, bins=np.concatenate([[-np.inf], edges[1:-1], [np.inf]]), include_lowest=True)
+    elif method == "fixed":
+        if not fixed_edges:
+            raise ValueError("fixed_edges must be provided when price_band.method='fixed'")
+        edges = np.array(fixed_edges, dtype=float)
+        bands = pd.cut(y_true_orig.values, bins=edges, include_lowest=True)
+    else:
+        raise ValueError(f"Unsupported price band method: {method}")
+    return bands.astype(str).map(lambda s: f"{label_prefix}{s}")
+
+
+def grouped_regression_metrics(
+    y_true: pd.Series,
+    y_pred: pd.Series,
+    groups: pd.Series,
+    report_metrics: list[str] | None = None,
+    min_group_size: int = 30,
+    mape_floor: float = 1e-8,
+) -> pd.DataFrame:
+    report_metrics = report_metrics or ["r2", "rmse", "mse", "mae", "mape", "medae"]
+    df = pd.DataFrame({"y_true": y_true.values, "y_pred": y_pred.values, "__grp__": groups.values})
+    df["__valid__"] = (~pd.isna(df["y_true"]) & ~pd.isna(df["y_pred"]) & ~pd.isna(df["__grp__"]))
+    df = df.loc[df["__valid__"]].copy()
+    if df.empty:
+        return pd.DataFrame(columns=["group", *report_metrics, "count"]).astype({"group": str, "count": int})
+    out_rows: list[dict[str, float | str | int]] = []
+    for group_value, g in df.groupby("__grp__"):
+        if len(g) < int(min_group_size):
+            continue
+        yt = g["y_true"].values
+        yp = g["y_pred"].values
+        # custom mape with floor
+        denom = np.where(np.abs(yt) < max(mape_floor, 1e-8), max(mape_floor, 1e-8), np.abs(yt))
+        mape = float(np.mean(np.abs((yt - yp) / denom)))
+        mse = skm.mean_squared_error(yt, yp)
+        rmse = float(np.sqrt(mse))
+        mae = skm.mean_absolute_error(yt, yp)
+        medae = skm.median_absolute_error(yt, yp)
+        # r2 may be undefined for constant yt; guard
+        try:
+            r2 = skm.r2_score(yt, yp)
+        except Exception:
+            r2 = np.nan
+        metrics_map = {"r2": float(r2), "mse": float(mse), "rmse": float(rmse), "mae": float(mae), "mape": float(mape), "medae": float(medae)}
+        row = {"group": str(group_value), "count": int(len(g))}
+        for m in report_metrics:
+            if m in metrics_map:
+                row[m] = metrics_map[m]
+        out_rows.append(row)
+    if not out_rows:
+        return pd.DataFrame(columns=["group", *report_metrics, "count"]).astype({"group": str, "count": int})
+    result = pd.DataFrame(out_rows).sort_values(by=report_metrics[0] if report_metrics else "rmse", ascending=False)
+    return result
+
+
+__all__ = [
+    "regression_metrics",
+    "overfit_diagnostics",
+    "select_primary_value",
+    "grouped_regression_metrics",
+    "_build_price_bands",
+]
