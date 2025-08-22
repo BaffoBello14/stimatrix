@@ -94,6 +94,14 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
     y_test_default = data["y_test"].iloc[:, 0].values
     y_test_orig_default = data["y_test_orig"].iloc[:, 0].values
     group_keys_default = data.get("group_keys")
+    # Resolve group column names from config
+    eval_cfg = config.get("evaluation", {}) if isinstance(config, dict) else {}
+    group_cfg = eval_cfg.get("group_columns", {})
+    if isinstance(group_cfg, dict):
+        col_omi = group_cfg.get("omi", "AI_ZonaOmi")
+        col_cat = group_cfg.get("cat", "AI_IdCategoriaCatastale")
+    else:
+        col_omi, col_cat = "AI_ZonaOmi", "AI_IdCategoriaCatastale"
 
     # Ricarica i migliori modelli: usiamo il ranking da validation_results.csv se presente
     ranking_csv = models_dir / "validation_results.csv"
@@ -170,12 +178,12 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
 
             stats_entry: Dict[str, Any] = {}
             if group_keys is not None and len(group_keys) == len(y_true_for_groups):
-                if "ZonaOmi" in group_keys.columns:
-                    df_omi = _group_metrics(y_true_for_groups, y_pred_for_groups, group_keys["ZonaOmi"]) \
+                if col_omi in group_keys.columns:
+                    df_omi = _group_metrics(y_true_for_groups, y_pred_for_groups, group_keys[col_omi]) \
                         .to_dict(orient="records")
                     stats_entry["by_zona_omi"] = df_omi
-                if "AI_IdCategoriaCatastale" in group_keys.columns:
-                    df_cat = _group_metrics(y_true_for_groups, y_pred_for_groups, group_keys["AI_IdCategoriaCatastale"]) \
+                if col_cat in group_keys.columns:
+                    df_cat = _group_metrics(y_true_for_groups, y_pred_for_groups, group_keys[col_cat]) \
                         .to_dict(orient="records")
                     stats_entry["by_categoria_catastale"] = df_cat
             else:

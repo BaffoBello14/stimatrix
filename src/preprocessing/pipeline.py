@@ -261,7 +261,17 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if y_val_orig is not None:
             pd.DataFrame({target_col: y_val_orig}).to_parquet(pre_dir / f"y_val_orig_{prefix}.parquet", index=False)
         # Save group keys for evaluation (order aligned with X_test)
-        _group_cols = [c for c in ["ZonaOmi", "AI_IdCategoriaCatastale"] if c in base_test.columns]
+        eval_cfg = (config or {}).get("evaluation", {}) if isinstance(config, dict) else {}
+        group_cfg = eval_cfg.get("group_columns", {})
+        default_cols = ["AI_ZonaOmi", "AI_IdCategoriaCatastale"]
+        if isinstance(group_cfg, dict):
+            requested = [v for v in [group_cfg.get("omi"), group_cfg.get("cat")] if v]
+        elif isinstance(group_cfg, list):
+            requested = list(group_cfg)
+        else:
+            requested = []
+        candidate_cols = requested or default_cols
+        _group_cols = [c for c in candidate_cols if c in base_test.columns]
         if _group_cols:
             base_test[_group_cols].to_parquet(pre_dir / f"group_keys_test_{prefix}.parquet", index=False)
         logger.info(f"Profilo '{prefix}': salvati file train/val/test")
