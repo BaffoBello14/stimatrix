@@ -92,11 +92,11 @@ numeric_coercion:
   blacklist_globs:
     - 'II_*'
     - 'AI_Id*'
-    - 'Foglio'
-    - 'Particella*'
-    - 'Subalterno'
-    - 'SezioneAmministrativa'
-    - 'AI_ZonaOmi'
+    - '*Foglio'
+    - '*Particella*'
+    - '*Subalterno'
+    - '*SezioneAmministrativa'
+    - '*ZonaOmi'
     - '*COD*'
 
 # PCA configuration
