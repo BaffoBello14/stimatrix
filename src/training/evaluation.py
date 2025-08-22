@@ -54,6 +54,27 @@ def _group_metrics(y_true: np.ndarray, y_pred: np.ndarray, groups: pd.Series) ->
     return pd.DataFrame(rows).sort_values(by=["count"], ascending=False)
 
 
+def _align_test_to_train(pre_dir: Path, prefix: Optional[str], X_test: pd.DataFrame) -> pd.DataFrame:
+    def name(base: str) -> Path:
+        return pre_dir / (f"{base}_{prefix}.parquet" if prefix else f"{base}.parquet")
+    try:
+        X_train = pd.read_parquet(name("X_train"))
+    except Exception:
+        return X_test
+    train_cols = list(X_train.columns)
+    train_dtypes = X_train.dtypes
+    # Add missing columns with dtype-aware defaults
+    missing = [c for c in train_cols if c not in X_test.columns]
+    for c in missing:
+        if str(train_dtypes[c]) in ("object", "category"):
+            X_test[c] = "UNKNOWN"
+        else:
+            X_test[c] = 0
+    # Drop extras and order columns
+    X_test = X_test.reindex(columns=train_cols, fill_value=0)
+    return X_test
+
+
 def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
     paths = config.get("paths", {})
     pre_dir = Path(paths.get("preprocessed_data", "data/preprocessed"))
@@ -152,16 +173,18 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
             meta = json.loads(meta_file.read_text(encoding="utf-8"))
             model_prefix = meta.get("prefix", prefix)
             pre = _load_preprocessed_for_profile(pre_dir, model_prefix)
-            X_test = pre["X_test"]
+            X_test = pre["X_test"].copy()
             y_test = pre["y_test"].iloc[:, 0].values
             y_test_orig = pre["y_test_orig"].iloc[:, 0].values
             group_keys = pre.get("group_keys")
             # Fallback a default se non presenti file per prefisso
             if X_test is None or X_test.empty:
-                X_test = X_test_default
+                X_test = X_test_default.copy()
                 y_test = y_test_default
                 y_test_orig = y_test_orig_default
                 group_keys = group_keys_default
+            # Align columns to training features
+            X_test = _align_test_to_train(pre_dir, model_prefix, X_test)
 
             estimator = joblib_load(model_file)
             try:
