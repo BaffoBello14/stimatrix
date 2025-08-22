@@ -96,7 +96,7 @@ numeric_coercion:
     - 'Particella*'
     - 'Subalterno'
     - 'SezioneAmministrativa'
-    - 'ZonaOmi'
+    - 'AI_ZonaOmi'
     - '*COD*'
 
 # PCA configuration
@@ -177,6 +177,14 @@ training:
     kind: timeseries   # 'timeseries' | 'kfold'
     n_splits: 5
     shuffle: false     # usato solo per kfold
+
+# NEW: Group metrics configuration
+group_metrics:
+  columns: ["AI_ZonaOmi", "AI_IdCategoriaCatastale"]
+  # values: mapping column -> list of allowed labels to include; empty => all
+  values:
+    AI_ZonaOmi: []
+    AI_IdCategoriaCatastale: []
 
   # Definizione per-modello (schema minimale)
   models:

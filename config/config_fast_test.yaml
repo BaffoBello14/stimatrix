@@ -94,7 +94,7 @@ numeric_coercion:
     - 'Particella*'
     - 'Subalterno'
     - 'SezioneAmministrativa'
-    - 'ZonaOmi'
+    - 'AI_ZonaOmi'
     - '*COD*'
 
 # PCA configuration
@@ -172,6 +172,13 @@ training:
     kind: timeseries
     n_splits: 3
     shuffle: false
+
+# NEW: Group metrics configuration
+group_metrics:
+  columns: ["AI_ZonaOmi", "AI_IdCategoriaCatastale"]
+  values:
+    AI_ZonaOmi: []
+    AI_IdCategoriaCatastale: []
 
   # Definizione per-modello - FAST TEST VERSION
   models:

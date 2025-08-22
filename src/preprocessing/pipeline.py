@@ -261,7 +261,9 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if y_val_orig is not None:
             pd.DataFrame({target_col: y_val_orig}).to_parquet(pre_dir / f"y_val_orig_{prefix}.parquet", index=False)
         # NEW: persist grouping columns for the test split before encodings drop them
-        group_cols = [c for c in ["ZonaOmi", "AI_IdCategoriaCatastale"] if c in base_test.columns]
+        gm_cfg = config.get("group_metrics", {})
+        gm_cols = list(gm_cfg.get("columns", ["AI_ZonaOmi", "AI_IdCategoriaCatastale"]))
+        group_cols = [c for c in gm_cols if c in base_test.columns]
         if group_cols:
             base_test[group_cols].to_parquet(pre_dir / f"groups_test_{prefix}.parquet", index=False)
         logger.info(f"Profilo '{prefix}': salvati file train/val/test")
@@ -281,7 +283,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             "Particella*",
             "Subalterno",
             "SezioneAmministrativa",
-            "ZonaOmi",
+            "AI_ZonaOmi",
             "*COD*",
         ])]
         patterns_upper = [p.upper() for p in patterns]

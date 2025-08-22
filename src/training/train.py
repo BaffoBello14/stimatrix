@@ -71,6 +71,11 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     sampler_name = tr_cfg.get("sampler", "auto")
     seed = int(tr_cfg.get("seed", 42))
     
+    # Group metrics configuration
+    gm_cfg = config.get("group_metrics", {})
+    group_columns: List[str] = list(gm_cfg.get("columns", ["AI_ZonaOmi", "AI_IdCategoriaCatastale"]))
+    group_values: Dict[str, List[Any]] = gm_cfg.get("values", {}) or {}
+    
     # Get tuning split fraction from temporal_split config (supports new nested schema)
     temporal_cfg = config.get("temporal_split", {})
     frac_cfg = temporal_cfg.get("fraction", {})
@@ -289,10 +294,13 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     "y_pred": y_pred_test,
                 })
                 df_eval = pd.concat([df_eval, groups_df], axis=1)
-                for col in [c for c in ["ZonaOmi", "AI_IdCategoriaCatastale"] if c in df_eval.columns]:
+                for col in [c for c in group_columns if c in df_eval.columns]:
                     grp = df_eval.groupby(col)
+                    allowed_set = set(group_values.get(col, []))
                     rows = []
                     for g, d in grp:
+                        if allowed_set and g not in allowed_set:
+                            continue
                         try:
                             mt = regression_metrics(d["y_true"].values, d["y_pred"].values)
                             rows.append({col: g, **mt, "count": len(d)})
@@ -425,10 +433,13 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     "y_pred": y_pred_test,
                 })
                 df_eval = pd.concat([df_eval, groups_df], axis=1)
-                for col in [c for c in ["ZonaOmi", "AI_IdCategoriaCatastale"] if c in df_eval.columns]:
+                for col in [c for c in group_columns if c in df_eval.columns]:
                     grp = df_eval.groupby(col)
+                    allowed_set = set(group_values.get(col, []))
                     rows = []
                     for g, d in grp:
+                        if allowed_set and g not in allowed_set:
+                            continue
                         try:
                             mt = regression_metrics(d["y_true"].values, d["y_pred"].values)
                             rows.append({col: g, **mt, "count": len(d)})
@@ -498,10 +509,13 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     "y_pred": y_pred_test,
                 })
                 df_eval = pd.concat([df_eval, groups_df], axis=1)
-                for col in [c for c in ["ZonaOmi", "AI_IdCategoriaCatastale"] if c in df_eval.columns]:
+                for col in [c for c in group_columns if c in df_eval.columns]:
                     grp = df_eval.groupby(col)
+                    allowed_set = set(group_values.get(col, []))
                     rows = []
                     for g, d in grp:
+                        if allowed_set and g not in allowed_set:
+                            continue
                         try:
                             mt = regression_metrics(d["y_true"].values, d["y_pred"].values)
                             rows.append({col: g, **mt, "count": len(d)})
