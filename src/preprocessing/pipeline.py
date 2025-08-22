@@ -260,6 +260,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             pd.DataFrame({target_col: y_test_orig}).to_parquet(pre_dir / f"y_test_orig_{prefix}.parquet", index=False)
         if y_val_orig is not None:
             pd.DataFrame({target_col: y_val_orig}).to_parquet(pre_dir / f"y_val_orig_{prefix}.parquet", index=False)
+        # NEW: persist grouping columns for the test split before encodings drop them
+        group_cols = [c for c in ["ZonaOmi", "AI_IdCategoriaCatastale"] if c in base_test.columns]
+        if group_cols:
+            base_test[group_cols].to_parquet(pre_dir / f"groups_test_{prefix}.parquet", index=False)
         logger.info(f"Profilo '{prefix}': salvati file train/val/test")
         saved_profiles.append(prefix)
         feature_columns_per_profile[prefix] = list(X_tr.columns)
@@ -533,6 +537,9 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             (pre_dir / "y_test_orig.parquet").write_bytes((pre_dir / f"y_test_orig_{first_profile_saved}.parquet").read_bytes())
         if (pre_dir / f"y_val_orig_{first_profile_saved}.parquet").exists():
             (pre_dir / "y_val_orig.parquet").write_bytes((pre_dir / f"y_val_orig_{first_profile_saved}.parquet").read_bytes())
+        # NEW: copy default groups_test for first profile
+        if (pre_dir / f"groups_test_{first_profile_saved}.parquet").exists():
+            (pre_dir / "groups_test.parquet").write_bytes((pre_dir / f"groups_test_{first_profile_saved}.parquet").read_bytes())
         logger.info(f"Back-compat: copiati file del profilo '{first_profile_saved}' nei nomi default e combinati in {out_path}")
 
     # Report

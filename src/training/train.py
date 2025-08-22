@@ -275,6 +275,42 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "overfit": diag,
         }
         (model_dir / "metrics.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        # NEW: compute per-group metrics for ZonaOmi and AI_IdCategoriaCatastale
+        try:
+            def _name(base: str) -> Path:
+                return pre_dir / (f"{base}_{prefix}.parquet" if prefix else f"{base}.parquet")
+            groups_path = _name("groups_test")
+            if groups_path.exists():
+                groups_df = pd.read_parquet(groups_path)
+                # Align indices to y_test
+                groups_df = groups_df.reset_index(drop=True).iloc[: len(y_test)]
+                df_eval = pd.DataFrame({
+                    "y_true": y_test.values,
+                    "y_pred": y_pred_test,
+                })
+                df_eval = pd.concat([df_eval, groups_df], axis=1)
+                for col in [c for c in ["ZonaOmi", "AI_IdCategoriaCatastale"] if c in df_eval.columns]:
+                    grp = df_eval.groupby(col)
+                    rows = []
+                    for g, d in grp:
+                        try:
+                            mt = regression_metrics(d["y_true"].values, d["y_pred"].values)
+                            rows.append({col: g, **mt, "count": len(d)})
+                        except Exception:
+                            rows.append({col: g, "r2": np.nan, "mse": np.nan, "rmse": np.nan, "mae": np.nan, "mape": np.nan, "explained_variance": np.nan, "medae": np.nan, "count": len(d)})
+                    if rows:
+                        df_rows = pd.DataFrame(rows)
+                        out_csv = model_dir / f"group_metrics_by_{col}.csv"
+                        df_rows.to_csv(out_csv, index=False)
+                        try:
+                            wb.log({f"group_metrics/{model_key}/{col}": df_rows})
+                        except Exception:
+                            pass
+            else:
+                logger.info(f"groups_test parquet non trovato per prefix={prefix}; skip metriche per-gruppo")
+        except Exception as e:
+            logger.warning(f"Impossibile calcolare metriche per-gruppo per {model_key}: {e}")
+        # end NEW per-group metrics
         # Log Optuna trials table and model directory as artifact
         try:
             df_trials = tuning.study.trials_dataframe()
@@ -376,6 +412,39 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         })
         logger.info(f"[voting] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
         wb.log_prefixed_metrics("ensemble/voting", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
+        # NEW: ensemble per-group metrics if available
+        try:
+            def _name_e(base: str) -> Path:
+                return pre_dir / (f"{base}_{prefix}.parquet" if prefix else f"{base}.parquet")
+            groups_path = _name_e("groups_test")
+            if groups_path.exists():
+                groups_df = pd.read_parquet(groups_path)
+                groups_df = groups_df.reset_index(drop=True).iloc[: len(y_test)]
+                df_eval = pd.DataFrame({
+                    "y_true": y_test.values,
+                    "y_pred": y_pred_test,
+                })
+                df_eval = pd.concat([df_eval, groups_df], axis=1)
+                for col in [c for c in ["ZonaOmi", "AI_IdCategoriaCatastale"] if c in df_eval.columns]:
+                    grp = df_eval.groupby(col)
+                    rows = []
+                    for g, d in grp:
+                        try:
+                            mt = regression_metrics(d["y_true"].values, d["y_pred"].values)
+                            rows.append({col: g, **mt, "count": len(d)})
+                        except Exception:
+                            rows.append({col: g, "r2": np.nan, "mse": np.nan, "rmse": np.nan, "mae": np.nan, "mape": np.nan, "explained_variance": np.nan, "medae": np.nan, "count": len(d)})
+                    if rows:
+                        df_rows = pd.DataFrame(rows)
+                        out_csv = ens_dir / f"group_metrics_by_{col}.csv"
+                        df_rows.to_csv(out_csv, index=False)
+                        try:
+                            wb.log({f"group_metrics/{ens_id}/{col}": df_rows})
+                        except Exception:
+                            pass
+        except Exception as e:
+            logger.warning(f"Impossibile calcolare metriche per-gruppo per ensemble {ens_id}: {e}")
+        # end NEW
 
     if ens_cfg.get("stacking", {}).get("enabled", False) and len(ranked) >= 2:
         top_n = int(ens_cfg.get("stacking", {}).get("top_n", 5))
@@ -416,6 +485,39 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         })
         logger.info(f"[stacking] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
         wb.log_prefixed_metrics("ensemble/stacking", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
+        # NEW: ensemble per-group metrics if available
+        try:
+            def _name_e2(base: str) -> Path:
+                return pre_dir / (f"{base}_{prefix}.parquet" if prefix else f"{base}.parquet")
+            groups_path = _name_e2("groups_test")
+            if groups_path.exists():
+                groups_df = pd.read_parquet(groups_path)
+                groups_df = groups_df.reset_index(drop=True).iloc[: len(y_test)]
+                df_eval = pd.DataFrame({
+                    "y_true": y_test.values,
+                    "y_pred": y_pred_test,
+                })
+                df_eval = pd.concat([df_eval, groups_df], axis=1)
+                for col in [c for c in ["ZonaOmi", "AI_IdCategoriaCatastale"] if c in df_eval.columns]:
+                    grp = df_eval.groupby(col)
+                    rows = []
+                    for g, d in grp:
+                        try:
+                            mt = regression_metrics(d["y_true"].values, d["y_pred"].values)
+                            rows.append({col: g, **mt, "count": len(d)})
+                        except Exception:
+                            rows.append({col: g, "r2": np.nan, "mse": np.nan, "rmse": np.nan, "mae": np.nan, "mape": np.nan, "explained_variance": np.nan, "medae": np.nan, "count": len(d)})
+                    if rows:
+                        df_rows = pd.DataFrame(rows)
+                        out_csv = ens_dir / f"group_metrics_by_{col}.csv"
+                        df_rows.to_csv(out_csv, index=False)
+                        try:
+                            wb.log({f"group_metrics/{ens_id}/{col}": df_rows})
+                        except Exception:
+                            pass
+        except Exception as e:
+            logger.warning(f"Impossibile calcolare metriche per-gruppo per ensemble {ens_id}: {e}")
+        # end NEW
 
     # Build and persist ranking table
     try:
