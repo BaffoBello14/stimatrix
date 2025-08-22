@@ -90,11 +90,11 @@ numeric_coercion:
   blacklist_globs:
     - 'II_*'
     - 'AI_Id*'
-    - 'Foglio'
-    - 'Particella*'
-    - 'Subalterno'
-    - 'SezioneAmministrativa'
-    - 'ZonaOmi'
+    - '*Foglio'
+    - '*Particella*'
+    - '*Subalterno'
+    - '*SezioneAmministrativa'
+    - '*ZonaOmi'
     - '*COD*'
 
 # PCA configuration
@@ -172,6 +172,13 @@ training:
     kind: timeseries
     n_splits: 3
     shuffle: false
+
+# NEW: Group metrics configuration
+group_metrics:
+  columns: ["AI_ZonaOmi", "AI_IdCategoriaCatastale"]
+  values:
+    AI_ZonaOmi: []
+    AI_IdCategoriaCatastale: []
 
   # Definizione per-modello - FAST TEST VERSION
   models:
