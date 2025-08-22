@@ -54,24 +54,40 @@ def _group_metrics(y_true: np.ndarray, y_pred: np.ndarray, groups: pd.Series) ->
     return pd.DataFrame(rows).sort_values(by=["count"], ascending=False)
 
 
-def _align_test_to_train(pre_dir: Path, prefix: Optional[str], X_test: pd.DataFrame) -> pd.DataFrame:
+def _expected_feature_columns(pre_dir: Path, prefix: Optional[str]) -> Optional[list[str]]:
     def name(base: str) -> Path:
         return pre_dir / (f"{base}_{prefix}.parquet" if prefix else f"{base}.parquet")
+    # Try X_train columns
     try:
         X_train = pd.read_parquet(name("X_train"))
+        return list(X_train.columns)
     except Exception:
+        pass
+    # Fallback: preprocessing_info.json feature columns per profile
+    info_path = pre_dir / "preprocessing_info.json"
+    try:
+        import json
+        info = json.loads(info_path.read_text(encoding="utf-8"))
+        fmap = info.get("feature_columns_per_profile", {}) or {}
+        if prefix in fmap:
+            return list(fmap.get(prefix) or [])
+        # Last resort: first available list
+        if fmap:
+            return list(next(iter(fmap.values())) or [])
+    except Exception:
+        pass
+    return None
+
+
+def _align_test_to_train(pre_dir: Path, prefix: Optional[str], X_test: pd.DataFrame) -> pd.DataFrame:
+    cols = _expected_feature_columns(pre_dir, prefix)
+    if not cols:
         return X_test
-    train_cols = list(X_train.columns)
-    train_dtypes = X_train.dtypes
-    # Add missing columns with dtype-aware defaults
-    missing = [c for c in train_cols if c not in X_test.columns]
+    # Add missing columns with simple defaults, drop extras, order
+    missing = [c for c in cols if c not in X_test.columns]
     for c in missing:
-        if str(train_dtypes[c]) in ("object", "category"):
-            X_test[c] = "UNKNOWN"
-        else:
-            X_test[c] = 0
-    # Drop extras and order columns
-    X_test = X_test.reindex(columns=train_cols, fill_value=0)
+        X_test[c] = 0
+    X_test = X_test.reindex(columns=cols, fill_value=0)
     return X_test
 
 
