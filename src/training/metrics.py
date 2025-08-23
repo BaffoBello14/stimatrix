@@ -84,20 +84,22 @@ def _build_price_bands(
     fixed_edges: list[float] | None = None,
     label_prefix: str = "PREZZO_",
 ) -> pd.Series:
+    # Ensure Series
+    if not isinstance(y_true_orig, pd.Series):
+        y_true_orig = pd.Series(y_true_orig)
     if method == "quantile":
         qs = quantiles or [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-        edges = np.unique(np.quantile(y_true_orig.values, qs))
-        # ensure strictly increasing by nudging duplicates
-        edges = np.unique(edges)
-        bands = pd.cut(y_true_orig.values, bins=np.concatenate([[-np.inf], edges[1:-1], [np.inf]]), include_lowest=True)
+        # Use qcut for quantile-based bands; drop duplicate edges if present
+        cuts = pd.qcut(y_true_orig, q=qs, duplicates='drop')
     elif method == "fixed":
         if not fixed_edges:
             raise ValueError("fixed_edges must be provided when price_band.method='fixed'")
-        edges = np.array(fixed_edges, dtype=float)
-        bands = pd.cut(y_true_orig.values, bins=edges, include_lowest=True)
+        cuts = pd.cut(y_true_orig, bins=fixed_edges, include_lowest=True)
     else:
         raise ValueError(f"Unsupported price band method: {method}")
-    return bands.astype(str).map(lambda s: f"{label_prefix}{s}")
+    labels = pd.Series(cuts).astype(str).map(lambda s: f"{label_prefix}{s}")
+    labels.index = y_true_orig.index
+    return labels
 
 
 def grouped_regression_metrics(
