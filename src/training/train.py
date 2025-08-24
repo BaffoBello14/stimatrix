@@ -11,7 +11,7 @@ from joblib import dump
 from utils.logger import get_logger
 from .tuner import tune_model
 from .model_zoo import build_estimator
-from .metrics import regression_metrics, overfit_diagnostics
+from .metrics import regression_metrics, overfit_diagnostics, grouped_regression_metrics, _build_price_bands
 from .ensembles import build_voting, build_stacking
 from .shap_utils import compute_shap, save_shap_plots
 from utils.wandb_utils import WandbTracker
@@ -77,6 +77,26 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     tuning_split_fraction = float(frac_cfg.get("train", temporal_cfg.get("train_fraction", 0.8)))
 
     shap_cfg = tr_cfg.get("shap", {"enabled": True})
+
+    # Group-metrics configuration
+    eval_cfg: Dict[str, Any] = config.get("evaluation", {}) or {}
+    gm_cfg: Dict[str, Any] = eval_cfg.get("group_metrics", {}) or {}
+    gm_enabled: bool = bool(gm_cfg.get("enabled", True))
+    gm_report_metrics: List[str] = list(gm_cfg.get("report_metrics", report_metrics))
+    gm_min_group_size: int = int(gm_cfg.get("min_group_size", 30))
+    gm_original_scale: bool = bool(gm_cfg.get("original_scale", True))
+    gm_log_wandb: bool = bool(gm_cfg.get("log_wandb", True))
+    price_cfg: Dict[str, Any] = gm_cfg.get("price_band", {}) or {}
+
+    # Read preprocessing info to know if log-transform was applied
+    prep_info_path = pre_dir / "preprocessing_info.json"
+    log_applied_global: bool = False
+    if prep_info_path.exists():
+        try:
+            prep_info = json.loads(prep_info_path.read_text(encoding="utf-8"))
+            log_applied_global = bool(((prep_info or {}).get("log_transformation", {}) or {}).get("applied", False))
+        except Exception:
+            log_applied_global = False
 
     # Raccogli definizioni per-modello
     models_cfg: Dict[str, Any] = tr_cfg.get("models", {})
@@ -275,6 +295,90 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "overfit": diag,
         }
         (model_dir / "metrics.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+
+        # Per-group metrics on test set (option 1)
+        if gm_enabled:
+            try:
+                # Determine ground truth and predictions for grouping (original scale optional)
+                y_true_series: pd.Series
+                y_pred_series: pd.Series
+                if gm_original_scale:
+                    # Load original-scale y_test if available
+                    y_test_orig_path = pre_dir / (f"y_test_orig_{prefix}.parquet" if prefix else "y_test_orig.parquet")
+                    if y_test_orig_path.exists():
+                        y_true_series = pd.read_parquet(y_test_orig_path).iloc[:, 0]
+                    else:
+                        # Fallback: invert from log if applied, else use y_test
+                        if log_applied_global:
+                            y_true_series = pd.Series(np.expm1(y_test.values))
+                        else:
+                            y_true_series = y_test
+                    # Predictions to original scale
+                    if log_applied_global:
+                        y_pred_series = pd.Series(np.expm1(y_pred_test))
+                    else:
+                        y_pred_series = pd.Series(y_pred_test)
+                else:
+                    y_true_series = y_test
+                    y_pred_series = pd.Series(y_pred_test)
+
+                # Load configured group-by columns for TEST split
+                group_cols_path = pre_dir / (f"group_cols_test_{prefix}.parquet" if prefix else "group_cols_test.parquet")
+                if group_cols_path.exists():
+                    grp_df = pd.read_parquet(group_cols_path)
+                    gb_cols_cfg: List[str] = [c for c in (gm_cfg.get("group_by_columns", []) or []) if c in grp_df.columns]
+                else:
+                    grp_df = pd.DataFrame()
+                    gb_cols_cfg = []
+
+                # Compute and save grouped metrics for each configured column
+                for gb_col in gb_cols_cfg:
+                    groups = grp_df[gb_col].fillna("MISSING")
+                    gm_df = grouped_regression_metrics(
+                        y_true=y_true_series,
+                        y_pred=y_pred_series,
+                        groups=groups,
+                        report_metrics=gm_report_metrics,
+                        min_group_size=gm_min_group_size,
+                        mape_floor=float(price_cfg.get("mape_floor", 1e-8)),
+                    )
+                    if not gm_df.empty:
+                        out_csv = model_dir / f"group_metrics_{gb_col}.csv"
+                        gm_df.to_csv(out_csv, index=False)
+                        if gm_log_wandb:
+                            try:
+                                wb.log_artifact(out_csv, name=f"{model_key}_{gb_col}_group_metrics.csv", type="metrics")
+                            except Exception:
+                                pass
+
+                # Price-band grouped metrics
+                if price_cfg:
+                    bands = _build_price_bands(
+                        y_true_orig=y_true_series,
+                        method=str(price_cfg.get("method", "quantile")),
+                        quantiles=price_cfg.get("quantiles"),
+                        fixed_edges=price_cfg.get("fixed_edges"),
+                        label_prefix=str(price_cfg.get("label_prefix", "PREZZO_")),
+                    )
+                    gm_price = grouped_regression_metrics(
+                        y_true=y_true_series,
+                        y_pred=y_pred_series,
+                        groups=bands,
+                        report_metrics=gm_report_metrics,
+                        min_group_size=gm_min_group_size,
+                        mape_floor=float(price_cfg.get("mape_floor", 1e-8)),
+                    )
+                    if not gm_price.empty:
+                        out_csv = model_dir / "group_metrics_price_band.csv"
+                        gm_price.to_csv(out_csv, index=False)
+                        if gm_log_wandb:
+                            try:
+                                wb.log_artifact(out_csv, name=f"{model_key}_price_band_metrics.csv", type="metrics")
+                            except Exception:
+                                pass
+            except Exception as e:
+                logger.warning(f"Per-group metrics failed for {model_key}: {e}")
+
         # Log Optuna trials table and model directory as artifact
         try:
             df_trials = tuning.study.trials_dataframe()

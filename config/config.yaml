@@ -356,3 +356,19 @@ training:
       top_n: 5
       final_estimator: "ridge"
       cv_folds: 5
+
+# Evaluation configuration
+evaluation:
+  group_metrics:
+    enabled: true
+    group_by_columns: ['AI_ZonaOmi', 'AI_IdCategoriaCatastale']
+    min_group_size: 30
+    original_scale: true
+    report_metrics: ['r2', 'rmse', 'mse', 'mae', 'mape', 'medae']
+    price_band:
+      method: 'quantile'   # 'quantile' | 'fixed'
+      quantiles: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+      # fixed_edges: [0, 100000, 200000, 400000, 800000, 1600000, .inf]
+      mape_floor: 1000.0
+      merge_small_bins: true
+      label_prefix: 'PREZZO_'
