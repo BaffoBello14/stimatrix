@@ -56,7 +56,7 @@ coverage.xml
 
 # Jupyter Notebooks
 .ipynb_checkpoints/
-*.ipynb
+#*.ipynb
 
 # ----------------
 # ML Pipeline Specific
