@@ -54,10 +54,6 @@ coverage.xml
 .hypothesis/
 .nox/
 
-# Jupyter Notebooks
-.ipynb_checkpoints/
-#*.ipynb
-
 # ----------------
 # ML Pipeline Specific
 # ----------------
@@ -66,7 +62,7 @@ coverage.xml
 schema/
 
 # Raw Data
-#data/raw/
+data/raw/
 
 # Preprocessed Data
 data/preprocessed/
