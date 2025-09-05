@@ -310,7 +310,7 @@ training:
   shap:
     enabled: true
     sample_size: 5
-    max_display: 10     
+    max_display: 10
     save_plots: true
     save_values: true
 
@@ -330,7 +330,7 @@ training:
 evaluation:
   group_metrics:
     enabled: true
-    group_by_columns: ['AI_ZonaOmi', 'AI_IdCategoriaCatastale']
+    group_by_columns: ['AI_ZonaOmi', 'AI_IdCategoriaCatastale', 'AI_IdTipologiaEdilizia']
     min_group_size: 10
     original_scale: true
     report_metrics: ['r2', 'rmse', 'mse', 'mae', 'mape', 'medae']

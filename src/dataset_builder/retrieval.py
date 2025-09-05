@@ -162,12 +162,10 @@ class DatasetBuilder:
             {poi_joins_str}
         WHERE 
             A.TotaleFabbricati = A.TotaleImmobili
-            AND AI.IdTipologiaEdilizia IS NOT NULL
             AND A.Id NOT IN (
                 SELECT IdAtto
                 FROM AttiImmobili
                 WHERE Superficie IS NULL
-                OR IdTipologiaEdilizia IS NULL
             )
         ORDER BY A.Id
         """
@@ -198,12 +196,10 @@ class DatasetBuilder:
                 AND A.Semestre = OZ.IdAnnoSemestre
         WHERE 
             A.TotaleFabbricati = A.TotaleImmobili
-            AND AI.IdTipologiaEdilizia IS NOT NULL
             AND A.Id NOT IN (
                 SELECT IdAtto
                 FROM AttiImmobili
                 WHERE Superficie IS NULL
-                OR IdTipologiaEdilizia IS NULL
             )
         ORDER BY A.Id
         """

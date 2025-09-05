@@ -361,7 +361,7 @@ training:
 evaluation:
   group_metrics:
     enabled: true
-    group_by_columns: ['AI_ZonaOmi', 'AI_IdCategoriaCatastale']
+    group_by_columns: ['AI_ZonaOmi', 'AI_IdCategoriaCatastale', 'AI_IdTipologiaEdilizia']
     min_group_size: 30
     original_scale: true
     report_metrics: ['r2', 'rmse', 'mse', 'mae', 'mape', 'medae']
