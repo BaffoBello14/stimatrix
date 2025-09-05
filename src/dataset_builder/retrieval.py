@@ -223,14 +223,37 @@ class DatasetBuilder:
         logger.info("Rimozione colonne duplicate...")
         cols = df.columns.tolist()
         to_drop: set[str] = set()
+        # Protect columns required by downstream steps (price estimation and targets)
+        protected_columns: set[str] = {
+            "A_Id",
+            "A_Prezzo",
+            "AI_Superficie",
+            "OV_ValoreMercatoMin_normale",
+            "OV_ValoreMercatoMax_normale",
+            "AI_Prezzo_Ridistribuito",
+        }
         for i in range(len(cols)):
+            if cols[i] in to_drop:
+                continue
             for j in range(i + 1, len(cols)):
                 if cols[j] in to_drop:
                     continue
                 s1 = df[cols[i]].fillna("##nan##")
                 s2 = df[cols[j]].fillna("##nan##")
                 if s1.equals(s2):
-                    to_drop.add(cols[j])
+                    # Decide which duplicate to drop, preserving protected columns
+                    col_i_protected = cols[i] in protected_columns
+                    col_j_protected = cols[j] in protected_columns
+                    if col_i_protected and col_j_protected:
+                        # Keep both if both are protected
+                        continue
+                    elif col_i_protected and not col_j_protected:
+                        to_drop.add(cols[j])
+                    elif col_j_protected and not col_i_protected:
+                        to_drop.add(cols[i])
+                    else:
+                        # If none protected, drop the latter (stable behavior)
+                        to_drop.add(cols[j])
         if to_drop:
             df = df.drop(columns=list(to_drop))
             logger.info(f"Colonne duplicate rimosse: {list(to_drop)}")
