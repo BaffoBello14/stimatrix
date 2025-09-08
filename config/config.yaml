@@ -57,9 +57,9 @@ target:
 outliers:
   method: 'ensemble'       # 'iqr' | 'zscore' | 'iso_forest' | 'ensemble'
   z_thresh: 4.0
-  iqr_factor: 1.5
-  iso_forest_contamination: 0.02
-  group_by_col: 'AI_IdCategoriaCatastale'
+  iqr_factor: 3.0
+  iso_forest_contamination: 0.01
+  group_by_col: 'AI_IdTipologiaEdilizia'
   min_group_size: 30       # minimum samples per group to apply group-wise outlier detection
   fallback_strategy: 'global'  # 'skip' keeps all small groups; 'global' applies global detection
 
@@ -67,7 +67,7 @@ outliers:
 imputation:
   numeric_strategy: 'median'      # 'median' | 'mean'
   categorical_strategy: 'most_frequent'
-  group_by_col: 'AI_IdCategoriaCatastale'
+  group_by_col: 'AI_IdTipologiaEdilizia'
 
 # Categorical encoding
 encoding: &encoding_defaults
