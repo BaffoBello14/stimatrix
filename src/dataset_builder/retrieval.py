@@ -37,14 +37,21 @@ class DatasetBuilder:
                 col_name = col["name"]
                 col_type = str(col.get("type", "")).lower()
                 if alias == "OV":
+                    # Special handling for OmiValori: for tipologia 8, use values of tipologia 2
+                    # and scale only ValoreMercatoMin/Max by 0.25; set other OV columns to NULL.
                     for stato_alias, stato_suffix in [
                         ("OVN", "normale"),
                         ("OVO", "ottimo"),
                         ("OVS", "scadente"),
                     ]:
-                        selects.append(
-                            f"{stato_alias}.{col_name} AS {alias}_{col_name}_{stato_suffix}"
-                        )
+                        if col_name in ("ValoreMercatoMin", "ValoreMercatoMax"):
+                            selects.append(
+                                f"CASE WHEN AI.IdTipologiaEdilizia = 8 THEN {stato_alias}.{col_name} * 0.25 ELSE {stato_alias}.{col_name} END AS {alias}_{col_name}_{stato_suffix}"
+                            )
+                        else:
+                            selects.append(
+                                f"CASE WHEN AI.IdTipologiaEdilizia = 8 THEN NULL ELSE {stato_alias}.{col_name} END AS {alias}_{col_name}_{stato_suffix}"
+                            )
                 else:
                     if col_type in ["geometry", "geography"]:
                         selects.append(
@@ -148,15 +155,15 @@ class DatasetBuilder:
             INNER JOIN OmiZone OZ ON PC_OZ.IdZona = OZ.Id
             INNER JOIN OmiValori OVN ON OZ.Id = OVN.IdZona
                 AND OVN.Stato = 'Normale'
-                AND AI.IdTipologiaEdilizia = OVN.IdTipologiaEdilizia
+                AND OVN.IdTipologiaEdilizia = CASE WHEN AI.IdTipologiaEdilizia = 8 THEN 2 ELSE AI.IdTipologiaEdilizia END
                 AND A.Semestre = OZ.IdAnnoSemestre
             LEFT JOIN OmiValori OVO ON OZ.Id = OVO.IdZona
                 AND OVO.Stato = 'Ottimo'
-                AND AI.IdTipologiaEdilizia = OVO.IdTipologiaEdilizia
+                AND OVO.IdTipologiaEdilizia = CASE WHEN AI.IdTipologiaEdilizia = 8 THEN 2 ELSE AI.IdTipologiaEdilizia END
                 AND A.Semestre = OZ.IdAnnoSemestre
             LEFT JOIN OmiValori OVS ON OZ.Id = OVS.IdZona
                 AND OVS.Stato = 'Scadente'
-                AND OVS.IdTipologiaEdilizia = AI.IdTipologiaEdilizia
+                AND OVS.IdTipologiaEdilizia = CASE WHEN AI.IdTipologiaEdilizia = 8 THEN 2 ELSE AI.IdTipologiaEdilizia END
                 AND A.Semestre = OZ.IdAnnoSemestre
             LEFT JOIN ZTL_CHECK ZTL_INFO ON PC.Id = ZTL_INFO.IdParticella
             {poi_joins_str}
@@ -184,15 +191,15 @@ class DatasetBuilder:
             INNER JOIN OmiZone OZ ON PC_OZ.IdZona = OZ.Id
             INNER JOIN OmiValori OVN ON OZ.Id = OVN.IdZona
                 AND OVN.Stato = 'Normale'
-                AND AI.IdTipologiaEdilizia = OVN.IdTipologiaEdilizia
+                AND OVN.IdTipologiaEdilizia = CASE WHEN AI.IdTipologiaEdilizia = 8 THEN 2 ELSE AI.IdTipologiaEdilizia END
                 AND A.Semestre = OZ.IdAnnoSemestre
             LEFT JOIN OmiValori OVO ON OZ.Id = OVO.IdZona
                 AND OVO.Stato = 'Ottimo'
-                AND AI.IdTipologiaEdilizia = OVO.IdTipologiaEdilizia
+                AND OVO.IdTipologiaEdilizia = CASE WHEN AI.IdTipologiaEdilizia = 8 THEN 2 ELSE AI.IdTipologiaEdilizia END
                 AND A.Semestre = OZ.IdAnnoSemestre
             LEFT JOIN OmiValori OVS ON OZ.Id = OVS.IdZona
                 AND OVS.Stato = 'Scadente'
-                AND OVS.IdTipologiaEdilizia = AI.IdTipologiaEdilizia
+                AND OVS.IdTipologiaEdilizia = CASE WHEN AI.IdTipologiaEdilizia = 8 THEN 2 ELSE AI.IdTipologiaEdilizia END
                 AND A.Semestre = OZ.IdAnnoSemestre
         WHERE 
             A.TotaleFabbricati = A.TotaleImmobili
@@ -216,14 +223,37 @@ class DatasetBuilder:
         logger.info("Rimozione colonne duplicate...")
         cols = df.columns.tolist()
         to_drop: set[str] = set()
+        # Protect columns required by downstream steps (price estimation and targets)
+        protected_columns: set[str] = {
+            "A_Id",
+            "A_Prezzo",
+            "AI_Superficie",
+            "OV_ValoreMercatoMin_normale",
+            "OV_ValoreMercatoMax_normale",
+            "AI_Prezzo_Ridistribuito",
+        }
         for i in range(len(cols)):
+            if cols[i] in to_drop:
+                continue
             for j in range(i + 1, len(cols)):
                 if cols[j] in to_drop:
                     continue
                 s1 = df[cols[i]].fillna("##nan##")
                 s2 = df[cols[j]].fillna("##nan##")
                 if s1.equals(s2):
-                    to_drop.add(cols[j])
+                    # Decide which duplicate to drop, preserving protected columns
+                    col_i_protected = cols[i] in protected_columns
+                    col_j_protected = cols[j] in protected_columns
+                    if col_i_protected and col_j_protected:
+                        # Keep both if both are protected
+                        continue
+                    elif col_i_protected and not col_j_protected:
+                        to_drop.add(cols[j])
+                    elif col_j_protected and not col_i_protected:
+                        to_drop.add(cols[i])
+                    else:
+                        # If none protected, drop the latter (stable behavior)
+                        to_drop.add(cols[j])
         if to_drop:
             df = df.drop(columns=list(to_drop))
             logger.info(f"Colonne duplicate rimosse: {list(to_drop)}")
