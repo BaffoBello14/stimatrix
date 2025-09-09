@@ -1,0 +1,417 @@
+# Configurazione Preprocessing Pipeline - OTTIMIZZATA
+# =================================
+
+# Logging Configuration
+logging:
+  level: ${LOG_LEVEL:-INFO}
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  file: ${LOG_FILE:-'logs/pipeline.log'}
+  console: ${LOG_CONSOLE:-true}
+  rotate:
+    enabled: ${LOG_ROTATE:-false}
+    max_bytes: ${LOG_MAX_BYTES:-10485760}
+    backup_count: ${LOG_BACKUP_COUNT:-5}
+
+# Execution Configuration
+execution:
+  # Passi della pipeline da eseguire: [schema, dataset, preprocessing, training, evaluation] oppure ["all"]
+  steps: ["all"]
+  # Se true, forza la rielaborazione anche se gli output intermedi esistono già
+  force_reload: false
+
+# Experiment tracking (Weights & Biases)
+tracking:
+  wandb:
+    enabled: ${WANDB_ENABLED:-true}
+    project: ${WANDB_PROJECT:-'stimatrix'}
+    entity: ${WANDB_ENTITY:-null}
+    group: ${WANDB_GROUP:-null}
+    tags: []
+    mode: ${WANDB_MODE:-'online'}  # online | offline | disabled
+    name: null
+
+# Paths Configuration
+paths:
+  raw_data: ${RAW_DATA_DIR:-'data/raw'}
+  preprocessed_data: ${PREPROC_DIR:-'data/preprocessed'}
+  schema: ${SCHEMA_PATH:-'schema/db_schema.json'}
+  models_dir: ${MODELS_DIR:-'models'}
+  raw_filename: 'raw.parquet'
+  preprocessed_filename: 'preprocessed.parquet'
+
+# Database Configuration (for data retrieval)
+database:
+  schema_name: null
+  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV']
+  use_poi: true
+  use_ztl: true
+  output_format: 'parquet'
+  compression: 'snappy'
+
+# Target configuration
+target:
+  column_candidates: ['AI_Prezzo_Ridistribuito']
+  log_transform: false
+
+# Outlier detection
+outliers:
+  method: 'ensemble'       # 'iqr' | 'zscore' | 'iso_forest' | 'ensemble'
+  z_thresh: 4.0
+  iqr_factor: 3.0
+  iso_forest_contamination: 0.01
+  group_by_col: 'AI_IdTipologiaEdilizia'
+  min_group_size: 30       # minimum samples per group to apply group-wise outlier detection
+  fallback_strategy: 'global'  # 'skip' keeps all small groups; 'global' applies global detection
+
+# Missing value imputation
+imputation:
+  numeric_strategy: 'median'      # 'median' | 'mean'
+  categorical_strategy: 'most_frequent'
+  group_by_col: 'AI_IdTipologiaEdilizia'
+
+# Categorical encoding
+encoding: &encoding_defaults
+  max_ohe_cardinality: 12
+
+# Temporal split configuration
+temporal_split:
+  year_col: 'A_AnnoStipula'
+  month_col: 'A_MeseStipula'
+  mode: 'fraction'      # 'date' | 'fraction'
+  fraction:
+    train: 0.8          # fraction of time-ordered data for train
+    valid: 0.1          # fraction of time-ordered data for validation (0 disables val)
+  date:
+    test_start_year: 2023 # used only if mode=='date'
+    test_start_month: 1   # used only if mode=='date'
+
+# Numeric coercion configuration
+numeric_coercion:
+  enabled: true
+  threshold: 0.95
+  blacklist_globs:
+    - 'II_*'
+    - 'AI_Id*'
+    - 'Foglio'
+    - 'Particella*'
+    - 'Subalterno'
+    - 'SezioneAmministrativa'
+    - 'ZonaOmi'
+    - '*COD*'
+
+# PCA configuration
+pca: &pca_defaults
+  enabled: false
+  n_components: 0.95
+  random_state: 42
+
+# Correlation pruning
+correlation: &correlation_defaults
+  numeric_threshold: 0.98
+
+# Non-descriptive columns pruning
+drop_non_descriptive:
+  na_threshold: 0.98
+
+# Feature extraction toggles
+feature_extraction:
+  geometry: true
+  json: true
+
+# Surface handling
+surface:
+  drop_columns:
+    - 'A_ImmobiliPrincipaliConSuperficieValorizzata'
+    - 'AI_SuperficieCalcolata'
+    - 'AI_SuperficieVisuraTotale'
+    - 'AI_SuperficieVisuraTotaleE'
+    - 'AI_SuperficieVisuraTotaleAttuale'
+    - 'AI_SuperficieVisuraTotaleEAttuale'
+
+# Scaling configuration
+scaling: &scaling_defaults
+  scaler_type: 'standard'   # 'standard' | 'robust' | 'none'
+  with_mean: true
+  with_std: true
+
+# Winsorization (quantile clipping on numeric features)
+winsorization: &winsor_defaults
+  enabled: false
+  lower_quantile: 0.01
+  upper_quantile: 0.99
+
+# Profiles: generate multiple datasets tailored to model families
+profiles:
+  scaled:
+    enabled: true
+    output_prefix: 'scaled'
+    encoding: *encoding_defaults
+    winsorization: *winsor_defaults
+    scaling: *scaling_defaults
+    pca: *pca_defaults
+    correlation: *correlation_defaults
+  tree:
+    enabled: true
+    output_prefix: 'tree'
+    encoding: *encoding_defaults
+    correlation: *correlation_defaults
+  catboost:
+    enabled: true
+    output_prefix: 'catboost'
+    correlation: *correlation_defaults
+
+# Training configuration - OTTIMIZZATA PER RIDURRE OVERFITTING
+training:
+  # Opzioni globali
+  primary_metric: "neg_mean_absolute_error"  # MAE è meno sensibile agli outlier
+  secondary_metrics: ["neg_root_mean_squared_error", "r2"]  # Metriche aggiuntive per valutazione
+  report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
+  sampler: "tpe"   # TPE più stabile di auto sampler
+  seed: ${SEED:-42}
+  n_jobs_default: ${N_JOBS:--1}
+  timeout: ${TRAIN_TIMEOUT:-null}
+  trials_base: &trials_base 30      # Ridotto da 50
+  trials_advanced: &trials_advanced 50  # Ridotto da 100
+  
+  # Early stopping configuration
+  early_stopping:
+    patience: 100
+    min_delta: 0.0001
+    mode: 'min'  # per metriche negative
+  
+  # Cross-validation durante ottimizzazione
+  cv_during_tuning:
+    enabled: true
+    n_splits: 3      # 3 split per bilanciare robustezza e velocità
+    strategy: 'timeseries'
+  
+  # Cross-validation usata quando non esiste un validation set esterno (valid_fraction=0)
+  cv_when_no_val:
+    enabled: true
+    kind: timeseries   # 'timeseries' | 'kfold'
+    n_splits: 5
+    shuffle: false     # usato solo per kfold
+  
+  # Overfitting penalty configuration
+  overfitting_penalty:
+    enabled: true
+    weight: 0.15      # Peso della penalità nella funzione obiettivo
+    max_gap: 0.10     # Massimo gap accettabile tra train e validation score
+
+  # Definizione per-modello con SPAZI DI RICERCA RISTRETTI
+  models:
+    linear:
+      enabled: true
+      profile: scaled
+      trials: 1 # no hyperparams
+      base_params: {}
+      fit_params: {}
+      search_space: {}
+    ridge:
+      enabled: true
+      profile: scaled
+      trials: *trials_base
+      base_params: {}
+      fit_params: {}
+      search_space:
+        alpha: {type: float, low: 1.0, high: 500.0, log: true}  # Range ridotto
+    lasso:
+      enabled: true
+      profile: scaled
+      trials: *trials_base
+      base_params: {}
+      fit_params: {}
+      search_space:
+        alpha: {type: float, low: 0.01, high: 1.0, log: true}  # Range ridotto
+    elasticnet:
+      enabled: true
+      profile: scaled
+      trials: *trials_base
+      base_params: {}
+      fit_params: {}
+      search_space:
+        alpha: {type: float, low: 0.01, high: 1.0, log: true}  # Range ridotto
+        l1_ratio: {type: float, low: 0.1, high: 0.9}  # Evita estremi
+    knn:
+      enabled: true
+      profile: scaled
+      trials: *trials_base
+      base_params: {}
+      fit_params: {}
+      search_space:
+        n_neighbors: {type: int, low: 5, high: 30}  # Range ridotto
+        weights: {type: categorical, choices: ["uniform", "distance"]}
+        p: {type: int, low: 1, high: 2}
+    svr:
+      enabled: false
+      profile: scaled
+      trials: *trials_base
+      base_params: {}
+      fit_params: {}
+      search_space:
+        kernel: {type: categorical, choices: ["rbf", "poly", "sigmoid"]}
+        C: {type: float, low: 0.1, high: 100.0, log: true}
+        epsilon: {type: float, low: 0.01, high: 0.5, log: true}
+        gamma: {type: float, low: 0.001, high: 1.0, log: true}
+        degree: {type: int, low: 2, high: 4}
+        coef0: {type: float, low: 0.0, high: 1.0}
+    dt:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {}
+      fit_params: {}
+      search_space:
+        max_depth: {type: int, low: 5, high: 15}  # Range ridotto
+        min_samples_split: {type: int, low: 5, high: 20}  # Minimo aumentato
+        min_samples_leaf: {type: int, low: 2, high: 10}   # Minimo aumentato
+        max_features: {type: categorical, choices: ["sqrt", "log2"]}  # Rimosso null
+        min_impurity_decrease: {type: float, low: 0.0001, high: 0.005}
+    rf:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {
+        n_jobs: -1,
+        random_state: 42
+      }
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 100, high: 500}  # Range ridotto drasticamente
+        max_depth: {type: int, low: 8, high: 20}        # Range ridotto
+        min_samples_split: {type: int, low: 10, high: 30}  # Minimo aumentato
+        min_samples_leaf: {type: int, low: 5, high: 15}    # Minimo aumentato
+        max_features: {type: categorical, choices: ["sqrt", "log2"]}
+        bootstrap: {type: categorical, choices: [true]}  # Solo bootstrap
+    gbr:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {
+        random_state: 42
+      }
+      fit_params: {}
+      search_space:
+        learning_rate: {type: float, low: 0.01, high: 0.1, log: true}  # Range ridotto
+        n_estimators: {type: int, low: 100, high: 800}  # Range ridotto
+        max_depth: {type: int, low: 3, high: 6}         # Range ridotto
+        subsample: {type: float, low: 0.7, high: 0.95}  # Range più conservativo
+        min_samples_leaf: {type: int, low: 5, high: 20}
+        max_features: {type: categorical, choices: ["sqrt", "log2"]}
+        min_samples_split: {type: int, low: 10, high: 30}
+        min_impurity_decrease: {type: float, low: 0.0001, high: 0.005}
+    hgbt:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {
+        random_state: 42,
+        early_stopping: true,
+        validation_fraction: 0.1,
+        n_iter_no_change: 50
+      }
+      fit_params: {}
+      search_space:
+        learning_rate: {type: float, low: 0.01, high: 0.15, log: true}  # Range ridotto
+        max_depth: {type: int, low: 4, high: 10}         # Range ridotto
+        max_leaf_nodes: {type: int, low: 31, high: 127}  # Range ridotto
+        l2_regularization: {type: float, low: 0.01, high: 1.0, log: true}  # Più regolarizzazione
+        max_bins: {type: int, low: 128, high: 255}
+        min_samples_leaf: {type: int, low: 20, high: 50}  # Minimo aumentato
+    xgboost:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {
+        random_state: 42,
+        n_jobs: -1,
+        verbosity: 0
+      }
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 100, high: 500}     # Range ridotto drasticamente
+        max_depth: {type: int, low: 3, high: 8}            # Range ridotto
+        learning_rate: {type: float, low: 0.01, high: 0.1, log: true}  # Range ridotto
+        subsample: {type: float, low: 0.7, high: 0.95}     # Range più conservativo
+        colsample_bytree: {type: float, low: 0.7, high: 0.95}  # Range più conservativo
+        min_child_weight: {type: float, low: 1.0, high: 10.0, log: true}  # Range ridotto
+        reg_alpha: {type: float, low: 0.01, high: 1.0, log: true}    # Più regolarizzazione
+        reg_lambda: {type: float, low: 0.01, high: 1.0, log: true}   # Più regolarizzazione
+        gamma: {type: float, low: 0.01, high: 1.0, log: true}        # Più regolarizzazione
+    lightgbm:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {
+        random_state: 42,
+        n_jobs: -1,
+        verbosity: -1,
+        force_col_wise: true
+      }
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 100, high: 500}     # Range ridotto drasticamente
+        max_depth: {type: categorical, choices: [-1, 4, 6, 8, 10]}  # Meno opzioni
+        learning_rate: {type: float, low: 0.01, high: 0.1, log: true}  # Range conservativo
+        num_leaves: {type: int, low: 20, high: 100}        # Range ridotto
+        subsample: {type: float, low: 0.7, high: 1.0}      # Range più conservativo
+        colsample_bytree: {type: float, low: 0.7, high: 1.0}  # Range più conservativo
+        reg_alpha: {type: float, low: 0.01, high: 1.0, log: true}    # Più regolarizzazione
+        reg_lambda: {type: float, low: 0.01, high: 1.0, log: true}   # Più regolarizzazione
+        min_child_samples: {type: int, low: 20, high: 50}  # Minimo aumentato
+        min_split_gain: {type: float, low: 0.001, high: 0.1}  # Range ridotto
+    catboost:
+      enabled: true
+      profile: catboost
+      trials: *trials_advanced
+      base_params: {
+        random_state: 42,
+        verbose: false,
+        allow_writing_files: false
+      }
+      fit_params:
+        cat_features: __categorical_indices__
+      search_space:
+        depth: {type: int, low: 4, high: 8}                 # Range ridotto
+        learning_rate: {type: float, low: 0.01, high: 0.1, log: true}  # Range conservativo
+        l2_leaf_reg: {type: float, low: 3.0, high: 10.0}   # Più regolarizzazione
+        bagging_temperature: {type: float, low: 0.0, high: 2.0}  # Range ridotto
+        border_count: {type: int, low: 32, high: 128}      # Range ridotto
+        random_strength: {type: float, low: 0.0, high: 1.0}  # Range ridotto
+        rsm: {type: float, low: 0.7, high: 1.0}            # Range più conservativo
+
+  # SHAP feature importance
+  shap:
+    enabled: true
+    sample_size: 500
+    max_display: 30
+    save_plots: true
+    save_values: true
+
+  # Ensemble settings
+  ensembles:
+    voting:
+      enabled: true
+      top_n: 3
+      tune_weights: true
+    stacking:
+      enabled: true
+      top_n: 5
+      final_estimator: "ridge"
+      cv_folds: 5
+
+# Evaluation configuration
+evaluation:
+  group_metrics:
+    enabled: true
+    group_by_columns: ['AI_ZonaOmi', 'AI_IdCategoriaCatastale', 'AI_IdTipologiaEdilizia']
+    min_group_size: 30
+    original_scale: true
+    report_metrics: ['r2', 'rmse', 'mse', 'mae', 'mape', 'medae']
+    price_band:
+      method: 'quantile'   # 'quantile' | 'fixed'
+      quantiles: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+      # fixed_edges: [0, 100000, 200000, 400000, 800000, 1600000, .inf]
+      mape_floor: 1000.0
+      merge_small_bins: true
+      label_prefix: 'PREZZO_'
