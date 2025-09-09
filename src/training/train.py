@@ -266,10 +266,98 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                         pass
 
         use_values_for_final = requires_numeric_only or mk_lower == "lightgbm"
-        if use_values_for_final:
-            estimator.fit(X_tr_final.values, y_tr_final.values, **fit_params)
+        # Final fit with robust early stopping on validation when available
+        if X_val is not None and y_val is not None and mk_lower in {"xgboost", "lightgbm", "catboost"}:
+            try:
+                if mk_lower == "xgboost":
+                    est_X_tr = X_train.values if use_values_for_final else X_train
+                    est_y_tr = y_train.values
+                    est_X_va = X_val.values if use_values_for_final else X_val
+                    est_y_va = y_val.values
+                    estimator.fit(
+                        est_X_tr,
+                        est_y_tr,
+                        eval_set=[(est_X_va, est_y_va)],
+                        eval_metric="rmse",
+                        verbose=False,
+                        early_stopping_rounds=200,
+                        **({} if fit_params is None else fit_params),
+                    )
+                elif mk_lower == "lightgbm":
+                    metric_map = {
+                        "r2": None,
+                        "neg_mean_squared_error": "l2",
+                        "neg_root_mean_squared_error": "rmse",
+                        "neg_mean_absolute_error": "mae",
+                        "neg_mean_absolute_percentage_error": "mape",
+                    }
+                    eval_metric = metric_map.get(primary_metric.lower(), None)
+                    est_X_tr = X_train.values if use_values_for_final else X_train
+                    est_y_tr = y_train.values
+                    est_X_va = X_val.values if use_values_for_final else X_val
+                    est_y_va = y_val.values
+                    fit_kwargs: Dict[str, Any] = {
+                        "eval_set": [(est_X_va, est_y_va)],
+                    }
+                    if eval_metric is not None:
+                        fit_kwargs["eval_metric"] = eval_metric
+                    try:
+                        import lightgbm as lgb  # type: ignore
+                        fit_kwargs["callbacks"] = [lgb.early_stopping(200, verbose=False)]
+                    except Exception:
+                        fit_kwargs["early_stopping_rounds"] = 200
+                    if isinstance(fit_params, dict):
+                        fit_kwargs.update(fit_params)
+                    estimator.fit(est_X_tr, est_y_tr, **fit_kwargs)
+                else:  # catboost
+                    est_X_tr = X_train.values if use_values_for_final else X_train
+                    est_y_tr = y_train.values
+                    est_X_va = X_val.values if use_values_for_final else X_val
+                    est_y_va = y_val.values
+                    if cat_features is not None:
+                        estimator.fit(est_X_tr, est_y_tr, cat_features=cat_features, eval_set=(est_X_va, est_y_va), verbose=False, early_stopping_rounds=200)
+                    else:
+                        estimator.fit(est_X_tr, est_y_tr, eval_set=(est_X_va, est_y_va), verbose=False, early_stopping_rounds=200)
+            except Exception:
+                # Fallback to simple fit on all available training data
+                if use_values_for_final:
+                    estimator.fit(X_tr_final.values, y_tr_final.values, **fit_params)
+                else:
+                    estimator.fit(X_tr_final, y_tr_final, **fit_params)
+            else:
+                # Optional refit on train+val using best iteration for stronger generalization
+                try:
+                    best_iter = None
+                    # lightgbm uses best_iteration_
+                    if hasattr(estimator, "best_iteration_") and isinstance(getattr(estimator, "best_iteration_"), (int, np.integer)):
+                        best_iter = int(getattr(estimator, "best_iteration_"))
+                    # xgboost uses best_iteration
+                    if best_iter is None and hasattr(estimator, "best_iteration") and isinstance(getattr(estimator, "best_iteration"), (int, np.integer)):
+                        best_iter = int(getattr(estimator, "best_iteration"))
+                    # catboost exposes method get_best_iteration
+                    if best_iter is None:
+                        try:
+                            best_iter = int(estimator.get_best_iteration())  # type: ignore[attr-defined]
+                        except Exception:
+                            best_iter = None
+                    if best_iter is not None and best_iter > 0:
+                        refit_params: Dict[str, Any] = dict(best_params_merged)
+                        if mk_lower in {"xgboost", "lightgbm"}:
+                            refit_params["n_estimators"] = best_iter
+                        elif mk_lower == "catboost":
+                            refit_params["iterations"] = best_iter
+                        estimator = build_estimator(model_key, refit_params)
+                        if use_values_for_final:
+                            estimator.fit(X_tr_final.values, y_tr_final.values, **fit_params)
+                        else:
+                            estimator.fit(X_tr_final, y_tr_final, **fit_params)
+                except Exception:
+                    pass
         else:
-            estimator.fit(X_tr_final, y_tr_final, **fit_params)
+            if use_values_for_final:
+                estimator.fit(X_tr_final.values, y_tr_final.values, **fit_params)
+            else:
+                estimator.fit(X_tr_final, y_tr_final, **fit_params)
 
         y_pred_test = estimator.predict(X_test.values if use_values_for_final else X_test)
         y_pred_train = estimator.predict(X_tr_final.values if use_values_for_final else X_tr_final)
@@ -447,7 +535,57 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     if ens_cfg.get("voting", {}).get("enabled", False) and len(ranked) >= 2:
         top_n = int(ens_cfg.get("voting", {}).get("top_n", 3))
         selected = [(k, p) for (k, p, _) in ranked[:top_n]]
-        vote = build_voting(selected, tune_weights=bool(ens_cfg.get("voting", {}).get("tune_weights", True)), n_jobs=int(tr_cfg.get("n_jobs_default", -1)))
+        # Optionally optimize ensemble weights on validation set
+        weights_opt = None
+        try:
+            tune_w = bool(ens_cfg.get("voting", {}).get("tune_weights", True))
+            if tune_w:
+                first_key = selected[0][0]
+                prefix = _profile_for(first_key, config)
+                X_train, y_train, X_val, y_val, X_test, y_test = _load_xy(pre_dir, prefix)
+                if X_val is not None and y_val is not None:
+                    # Build base estimators and get validation predictions
+                    preds = []
+                    for k, p in selected:
+                        est = build_estimator(k, p)
+                        # Fit on train only, with early stopping when possible
+                        mk = k.lower()
+                        try:
+                            if mk == "xgboost":
+                                est.fit(X_train.values, y_train.values, eval_set=[(X_val.values, y_val.values)], eval_metric="rmse", verbose=False, early_stopping_rounds=200)
+                            elif mk == "lightgbm":
+                                try:
+                                    import lightgbm as lgb  # type: ignore
+                                    est.fit(X_train.values, y_train.values, eval_set=[(X_val.values, y_val.values)], callbacks=[lgb.early_stopping(200, verbose=False)])
+                                except Exception:
+                                    est.fit(X_train.values, y_train.values, eval_set=[(X_val.values, y_val.values)], early_stopping_rounds=200)
+                            elif mk == "catboost":
+                                est.fit(X_train.values, y_train.values, eval_set=(X_val.values, y_val.values), verbose=False, early_stopping_rounds=200)
+                            else:
+                                est.fit(X_train.values, y_train.values)
+                        except Exception:
+                            est.fit(X_train.values, y_train.values)
+                        preds.append(est.predict(X_val.values).reshape(-1, 1))
+                    import numpy as np
+                    P = np.hstack(preds)
+                    yv = y_val.values.reshape(-1, 1)
+                    rng = np.random.default_rng(int(tr_cfg.get("seed", 42)))
+                    # Dirichlet random search for simplex-constrained weights
+                    num_cand = 2000 if P.shape[1] <= 4 else 500
+                    cand = rng.dirichlet(alpha=np.ones(P.shape[1]), size=num_cand)
+                    best_w = None
+                    best_rmse = float("inf")
+                    for w in cand:
+                        yhat = P @ w
+                        rmse = float(np.sqrt(np.mean((yv.flatten() - yhat) ** 2)))
+                        if rmse < best_rmse:
+                            best_rmse = rmse
+                            best_w = w
+                    if best_w is not None:
+                        weights_opt = best_w.tolist()
+        except Exception:
+            weights_opt = None
+        vote = build_voting(selected, tune_weights=bool(ens_cfg.get("voting", {}).get("tune_weights", True)), n_jobs=int(tr_cfg.get("n_jobs_default", -1)), weights=weights_opt)
         first_key = selected[0][0]
         prefix = _profile_for(first_key, config)
         X_train, y_train, X_val, y_val, X_test, y_test = _load_xy(pre_dir, prefix)

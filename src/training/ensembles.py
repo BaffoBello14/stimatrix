@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 
 from sklearn.ensemble import VotingRegressor, StackingRegressor
 
 from .model_zoo import build_estimator
 
 
-def build_voting(models_best: List[Tuple[str, Dict[str, Any]]], tune_weights: bool = True, n_jobs: int = -1) -> VotingRegressor:
+def build_voting(models_best: List[Tuple[str, Dict[str, Any]]], tune_weights: bool = True, n_jobs: int = -1, weights: Optional[List[float]] = None) -> VotingRegressor:
     estimators = [(f"{k}", build_estimator(k, p)) for k, p in models_best]
+    if weights is not None:
+        return VotingRegressor(estimators=estimators, weights=weights, n_jobs=n_jobs)
     if tune_weights:
         # simple heuristic weights proportional to rank (can be tuned with optuna externally if desired)
         n = len(estimators)

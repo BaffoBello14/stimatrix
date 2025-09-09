@@ -94,7 +94,15 @@ def tune_model(
                     mk = model_key.lower()
                     try:
                         if mk == "xgboost":
-                            est.fit(X_tr, y_tr, eval_set=[(X_va, y_va)], verbose=False, early_stopping_rounds=50)
+                            # Prefer RMSE as eval metric for regression
+                            est.fit(
+                                X_tr,
+                                y_tr,
+                                eval_set=[(X_va, y_va)],
+                                eval_metric="rmse",
+                                verbose=False,
+                                early_stopping_rounds=200,
+                            )
                         elif mk == "lightgbm":
                             metric_map = {
                                 "r2": None,  # not a native built-in; let it default
@@ -109,15 +117,15 @@ def tune_model(
                                 fit_kwargs["eval_metric"] = eval_metric
                             try:
                                 import lightgbm as lgb  # type: ignore
-                                fit_kwargs["callbacks"] = [lgb.early_stopping(50, verbose=False)]
+                                fit_kwargs["callbacks"] = [lgb.early_stopping(200, verbose=False)]
                             except Exception:
-                                fit_kwargs["early_stopping_rounds"] = 50
+                                fit_kwargs["early_stopping_rounds"] = 200
                             est.fit(X_tr.values if hasattr(X_tr, 'values') else X_tr, y_tr.values if hasattr(y_tr, 'values') else y_tr, **fit_kwargs)
                         elif mk == "catboost":
                             if cat_features is not None:
-                                est.fit(X_tr, y_tr, cat_features=cat_features, eval_set=(X_va, y_va), verbose=False, early_stopping_rounds=50)
+                                est.fit(X_tr, y_tr, cat_features=cat_features, eval_set=(X_va, y_va), verbose=False, early_stopping_rounds=200)
                             else:
-                                est.fit(X_tr, y_tr, eval_set=(X_va, y_va), verbose=False, early_stopping_rounds=50)
+                                est.fit(X_tr, y_tr, eval_set=(X_va, y_va), verbose=False, early_stopping_rounds=200)
                         else:
                             if mk == "catboost" and cat_features is not None:
                                 est.fit(X_tr, y_tr, cat_features=cat_features, verbose=False)
@@ -142,11 +150,61 @@ def tune_model(
             else:  # numpy array
                 X_tr, X_va = X_train[:split_point], X_train[split_point:]
                 y_tr, y_va = y_train[:split_point], y_train[split_point:]
-            # Fit con eventuale early stopping non applicabile senza validation esterna coerente; esegue fit semplice
-            if model_key.lower() == "catboost" and cat_features is not None:
-                est.fit(X_tr, y_tr, cat_features=cat_features, verbose=False)
-            else:
-                est.fit(X_tr, y_tr)
+            # Fit con early stopping dove supportato usando lo split temporale come validazione
+            mk = model_key.lower()
+            try:
+                if mk == "xgboost":
+                    est.fit(
+                        X_tr,
+                        y_tr,
+                        eval_set=[(X_va, y_va)],
+                        eval_metric="rmse",
+                        verbose=False,
+                        early_stopping_rounds=200,
+                    )
+                elif mk == "lightgbm":
+                    metric_map = {
+                        "r2": None,
+                        "neg_mean_squared_error": "l2",
+                        "neg_root_mean_squared_error": "rmse",
+                        "neg_mean_absolute_error": "mae",
+                        "neg_mean_absolute_percentage_error": "mape",
+                    }
+                    eval_metric = metric_map.get(primary_metric.lower(), None)
+                    fit_kwargs = {
+                        "eval_set": [(
+                            X_va.values if hasattr(X_va, 'values') else X_va,
+                            y_va.values if hasattr(y_va, 'values') else y_va,
+                        )]
+                    }
+                    if eval_metric is not None:
+                        fit_kwargs["eval_metric"] = eval_metric
+                    try:
+                        import lightgbm as lgb  # type: ignore
+                        fit_kwargs["callbacks"] = [lgb.early_stopping(200, verbose=False)]
+                    except Exception:
+                        fit_kwargs["early_stopping_rounds"] = 200
+                    est.fit(
+                        X_tr.values if hasattr(X_tr, 'values') else X_tr,
+                        y_tr.values if hasattr(y_tr, 'values') else y_tr,
+                        **fit_kwargs,
+                    )
+                elif mk == "catboost":
+                    if cat_features is not None:
+                        est.fit(X_tr, y_tr, cat_features=cat_features, eval_set=(X_va, y_va), verbose=False, early_stopping_rounds=200)
+                    else:
+                        est.fit(X_tr, y_tr, eval_set=(X_va, y_va), verbose=False, early_stopping_rounds=200)
+                else:
+                    if mk == "catboost" and cat_features is not None:
+                        est.fit(X_tr, y_tr, cat_features=cat_features, verbose=False)
+                    else:
+                        est.fit(X_tr, y_tr)
+            except Exception:
+                # Fallback robusto
+                if mk == "catboost" and cat_features is not None:
+                    est.fit(X_tr, y_tr, cat_features=cat_features, verbose=False)
+                else:
+                    est.fit(X_tr, y_tr)
             y_pred = est.predict(X_va)
             return select_primary_value(primary_metric, y_va, y_pred)
         else:
@@ -154,7 +212,14 @@ def tune_model(
             mk = model_key.lower()
             try:
                 if mk == "xgboost":
-                    est.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False, early_stopping_rounds=50)
+                    est.fit(
+                        X_train,
+                        y_train,
+                        eval_set=[(X_val, y_val)],
+                        eval_metric="rmse",
+                        verbose=False,
+                        early_stopping_rounds=200,
+                    )
                 elif mk == "lightgbm":
                     # Map primary_metric to LGBM-native metric when possible
                     metric_map = {
@@ -171,15 +236,15 @@ def tune_model(
                     # callbacks per early stopping silenzioso
                     try:
                         import lightgbm as lgb  # type: ignore
-                        fit_kwargs["callbacks"] = [lgb.early_stopping(50, verbose=False)]
+                        fit_kwargs["callbacks"] = [lgb.early_stopping(200, verbose=False)]
                     except Exception:
-                        fit_kwargs["early_stopping_rounds"] = 50
+                        fit_kwargs["early_stopping_rounds"] = 200
                     est.fit(X_train.values if hasattr(X_train, 'values') else X_train, y_train.values if hasattr(y_train, 'values') else y_train, **fit_kwargs)
                 elif mk == "catboost":
                     if cat_features is not None:
-                        est.fit(X_train, y_train, cat_features=cat_features, eval_set=(X_val, y_val), verbose=False, early_stopping_rounds=50)
+                        est.fit(X_train, y_train, cat_features=cat_features, eval_set=(X_val, y_val), verbose=False, early_stopping_rounds=200)
                     else:
-                        est.fit(X_train, y_train, eval_set=(X_val, y_val), verbose=False, early_stopping_rounds=50)
+                        est.fit(X_train, y_train, eval_set=(X_val, y_val), verbose=False, early_stopping_rounds=200)
                 else:
                     if mk == "catboost" and cat_features is not None:
                         est.fit(X_train, y_train, cat_features=cat_features, verbose=False)
