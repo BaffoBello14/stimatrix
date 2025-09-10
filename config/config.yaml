@@ -79,11 +79,15 @@ temporal_split:
   month_col: 'A_MeseStipula'
   mode: 'fraction'      # 'date' | 'fraction'
   fraction:
-    train: 0.8          # fraction of time-ordered data for train
-    valid: 0.1          # fraction of time-ordered data for validation (0 disables val)
+    train: 0.7          # Ridotto per validation set più robusto
+    valid: 0.2          # Raddoppiato per stabilità tuning
+    test: 0.1           # Mantieni per test finale
   date:
     test_start_year: 2023 # used only if mode=='date'
     test_start_month: 1   # used only if mode=='date'
+  # Nuove opzioni per controllo qualità split
+  min_samples_per_split: 500  # Minimo campioni per split valido
+  ensure_temporal_order: true # Verifica ordine temporale rigoroso
 
 # Numeric coercion configuration
 numeric_coercion:
@@ -117,6 +121,48 @@ drop_non_descriptive:
 feature_extraction:
   geometry: true
   json: true
+  
+  # Nuove feature derivate basate su correlazioni EDA
+  derived_features:
+    enabled: true
+    
+    # Ratios basati su correlazioni forti (AI_Rendita: 0.68, Superficie: 0.66)
+    price_ratios:
+      enabled: true
+      features:
+        - "prezzo_per_mq"           # AI_Prezzo_Ridistribuito / AI_Superficie
+        - "rendita_per_mq"          # AI_Rendita / AI_Superficie
+        - "prezzo_vs_rendita"       # AI_Prezzo_Ridistribuito / AI_Rendita
+        - "superficie_vs_media_zona" # AI_Superficie / media_per_zona
+    
+    # Features geospaziali (POI shopping: 0.29)
+    spatial_features:
+      enabled: true
+      features:
+        - "poi_density_total"       # Somma tutti i POI
+        - "poi_shopping_ratio"      # POI_shopping / POI_total
+        - "distance_to_center"      # Distanza euclidea da centro città
+        - "zona_omi_price_rank"     # Ranking prezzo medio per zona
+    
+    # Features temporali
+    temporal_features:
+      enabled: true
+      features:
+        - "anno_stipula_normalized" # (A_AnnoStipula - min_year) / (max_year - min_year)
+        - "mese_sin"               # sin(2π * A_MeseStipula / 12)
+        - "mese_cos"               # cos(2π * A_MeseStipula / 12)
+        - "trimestre"              # Trimestre dell'anno
+    
+    # Features categoriche aggregate
+    categorical_aggregates:
+      enabled: true
+      group_by: ["AI_ZonaOmi", "AI_IdCategoriaCatastale", "AI_IdTipologiaEdilizia"]
+      features:
+        - "prezzo_medio_gruppo"
+        - "prezzo_std_gruppo"  
+        - "superficie_media_gruppo"
+        - "count_per_gruppo"
+        - "prezzo_percentile_in_gruppo"
 
 # Surface handling
 surface:
@@ -169,14 +215,88 @@ training:
   seed: ${SEED:-42}
   n_jobs_default: ${N_JOBS:--1}
   timeout: ${TRAIN_TIMEOUT:-null}
-  trials_base: &trials_base 50
-  trials_advanced: &trials_advanced 100
+  trials_base: &trials_base 25        # Ridotto da 50 per evitare overfitting
+  trials_advanced: &trials_advanced 50    # Ridotto da 100 per evitare overfitting
+  trials_conservative: &trials_conservative 15  # Nuova categoria per modelli sensibili
+  
+  # Early stopping configuration per tutti i modelli
+  early_stopping:
+    enabled: true
+    patience: 20               # Numero di iterazioni senza miglioramento
+    min_delta: 0.0001         # Miglioramento minimo considerato significativo
+    restore_best_weights: true # Ripristina i migliori pesi
+    monitor_metric: "validation_loss"  # Metrica da monitorare
+  
+  # Controlli di stabilità e diagnostica avanzata
+  stability_checks:
+    enabled: true
+    
+    # Learning curve analysis
+    learning_curves:
+      enabled: true
+      train_sizes: [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
+      cv_folds: 5
+      save_plots: true
+    
+    # Residual analysis
+    residual_analysis:
+      enabled: true
+      plot_types: ["scatter", "histogram", "qq"]
+      save_plots: true
+      sample_size: 1000
+    
+    # Feature importance stability
+    feature_importance_stability:
+      enabled: true
+      n_bootstrap: 10
+      bootstrap_ratio: 0.8
+      save_importance_plots: true
+    
+    # Model comparison diagnostics
+    model_comparison:
+      enabled: true
+      include_baselines: true
+      statistical_tests: ["wilcoxon", "friedman"]
+      confidence_level: 0.95
+    
+    # Overfitting detection thresholds
+    overfitting_thresholds:
+      r2_gap_warning: 0.15      # Gap R² train-test
+      r2_gap_critical: 0.25
+      rmse_ratio_warning: 1.5   # Ratio RMSE test/train  
+      rmse_ratio_critical: 2.0
   # Cross-validation usata quando non esiste un validation set esterno (valid_fraction=0)
   cv_when_no_val:
     enabled: true
     kind: timeseries   # 'timeseries' | 'kfold'
-    n_splits: 5
+    n_splits: 10       # Aumentato per maggiore robustezza
     shuffle: false     # usato solo per kfold
+    test_size: 0.2     # Dimensione test set per TimeSeries CV
+    gap: 0             # Gap temporale tra train e test (in giorni)
+  
+  # Nuova strategia: CV anche con validation set per doppio controllo
+  cv_with_val:
+    enabled: true      # Abilita CV anche quando hai validation set
+    kind: timeseries
+    n_splits: 5        # Meno split perché hai già validation set
+    use_for_final_selection: false  # Usa solo per diagnostica
+  
+  # Tuning specifico per regolarizzazione (priorità alta per overfitting)
+  regularization_tuning:
+    enabled: true
+    # Prima fase: tuning solo regolarizzazione con parametri base fissi
+    phase1:
+      enabled: true
+      trials: 20
+      focus_params: ["reg_alpha", "reg_lambda", "l2_regularization", "alpha", "l1_ratio"]
+      fix_complexity: true  # Fissa parametri di complessità (depth, n_estimators, etc.)
+    
+    # Seconda fase: tuning complessità con regolarizzazione ottimale
+    phase2:
+      enabled: true  
+      trials: 15
+      focus_params: ["max_depth", "n_estimators", "num_leaves", "learning_rate"]
+      use_phase1_regularization: true
 
   # Definizione per-modello (schema minimale)
   models:
@@ -291,51 +411,92 @@ training:
     xgboost:
       enabled: true
       profile: tree
-      trials: *trials_advanced
-      base_params: {}
+      trials: *trials_conservative
+      base_params:
+        # Baseline conservativi
+        n_estimators: 1000        # Aumentato per early stopping
+        max_depth: 6
+        learning_rate: 0.05
+        subsample: 0.8
+        colsample_bytree: 0.8
+        reg_alpha: 0.1
+        reg_lambda: 0.1
+        min_child_weight: 3
+        gamma: 0.1
+        # Early stopping
+        early_stopping_rounds: 50
+        eval_metric: "rmse"
       fit_params: {}
       search_space:
-        n_estimators: {type: int, low: 300, high: 1500}
-        max_depth: {type: int, low: 3, high: 12}
-        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-        subsample: {type: float, low: 0.5, high: 1.0}
-        colsample_bytree: {type: float, low: 0.5, high: 1.0}
-        min_child_weight: {type: float, low: 0.01, high: 20.0, log: true}
-        reg_alpha: {type: float, low: 1e-8, high: 10.0, log: true}
-        reg_lambda: {type: float, low: 1e-8, high: 10.0, log: true}
-        gamma: {type: float, low: 1e-8, high: 10.0, log: true}
+        n_estimators: {type: int, low: 200, high: 800}           # era 300-1500
+        max_depth: {type: int, low: 4, high: 8}                 # era 3-12
+        learning_rate: {type: float, low: 0.01, high: 0.1, log: true} # era 0.001-0.3
+        subsample: {type: float, low: 0.7, high: 0.9}           # era 0.5-1.0
+        colsample_bytree: {type: float, low: 0.7, high: 0.9}    # era 0.5-1.0
+        min_child_weight: {type: float, low: 1.0, high: 10.0}   # era 0.01-20.0
+        reg_alpha: {type: float, low: 0.01, high: 1.0, log: true} # era 1e-8-10
+        reg_lambda: {type: float, low: 0.01, high: 1.0, log: true} # era 1e-8-10
+        gamma: {type: float, low: 0.01, high: 1.0, log: true}   # era 1e-8-10
     lightgbm:
       enabled: true
       profile: tree
-      trials: *trials_advanced
-      base_params: {}
+      trials: *trials_conservative  # Ridotto per il miglior modello
+      base_params: 
+        # Baseline conservativi per evitare overfitting
+        n_estimators: 1000        # Aumentato perché early stopping gestirà
+        max_depth: 8
+        learning_rate: 0.05
+        num_leaves: 31
+        subsample: 0.8
+        colsample_bytree: 0.8
+        reg_alpha: 0.1
+        reg_lambda: 0.1
+        min_child_samples: 20
+        min_split_gain: 0.01
+        # Early stopping parameters
+        early_stopping_rounds: 50
+        verbose: -1
       fit_params: {}
       search_space:
-        n_estimators: {type: int, low: 300, high: 1500}
-        max_depth: {type: categorical, choices: [-1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]}
-        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-        num_leaves: {type: int, low: 15, high: 255}
-        subsample: {type: float, low: 0.5, high: 1.0}
-        colsample_bytree: {type: float, low: 0.5, high: 1.0}
-        reg_alpha: {type: float, low: 1e-8, high: 10.0, log: true}
-        reg_lambda: {type: float, low: 1e-8, high: 10.0, log: true}
-        min_child_samples: {type: int, low: 5, high: 100}
-        min_split_gain: {type: float, low: 0.0, high: 1.0}
+        # Range molto più conservativi
+        n_estimators: {type: int, low: 200, high: 800}           # era 300-1500
+        max_depth: {type: categorical, choices: [6, 7, 8, 9, 10]} # era -1 a 12
+        learning_rate: {type: float, low: 0.01, high: 0.1, log: true} # era 0.001-0.3
+        num_leaves: {type: int, low: 15, high: 63}               # era 15-255
+        subsample: {type: float, low: 0.7, high: 0.9}           # era 0.5-1.0
+        colsample_bytree: {type: float, low: 0.7, high: 0.9}    # era 0.5-1.0
+        reg_alpha: {type: float, low: 0.01, high: 1.0, log: true} # era 1e-8-10
+        reg_lambda: {type: float, low: 0.01, high: 1.0, log: true} # era 1e-8-10
+        min_child_samples: {type: int, low: 10, high: 50}       # era 5-100
+        min_split_gain: {type: float, low: 0.001, high: 0.1}    # era 0.0-1.0
     catboost:
       enabled: true
       profile: catboost
-      trials: *trials_advanced
-      base_params: {}
+      trials: *trials_conservative
+      base_params:
+        # Baseline conservativi
+        iterations: 1000          # Aumentato per early stopping
+        depth: 6
+        learning_rate: 0.05
+        l2_leaf_reg: 3.0
+        bagging_temperature: 1.0
+        border_count: 128
+        random_strength: 1.0
+        rsm: 0.8
+        # Early stopping
+        early_stopping_rounds: 50
+        use_best_model: true
+        verbose: False
       fit_params:
         cat_features: __categorical_indices__
       search_space:
-        depth: {type: int, low: 4, high: 10}
-        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-        l2_leaf_reg: {type: float, low: 1.0, high: 15.0}
-        bagging_temperature: {type: float, low: 0.0, high: 5.0}
-        border_count: {type: int, low: 16, high: 255}
-        random_strength: {type: float, low: 0.0, high: 2.0}
-        rsm: {type: float, low: 0.5, high: 1.0}
+        depth: {type: int, low: 4, high: 8}                     # era 4-10
+        learning_rate: {type: float, low: 0.01, high: 0.1, log: true} # era 0.001-0.3
+        l2_leaf_reg: {type: float, low: 1.0, high: 10.0}        # era 1.0-15.0
+        bagging_temperature: {type: float, low: 0.5, high: 2.0} # era 0.0-5.0
+        border_count: {type: int, low: 64, high: 200}           # era 16-255
+        random_strength: {type: float, low: 0.5, high: 1.5}     # era 0.0-2.0
+        rsm: {type: float, low: 0.7, high: 0.9}                # era 0.5-1.0
 
   # SHAP feature importance
   shap:
@@ -347,15 +508,42 @@ training:
 
   # Ensemble settings
   ensembles:
-    voting:
+    # Ensemble diversificato con algoritmi eterogenei
+    voting_diverse:
       enabled: true
-      top_n: 3
+      type: "voting"
+      # Mix di algoritmi diversi invece di solo tree-based
+      fixed_members: ["lightgbm", "ridge", "knn"]  # Tree + Linear + Instance-based
       tune_weights: true
-    stacking:
+      weights_search_space:
+        lightgbm_weight: {type: float, low: 0.1, high: 0.8}
+        ridge_weight: {type: float, low: 0.1, high: 0.6}
+        knn_weight: {type: float, low: 0.1, high: 0.4}
+    
+    # Ensemble tradizionale con top performers
+    voting_top:
       enabled: true
-      top_n: 5
+      type: "voting"
+      top_n: 3              # Migliori 3 modelli
+      tune_weights: true
+      exclude_categories: []  # Non escludere nessuna categoria
+    
+    stacking_diverse:
+      enabled: true
+      type: "stacking"
+      # Mix diversificato per stacking
+      fixed_members: ["lightgbm", "xgboost", "ridge", "knn"]
+      final_estimator: "xgboost"  # Meta-learner più sofisticato
+      cv_folds: 10               # Più fold per stabilità
+      passthrough: false         # Non passare feature originali
+    
+    stacking_top:
+      enabled: true
+      type: "stacking"
+      top_n: 4                   # Top 4 modelli
       final_estimator: "ridge"
-      cv_folds: 5
+      cv_folds: 8
+      passthrough: true          # Passa anche feature originali
 
 # Evaluation configuration
 evaluation:
