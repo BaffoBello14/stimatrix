@@ -92,11 +92,15 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
         extract = []
         for name, meta in models.items():
             mt = meta.get("metrics_test", {})
+            mt_orig = meta.get("metrics_test_original", {}) or {}
             extract.append({
                 "model": name,
                 "r2": mt.get("r2"),
                 "rmse": mt.get("rmse"),
                 "mae": mt.get("mae"),
+                "r2_orig": mt_orig.get("r2"),
+                "rmse_orig": mt_orig.get("rmse"),
+                "mae_orig": mt_orig.get("mae"),
             })
         results["test_metrics"] = extract
     except Exception as e:

@@ -276,6 +276,35 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
 
         m_test = regression_metrics(y_test.values, y_pred_test)
         m_train = regression_metrics(y_tr_final.values, y_pred_train)
+        # Also compute metrics on original scale (euros) if log-transform was applied
+        m_test_orig = None
+        m_train_orig = None
+        try:
+            if log_applied_global:
+                # Test original scale
+                try:
+                    y_test_orig_path = pre_dir / (f"y_test_orig_{prefix}.parquet" if prefix else "y_test_orig.parquet")
+                    if y_test_orig_path.exists():
+                        y_test_true_orig = pd.read_parquet(y_test_orig_path).iloc[:, 0].values
+                    else:
+                        y_test_true_orig = np.expm1(y_test.values)
+                except Exception:
+                    y_test_true_orig = np.expm1(y_test.values)
+                y_pred_test_orig = np.expm1(np.asarray(y_pred_test))
+                m_test_orig = regression_metrics(y_test_true_orig, y_pred_test_orig)
+
+                # Train original scale
+                y_train_true_orig = np.expm1(y_tr_final.values)
+                y_pred_train_orig = np.expm1(np.asarray(y_pred_train))
+                m_train_orig = regression_metrics(y_train_true_orig, y_pred_train_orig)
+            else:
+                # If no log transform, original-scale == current metrics
+                m_test_orig = dict(m_test)
+                m_train_orig = dict(m_train)
+        except Exception as _e:
+            # Fail-safe: keep None if any issue arises
+            m_test_orig = m_test_orig or None
+            m_train_orig = m_train_orig or None
         diag = overfit_diagnostics(m_train, m_test)
         wb.log_prefixed_metrics(f"model/{model_key}", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
         wb.log_prefixed_metrics(f"model/{model_key}", {f"overfit_{k}": v for k, v in diag.items()})
@@ -292,6 +321,8 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "best_params": tuning.best_params,
             "metrics_train": m_train,
             "metrics_test": m_test,
+            "metrics_train_original": m_train_orig,
+            "metrics_test_original": m_test_orig,
             "overfit": diag,
         }
         (model_dir / "metrics.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
@@ -423,6 +454,8 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "best_primary_value": tuning.best_value,
             "metrics_test": m_test,
             "metrics_train": m_train,
+            "metrics_test_original": m_test_orig,
+            "metrics_train_original": m_train_orig,
             "overfit": diag,
         }
         table_rows.append({

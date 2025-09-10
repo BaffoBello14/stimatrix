@@ -245,7 +245,7 @@ training:
     gbr:
       enabled: true
       profile: tree
-      trials: 5
+      trials: 10
       base_params: {}
       fit_params: {}
       search_space:
@@ -260,7 +260,7 @@ training:
     xgboost:
       enabled: true
       profile: tree
-      trials: 5
+      trials: 10
       base_params: {}
       fit_params: {}
       search_space:
@@ -276,7 +276,7 @@ training:
     lightgbm:
       enabled: true
       profile: tree
-      trials: 5
+      trials: 10
       base_params: {}
       fit_params: {}
       search_space:
