@@ -171,6 +171,20 @@ training:
   timeout: ${TRAIN_TIMEOUT:-null}
   trials_base: &trials_base 50
   trials_advanced: &trials_advanced 100
+  # Tuning options: baseline-anchored search, pruner, and CV even when val exists
+  tuning:
+    enqueue_baseline_trial: true
+    pruner: median           # median | halving | hyperband | none
+    anchor_to_baseline: true
+    anchor:
+      float_rel_span: 0.5    # ±50% around baseline for floats
+      int_rel_span: 0.3      # ±30% around baseline for ints
+    # Force CV during tuning even when a validation split exists
+    cv_always:
+      enabled: true
+      kind: timeseries       # timeseries | kfold
+      n_splits: 5
+      shuffle: false
   # Cross-validation usata quando non esiste un validation set esterno (valid_fraction=0)
   cv_when_no_val:
     enabled: true

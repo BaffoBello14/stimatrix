@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 
 import numpy as np
 import optuna
@@ -52,6 +52,7 @@ def tune_model(
     cat_features: Optional[List[int]] = None,
     cv_config: Optional[Dict[str, Any]] = None,
     tuning_split_fraction: float = 0.8,  # fraction for temporal split (consistent with preprocessing)
+    tuning_options: Optional[Dict[str, Any]] = None,
 ) -> TuningResult:
     direction = "maximize"
 
@@ -66,8 +67,76 @@ def tune_model(
     else:
         sampler = optuna.samplers.TPESampler(seed=seed)
 
+    # --- Build pruner
+    pruner_name = str(((tuning_options or {}).get("pruner", "median") or "").lower())
+    if pruner_name in {"median", "med": "median"}:
+        pruner = optuna.pruners.MedianPruner()
+    elif pruner_name in {"halving", "successive_halving", "sha"}:
+        pruner = optuna.pruners.SuccessiveHalvingPruner()
+    elif pruner_name in {"hyperband"}:
+        pruner = optuna.pruners.HyperbandPruner()
+    elif pruner_name in {"none", "off", "disable"}:
+        pruner = optuna.pruners.NopPruner()
+    else:
+        pruner = optuna.pruners.MedianPruner()
+
+    # --- Optionally narrow the search space around baseline
+    def _anchored_space(space: Dict[str, Any], base: Dict[str, Any]) -> Dict[str, Any]:
+        if not bool((tuning_options or {}).get("anchor_to_baseline", False)):
+            return space
+        anchored: Dict[str, Any] = {}
+        # defaults
+        anchor_cfg = (tuning_options or {}).get("anchor", {}) or {}
+        float_rel_span = float(anchor_cfg.get("float_rel_span", 0.5))  # ±50% around base for linear floats
+        int_rel_span = float(anchor_cfg.get("int_rel_span", 0.3))      # ±30% around base for ints
+        for name, spec in (space or {}).items():
+            bval = base.get(name, None)
+            if bval is None:
+                anchored[name] = spec
+                continue
+            t = str(spec.get("type", "")).lower()
+            lo = spec.get("low")
+            hi = spec.get("high")
+            if t == "float" and lo is not None and hi is not None:
+                lo = float(lo)
+                hi = float(hi)
+                if bool(spec.get("log", False)):
+                    # multiplicative window
+                    low_new = max(lo, bval * max(1e-8, 1 - float_rel_span))
+                    high_new = min(hi, bval * (1 + float_rel_span))
+                else:
+                    # additive window by relative span
+                    delta = max(1e-12, abs(bval) * float_rel_span)
+                    low_new = max(lo, float(bval) - delta)
+                    high_new = min(hi, float(bval) + delta)
+                if low_new >= high_new:  # fallback to original
+                    anchored[name] = spec
+                else:
+                    s = dict(spec)
+                    s["low"] = low_new
+                    s["high"] = high_new
+                    anchored[name] = s
+            elif t == "int" and lo is not None and hi is not None:
+                lo = int(lo)
+                hi = int(hi)
+                window = max(2, int(round(abs(int(bval)) * int_rel_span)))
+                low_new = max(lo, int(bval) - window)
+                high_new = min(hi, int(bval) + window)
+                if low_new >= high_new:
+                    anchored[name] = spec
+                else:
+                    s = dict(spec)
+                    s["low"] = low_new
+                    s["high"] = high_new
+                    anchored[name] = s
+            else:
+                anchored[name] = spec
+        return anchored
+
+    eff_space = _anchored_space(search_space or {}, base_params or {})
+
     def objective(trial: optuna.Trial) -> float:
-        params = _apply_suggestions(trial, search_space or {}, base_params or {})
+        params = _apply_suggestions(trial, eff_space or {}, base_params or {})
         # Guardia SVR: degree ha senso solo con kernel 'poly'; coef0 solo per 'poly' o 'sigmoid'
         if model_key.lower() == "svr":
             k = params.get("kernel")
@@ -76,13 +145,22 @@ def tune_model(
             if k not in {"poly", "sigmoid"}:
                 params.pop("coef0", None)
         est: RegressorMixin = build_estimator(model_key, params)
+        # Forza CV durante tuning se configurato, anche se esiste una validation esterna
+        cv_always_cfg = (tuning_options or {}).get("cv_always", {}) or {}
+        force_cv = bool(cv_always_cfg.get("enabled", False))
         # Nessuna validation esterna -> opzionale cross-validation
-        if X_val is None or y_val is None:
+        if force_cv or X_val is None or y_val is None:
             use_cv = bool((cv_config or {}).get("enabled", False))
+            # Se force_cv, usa cv_always_cfg come prioritaria
+            if force_cv:
+                use_cv = True
+            active_cv_cfg = dict(cv_config or {})
+            if force_cv:
+                active_cv_cfg.update(cv_always_cfg)
             if use_cv:
-                kind = str((cv_config or {}).get("kind", "timeseries")).lower()
-                n_splits = int((cv_config or {}).get("n_splits", 5))
-                shuffle = bool((cv_config or {}).get("shuffle", False))
+                kind = str((active_cv_cfg or {}).get("kind", "timeseries")).lower()
+                n_splits = int((active_cv_cfg or {}).get("n_splits", 5))
+                shuffle = bool((active_cv_cfg or {}).get("shuffle", False))
                 if kind == "kfold":
                     splitter = KFold(n_splits=n_splits, shuffle=shuffle, random_state=seed if shuffle else None)
                 else:
@@ -259,7 +337,13 @@ def tune_model(
             y_pred = est.predict(X_val)
             return select_primary_value(primary_metric, y_val, y_pred)
 
-    study = optuna.create_study(direction=direction, sampler=sampler)
+    study = optuna.create_study(direction=direction, sampler=sampler, pruner=pruner)
+    # Enqueue baseline trial to guarantee evaluation of base params
+    if bool((tuning_options or {}).get("enqueue_baseline_trial", False)) and (base_params or {}):
+        try:
+            study.enqueue_trial(base_params)
+        except Exception:
+            pass
     study.optimize(objective, n_trials=n_trials, timeout=timeout)
 
     return TuningResult(best_params=study.best_params, best_value=study.best_value, study=study)

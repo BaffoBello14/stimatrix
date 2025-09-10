@@ -233,6 +233,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                 cat_features=cat_features,
                 cv_config=(tr_cfg.get("cv_when_no_val", {}) if X_val is None else None),
                 tuning_split_fraction=tuning_split_fraction,
+                tuning_options=tr_cfg.get("tuning", {}),
             )
         except ImportError as e:
             logger.warning(f"Dipendenza mancante per modello {model_key}: {e}. Skip del modello.")
