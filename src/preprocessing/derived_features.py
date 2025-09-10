@@ -20,10 +20,6 @@ def create_price_ratios(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFram
     """
     df_new = df.copy()
     
-    # RIMUOVERE COMPLETAMENTE - CAUSANO DATA LEAKAGE:
-    # - prezzo_per_mq (deriva da target)
-    # - prezzo_vs_rendita (deriva da target) 
-    
     price_col = 'AI_Prezzo_Ridistribuito'  # TARGET - NON USARE!
     rendita_col = 'AI_Rendita' 
     superficie_col = 'AI_Superficie'
@@ -50,8 +46,6 @@ def create_price_ratios(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFram
     if superficie_col in df.columns and rendita_col in df.columns:
         df_new['superficie_per_rendita'] = df[superficie_col] / df[rendita_col].clip(lower=1)
         logger.info("Creata feature SAFE: superficie_per_rendita")
-    
-    logger.warning("RIMOSSO DATA LEAKAGE: prezzo_per_mq e prezzo_vs_rendita non create")
     
     return df_new
 
@@ -166,12 +160,6 @@ def create_categorical_aggregates(df: pd.DataFrame, config: Dict[str, Any]) -> p
         
         logger.info(f"Create feature aggregate SAFE per {group_col}")
     
-    # RIMUOVERE COMPLETAMENTE - CAUSANO DATA LEAKAGE:
-    # - prezzo_medio_gruppo (deriva da target)
-    # - prezzo_std_gruppo (deriva da target) 
-    # - prezzo_percentile_gruppo (deriva da target)
-    
-    logger.warning("RIMOSSO DATA LEAKAGE: target encoding su prezzo non implementato")
     logger.info("Per target encoding corretto, implementare con train/validation split")
     
     return df_new
