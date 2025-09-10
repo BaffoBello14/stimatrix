@@ -31,6 +31,8 @@ def parse_args() -> argparse.Namespace:
     # Mapping speciale per shorthand
     if args.config.strip().lower() == "fast":
         args.config = "config/config_fast_test.yaml"
+    elif args.config.strip().lower() == "opti":
+        args.config = "config/config_optimized.yaml"
 
     return args
 

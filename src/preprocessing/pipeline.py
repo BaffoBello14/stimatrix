@@ -11,6 +11,7 @@ import fnmatch
 from utils.logger import get_logger
 from utils.io import save_json
 from preprocessing.feature_extractors import extract_geometry_features, maybe_extract_json_features
+from preprocessing.derived_features import create_derived_features
 from preprocessing.outliers import OutlierConfig, detect_outliers
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
 from preprocessing.imputation import ImputationConfig, impute_missing, fit_imputers, transform_with_imputers
@@ -94,6 +95,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     if cols_to_drop_now:
         df = df.drop(columns=cols_to_drop_now, errors="ignore")
     logger.info(f"Estrazione feature: aggiunte/derivate, dropped_raw={len(cols_to_drop_now)} -> cols={len(df.columns)}")
+
+    # Create derived features based on EDA insights
+    df = create_derived_features(df, config)
+    logger.info(f"Feature derivate completate -> cols={len(df.columns)}")
 
     # Keep only canonical surface in m²
     surface_cfg = config.get("surface", {})

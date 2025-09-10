@@ -1,0 +1,370 @@
+# Configurazione SICURA - Niente Early Stopping, Focus Anti-Overfitting
+# =====================================================================
+
+# Logging Configuration
+logging:
+  level: ${LOG_LEVEL:-INFO}
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  file: ${LOG_FILE:-'logs/pipeline_safe.log'}
+  console: ${LOG_CONSOLE:-true}
+  rotate:
+    enabled: ${LOG_ROTATE:-false}
+    max_bytes: ${LOG_MAX_BYTES:-10485760}
+    backup_count: ${LOG_BACKUP_COUNT:-5}
+
+# Execution Configuration
+execution:
+  steps: ["all"]
+  force_reload: false
+
+# Experiment tracking (Weights & Biases)
+tracking:
+  wandb:
+    enabled: ${WANDB_ENABLED:-true}
+    project: ${WANDB_PROJECT:-'stimatrix-safe'}
+    entity: ${WANDB_ENTITY:-null}
+    group: ${WANDB_GROUP:-'safe-no-early-stopping'}
+    tags: ["safe", "no-early-stopping", "anti-overfitting"]
+    mode: ${WANDB_MODE:-'online'}
+    name: null
+
+# Paths Configuration
+paths:
+  raw_data: ${RAW_DATA_DIR:-'data/raw'}
+  preprocessed_data: ${PREPROC_DIR:-'data/preprocessed'}
+  schema: ${SCHEMA_PATH:-'schema/db_schema.json'}
+  models_dir: ${MODELS_DIR:-'models_safe'}
+  raw_filename: 'raw.parquet'
+  preprocessed_filename: 'preprocessed.parquet'
+
+# Database Configuration (for data retrieval)
+database:
+  schema_name: null
+  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV']
+  use_poi: true
+  use_ztl: true
+  output_format: 'parquet'
+  compression: 'snappy'
+
+# Target configuration
+target:
+  column_candidates: ['AI_Prezzo_Ridistribuito']
+  log_transform: false
+
+# Temporal split configuration - OTTIMIZZATO
+temporal_split:
+  year_col: 'A_AnnoStipula'
+  month_col: 'A_MeseStipula'
+  mode: 'fraction'
+  fraction:
+    train: 0.7          # Ridotto per validation set più robusto
+    valid: 0.2          # Raddoppiato per stabilità tuning  
+    test: 0.1           # Test finale
+  date:
+    test_start_year: 2023
+    test_start_month: 1
+  # Controlli qualità split
+  min_samples_per_split: 500
+  ensure_temporal_order: true
+
+# Outlier detection
+outliers:
+  method: 'ensemble'
+  z_thresh: 4.0
+  iqr_factor: 3.0
+  iso_forest_contamination: 0.01
+  group_by_col: 'AI_IdTipologiaEdilizia'
+  min_group_size: 30
+  fallback_strategy: 'global'
+
+# Missing value imputation
+imputation:
+  numeric_strategy: 'median'
+  categorical_strategy: 'most_frequent'
+  group_by_col: 'AI_IdTipologiaEdilizia'
+
+# Categorical encoding
+encoding: &encoding_defaults
+  max_ohe_cardinality: 12
+
+# Numeric coercion configuration
+numeric_coercion:
+  enabled: true
+  threshold: 0.95
+  blacklist_globs:
+    - 'II_*'
+    - 'AI_Id*'
+    - 'Foglio'
+    - 'Particella*'
+    - 'Subalterno'
+    - 'SezioneAmministrativa'
+    - 'ZonaOmi'
+    - '*COD*'
+
+# PCA configuration
+pca: &pca_defaults
+  enabled: false
+  n_components: 0.95
+  random_state: 42
+
+# Correlation pruning
+correlation: &correlation_defaults
+  numeric_threshold: 0.98
+
+# Non-descriptive columns pruning
+drop_non_descriptive:
+  na_threshold: 0.98
+
+# Feature extraction toggles - SAFE (senza data leakage)
+feature_extraction:
+  geometry: true
+  json: true
+  
+  # Feature derivate SICURE
+  derived_features:
+    enabled: true
+    
+    # Ratios SENZA DATA LEAKAGE
+    price_ratios:
+      enabled: true
+      features:
+        - "rendita_per_mq"           # ✅ SAFE
+        - "superficie_vs_media_zona" # ✅ SAFE
+        - "rendita_vs_media_zona"    # ✅ SAFE
+        - "superficie_per_rendita"   # ✅ SAFE
+    
+    # Features geospaziali
+    spatial_features:
+      enabled: true
+      features:
+        - "poi_density_total"
+        - "poi_shopping_ratio"
+        - "distance_to_center"
+        - "zona_omi_price_rank"
+    
+    # Features temporali
+    temporal_features:
+      enabled: true
+      features:
+        - "anno_stipula_normalized"
+        - "mese_sin"
+        - "mese_cos"
+        - "trimestre"
+    
+    # Features categoriche aggregate SAFE
+    categorical_aggregates:
+      enabled: true
+      group_by: ["AI_ZonaOmi", "AI_IdCategoriaCatastale", "AI_IdTipologiaEdilizia"]
+      features:
+        - "superficie_media_gruppo"  # ✅ SAFE
+        - "superficie_std_gruppo"    # ✅ SAFE
+        - "rendita_media_gruppo"     # ✅ SAFE
+        - "rendita_std_gruppo"       # ✅ SAFE
+        - "count_per_gruppo"         # ✅ SAFE
+
+# Surface handling
+surface:
+  drop_columns:
+    - 'A_ImmobiliPrincipaliConSuperficieValorizzata'
+    - 'AI_SuperficieCalcolata'
+    - 'AI_SuperficieVisuraTotale'
+    - 'AI_SuperficieVisuraTotaleE'
+    - 'AI_SuperficieVisuraTotaleAttuale'
+    - 'AI_SuperficieVisuraTotaleEAttuale'
+
+# Scaling configuration
+scaling: &scaling_defaults
+  scaler_type: 'standard'
+  with_mean: true
+  with_std: true
+
+# Winsorization
+winsorization: &winsor_defaults
+  enabled: false
+  lower_quantile: 0.01
+  upper_quantile: 0.99
+
+# Profiles
+profiles:
+  scaled:
+    enabled: true
+    output_prefix: 'scaled'
+    encoding: *encoding_defaults
+    winsorization: *winsor_defaults
+    scaling: *scaling_defaults
+    pca: *pca_defaults
+    correlation: *correlation_defaults
+  tree:
+    enabled: true
+    output_prefix: 'tree'
+    encoding: *encoding_defaults
+    correlation: *correlation_defaults
+  catboost:
+    enabled: true
+    output_prefix: 'catboost'
+    correlation: *correlation_defaults
+
+# Training configuration - ULTRA SICURA
+training:
+  # Opzioni globali
+  primary_metric: "neg_root_mean_squared_error"
+  report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
+  sampler: "auto"
+  seed: ${SEED:-42}
+  n_jobs_default: ${N_JOBS:--1}
+  timeout: ${TRAIN_TIMEOUT:-null}
+  
+  # Trials MOLTO ridotti per evitare overfitting
+  trials_base: 10           # Molto ridotto
+  trials_advanced: 15       # Molto ridotto  
+  trials_conservative: 5    # Per modelli sensibili
+  
+  # NIENTE early stopping - per evitare errori
+  early_stopping:
+    enabled: false
+  
+  # Cross-validation robusta
+  cv_when_no_val:
+    enabled: true
+    kind: timeseries
+    n_splits: 5      # Ridotto per velocità
+    shuffle: false
+    test_size: 0.2
+    gap: 0
+  
+  cv_with_val:
+    enabled: false   # Disabilitato per semplicità
+
+  # Modelli SICURI con configurazioni conservative
+  models:
+    # Ridge - Sempre stabile
+    ridge:
+      enabled: true
+      profile: scaled
+      trials: 10
+      base_params:
+        alpha: 200.0  # Alta regolarizzazione
+      search_space:
+        alpha: {type: float, low: 50.0, high: 500.0, log: true}
+    
+    # LightGBM - Configurazione ULTRA conservativa
+    lightgbm:
+      enabled: true
+      profile: tree
+      trials: 5  # Molto ridotto
+      base_params:
+        n_estimators: 300     # Ridotto
+        max_depth: 5          # Molto ridotto
+        learning_rate: 0.05   # Lento
+        num_leaves: 15        # Molto ridotto
+        subsample: 0.8
+        colsample_bytree: 0.8
+        reg_alpha: 2.0        # Alta regolarizzazione
+        reg_lambda: 2.0       # Alta regolarizzazione
+        min_child_samples: 50 # Molto conservativo
+        min_split_gain: 0.01
+        verbose: -1
+        # NIENTE early stopping
+      search_space:
+        # Range MOLTO ristretti
+        learning_rate: {type: float, low: 0.03, high: 0.07}
+        max_depth: {type: int, low: 4, high: 6}
+        num_leaves: {type: int, low: 10, high: 20}
+        reg_alpha: {type: float, low: 1.0, high: 3.0}
+        reg_lambda: {type: float, low: 1.0, high: 3.0}
+    
+    # XGBoost - Configurazione ULTRA conservativa
+    xgboost:
+      enabled: true
+      profile: tree
+      trials: 5
+      base_params:
+        n_estimators: 300
+        max_depth: 4          # Molto ridotto
+        learning_rate: 0.05
+        subsample: 0.8
+        colsample_bytree: 0.8
+        reg_alpha: 2.0        # Alta regolarizzazione
+        reg_lambda: 2.0       # Alta regolarizzazione
+        min_child_weight: 10  # Molto conservativo
+        gamma: 0.2            # Alta regolarizzazione
+        # NIENTE early stopping
+      search_space:
+        learning_rate: {type: float, low: 0.03, high: 0.07}
+        max_depth: {type: int, low: 3, high: 5}
+        reg_alpha: {type: float, low: 1.0, high: 3.0}
+        reg_lambda: {type: float, low: 1.0, high: 3.0}
+    
+    # CatBoost - Configurazione ULTRA conservativa
+    catboost:
+      enabled: true
+      profile: catboost
+      trials: 5
+      base_params:
+        iterations: 300       # Ridotto
+        depth: 4              # Molto ridotto
+        learning_rate: 0.05
+        l2_leaf_reg: 10.0     # Alta regolarizzazione
+        bagging_temperature: 1.0
+        border_count: 64      # Ridotto
+        random_strength: 1.0
+        rsm: 0.8
+        verbose: False
+        # NIENTE early stopping
+      fit_params:
+        cat_features: __categorical_indices__
+      search_space:
+        depth: {type: int, low: 3, high: 5}
+        learning_rate: {type: float, low: 0.03, high: 0.07}
+        l2_leaf_reg: {type: float, low: 5.0, high: 15.0}
+    
+    # KNN per diversità
+    knn:
+      enabled: true
+      profile: scaled
+      trials: 5
+      base_params:
+        n_neighbors: 15       # Conservativo
+        weights: "distance"
+      search_space:
+        n_neighbors: {type: int, low: 10, high: 25}
+        weights: {type: categorical, choices: ["uniform", "distance"]}
+
+  # SHAP ridotto per performance
+  shap:
+    enabled: true
+    sample_size: 200    # Molto ridotto
+    max_display: 15     # Ridotto
+    save_plots: true
+    save_values: true
+
+  # Ensemble SEMPLICI
+  ensembles:
+    voting_simple:
+      enabled: true
+      type: "voting"
+      fixed_members: ["lightgbm", "ridge"]  # Solo 2 modelli
+      tune_weights: false  # Pesi uguali
+    
+    stacking_simple:
+      enabled: true
+      type: "stacking"
+      fixed_members: ["lightgbm", "xgboost"]
+      final_estimator: "ridge"  # Semplice
+      cv_folds: 3               # Ridotto
+      passthrough: false
+
+# Evaluation configuration
+evaluation:
+  group_metrics:
+    enabled: true
+    group_by_columns: ['AI_ZonaOmi', 'AI_IdCategoriaCatastale', 'AI_IdTipologiaEdilizia']
+    min_group_size: 30
+    original_scale: true
+    report_metrics: ['r2', 'rmse', 'mse', 'mae', 'mape', 'medae']
+    price_band:
+      method: 'quantile'
+      quantiles: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+      mape_floor: 1000.0
+      merge_small_bins: true
+      label_prefix: 'PREZZO_'
