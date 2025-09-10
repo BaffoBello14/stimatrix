@@ -303,7 +303,7 @@ training:
       profile: tree
       trials: 10  # Molto ridotto
       base_params:
-        n_estimators: 1000
+        n_estimators: 500     # Ridotto per compensare assenza early stopping
         max_depth: 6          # Ridotto
         learning_rate: 0.03   # Più lento
         num_leaves: 31        # Ridotto
@@ -313,8 +313,8 @@ training:
         reg_lambda: 1.0       # Più regolarizzazione
         min_child_samples: 30 # Più conservativo
         min_split_gain: 0.01
-        early_stopping_rounds: 50
         verbose: -1
+        # RIMOSSO early_stopping_rounds - causa errore senza eval_set
       search_space:
         # Range molto ristretti
         learning_rate: {type: float, low: 0.01, high: 0.05}
@@ -329,7 +329,7 @@ training:
       profile: tree
       trials: 10
       base_params:
-        n_estimators: 1000
+        n_estimators: 500     # Ridotto per compensare assenza early stopping
         max_depth: 5          # Ridotto
         learning_rate: 0.03   # Più lento
         subsample: 0.8
@@ -338,8 +338,7 @@ training:
         reg_lambda: 1.0       # Più regolarizzazione
         min_child_weight: 5   # Più conservativo
         gamma: 0.1
-        early_stopping_rounds: 50
-        eval_metric: "rmse"
+        # RIMOSSO early_stopping_rounds e eval_metric - causano errore
       search_space:
         learning_rate: {type: float, low: 0.01, high: 0.05}
         max_depth: {type: int, low: 3, high: 6}
@@ -352,7 +351,7 @@ training:
       profile: catboost
       trials: 10
       base_params:
-        iterations: 1000
+        iterations: 500       # Ridotto per compensare assenza early stopping
         depth: 5              # Ridotto
         learning_rate: 0.03   # Più lento
         l2_leaf_reg: 5.0      # Più regolarizzazione
@@ -360,9 +359,8 @@ training:
         border_count: 128
         random_strength: 1.0
         rsm: 0.8
-        early_stopping_rounds: 50
-        use_best_model: true
         verbose: False
+        # RIMOSSO early_stopping_rounds e use_best_model - causano errore
       fit_params:
         cat_features: __categorical_indices__
       search_space:

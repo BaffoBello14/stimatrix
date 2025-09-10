@@ -1,0 +1,157 @@
+# Configurazione Ottimizzata CON Early Stopping Corretto
+# =====================================================
+
+# Copiamo la configurazione ottimizzata e aggiungiamo early stopping corretto
+
+# Include tutto da config_optimized.yaml ma con modifiche per early stopping
+extends: config_optimized.yaml
+
+# Training configuration - CON EARLY STOPPING CORRETTO
+training:
+  # Opzioni globali (ereditate)
+  primary_metric: "neg_root_mean_squared_error"
+  report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
+  sampler: "auto"
+  seed: ${SEED:-42}
+  n_jobs_default: ${N_JOBS:--1}
+  timeout: ${TRAIN_TIMEOUT:-null}
+  
+  # Trials ridotti per evitare overfitting
+  trials_base: 15
+  trials_advanced: 25
+  trials_conservative: 10
+  
+  # Early stopping CORRETTO - implementato nel codice training
+  early_stopping:
+    enabled: true
+    patience: 50
+    min_delta: 0.0001
+    restore_best_weights: true
+    monitor_metric: "rmse"
+    use_validation_set: true  # Usa validation set per early stopping
+  
+  # Modelli CON early stopping corretto
+  models:
+    ridge:
+      enabled: true
+      profile: scaled
+      trials: 15
+      base_params:
+        alpha: 100.0
+      search_space:
+        alpha: {type: float, low: 10.0, high: 1000.0, log: true}
+    
+    lightgbm:
+      enabled: true
+      profile: tree
+      trials: 10
+      base_params:
+        n_estimators: 1000      # Può essere alto con early stopping
+        max_depth: 6
+        learning_rate: 0.03
+        num_leaves: 31
+        subsample: 0.8
+        colsample_bytree: 0.8
+        reg_alpha: 1.0
+        reg_lambda: 1.0
+        min_child_samples: 30
+        min_split_gain: 0.01
+        verbose: -1
+      fit_params:
+        # Early stopping sarà gestito nel codice training
+        early_stopping_rounds: 50
+        eval_metric: "rmse"
+        eval_set_from_validation: true  # Flag per usare validation set
+      search_space:
+        learning_rate: {type: float, low: 0.01, high: 0.05}
+        max_depth: {type: int, low: 4, high: 7}
+        num_leaves: {type: int, low: 15, high: 31}
+        reg_alpha: {type: float, low: 0.5, high: 2.0}
+        reg_lambda: {type: float, low: 0.5, high: 2.0}
+    
+    xgboost:
+      enabled: true
+      profile: tree
+      trials: 10
+      base_params:
+        n_estimators: 1000
+        max_depth: 5
+        learning_rate: 0.03
+        subsample: 0.8
+        colsample_bytree: 0.8
+        reg_alpha: 1.0
+        reg_lambda: 1.0
+        min_child_weight: 5
+        gamma: 0.1
+      fit_params:
+        early_stopping_rounds: 50
+        eval_metric: "rmse"
+        eval_set_from_validation: true
+      search_space:
+        learning_rate: {type: float, low: 0.01, high: 0.05}
+        max_depth: {type: int, low: 3, high: 6}
+        reg_alpha: {type: float, low: 0.5, high: 2.0}
+        reg_lambda: {type: float, low: 0.5, high: 2.0}
+    
+    catboost:
+      enabled: true
+      profile: catboost
+      trials: 10
+      base_params:
+        iterations: 1000
+        depth: 5
+        learning_rate: 0.03
+        l2_leaf_reg: 5.0
+        bagging_temperature: 1.0
+        border_count: 128
+        random_strength: 1.0
+        rsm: 0.8
+        verbose: False
+      fit_params:
+        cat_features: __categorical_indices__
+        early_stopping_rounds: 50
+        use_best_model: true
+        eval_set_from_validation: true
+      search_space:
+        depth: {type: int, low: 4, high: 6}
+        learning_rate: {type: float, low: 0.01, high: 0.05}
+        l2_leaf_reg: {type: float, low: 3.0, high: 10.0}
+    
+    knn:
+      enabled: true
+      profile: scaled
+      trials: 10
+      base_params:
+        n_neighbors: 10
+        weights: "distance"
+      search_space:
+        n_neighbors: {type: int, low: 5, high: 20}
+        weights: {type: categorical, choices: ["uniform", "distance"]}
+
+  # SHAP ridotto per performance
+  shap:
+    enabled: true
+    sample_size: 300
+    max_display: 20
+    save_plots: true
+    save_values: true
+
+  # Ensemble diversificati
+  ensembles:
+    voting_diverse:
+      enabled: true
+      type: "voting"
+      fixed_members: ["lightgbm", "ridge", "knn"]
+      tune_weights: true
+      weights_search_space:
+        lightgbm_weight: {type: float, low: 0.4, high: 0.7}
+        ridge_weight: {type: float, low: 0.2, high: 0.4}
+        knn_weight: {type: float, low: 0.1, high: 0.3}
+    
+    stacking_conservative:
+      enabled: true
+      type: "stacking"
+      fixed_members: ["lightgbm", "xgboost", "ridge"]
+      final_estimator: "ridge"
+      cv_folds: 5
+      passthrough: false

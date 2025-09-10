@@ -423,9 +423,7 @@ training:
         reg_lambda: 0.1
         min_child_weight: 3
         gamma: 0.1
-        # Early stopping
-        early_stopping_rounds: 50
-        eval_metric: "rmse"
+        # NOTA: early_stopping_rounds rimosso - richiede eval_set nel fit()
       fit_params: {}
       search_space:
         n_estimators: {type: int, low: 200, high: 800}           # era 300-1500
@@ -453,9 +451,8 @@ training:
         reg_lambda: 0.1
         min_child_samples: 20
         min_split_gain: 0.01
-        # Early stopping parameters
-        early_stopping_rounds: 50
         verbose: -1
+        # NOTA: early_stopping_rounds rimosso - richiede eval_set nel fit()
       fit_params: {}
       search_space:
         # Range molto più conservativi
@@ -483,10 +480,8 @@ training:
         border_count: 128
         random_strength: 1.0
         rsm: 0.8
-        # Early stopping
-        early_stopping_rounds: 50
-        use_best_model: true
         verbose: False
+        # NOTA: early_stopping_rounds rimosso - richiede eval_set nel fit()
       fit_params:
         cat_features: __categorical_indices__
       search_space:
