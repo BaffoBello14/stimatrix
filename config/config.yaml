@@ -414,7 +414,7 @@ training:
       trials: *trials_conservative
       base_params:
         # Baseline conservativi
-        n_estimators: 1000        # Aumentato per early stopping
+        n_estimators: 500         # Ridotto per compensare assenza early stopping
         max_depth: 6
         learning_rate: 0.05
         subsample: 0.8
@@ -441,7 +441,7 @@ training:
       trials: *trials_conservative  # Ridotto per il miglior modello
       base_params: 
         # Baseline conservativi per evitare overfitting
-        n_estimators: 1000        # Aumentato perché early stopping gestirà
+        n_estimators: 500         # Ridotto per compensare assenza early stopping
         max_depth: 8
         learning_rate: 0.05
         num_leaves: 31
@@ -472,7 +472,7 @@ training:
       trials: *trials_conservative
       base_params:
         # Baseline conservativi
-        iterations: 1000          # Aumentato per early stopping
+        iterations: 500           # Ridotto per compensare assenza early stopping
         depth: 6
         learning_rate: 0.05
         l2_leaf_reg: 3.0

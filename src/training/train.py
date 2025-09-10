@@ -14,6 +14,7 @@ from .model_zoo import build_estimator
 from .metrics import regression_metrics, overfit_diagnostics, grouped_regression_metrics, _build_price_bands
 from .ensembles import build_voting, build_stacking
 from .shap_utils import compute_shap, save_shap_plots
+from .early_stopping_utils import prepare_early_stopping_params, log_early_stopping_results
 from utils.wandb_utils import WandbTracker
 
 logger = get_logger(__name__)
@@ -265,11 +266,19 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     except Exception:
                         pass
 
+        # Prepara early stopping se necessario
+        clean_base_params, enhanced_fit_params = prepare_early_stopping_params(
+            mk_lower, base_params, fit_params, X_val, y_val
+        )
+        
+        # Ricrea estimator con parametri puliti
+        estimator = build_estimator(mk_lower, {**clean_base_params, **best_params})
+        
         use_values_for_final = requires_numeric_only or mk_lower == "lightgbm"
         if use_values_for_final:
-            estimator.fit(X_tr_final.values, y_tr_final.values, **fit_params)
+            estimator.fit(X_tr_final.values, y_tr_final.values, **enhanced_fit_params)
         else:
-            estimator.fit(X_tr_final, y_tr_final, **fit_params)
+            estimator.fit(X_tr_final, y_tr_final, **enhanced_fit_params)
 
         y_pred_test = estimator.predict(X_test.values if use_values_for_final else X_test)
         y_pred_train = estimator.predict(X_tr_final.values if use_values_for_final else X_tr_final)
@@ -277,8 +286,14 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         m_test = regression_metrics(y_test.values, y_pred_test)
         m_train = regression_metrics(y_tr_final.values, y_pred_train)
         diag = overfit_diagnostics(m_train, m_test)
+        
+        # Log risultati early stopping
+        early_stopping_info = log_early_stopping_results(mk_lower, estimator)
+        
         wb.log_prefixed_metrics(f"model/{model_key}", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
         wb.log_prefixed_metrics(f"model/{model_key}", {f"overfit_{k}": v for k, v in diag.items()})
+        if early_stopping_info:
+            wb.log_prefixed_metrics(f"model/{model_key}", {f"early_stopping_{k}": v for k, v in early_stopping_info.items()})
 
         model_id = f"{model_key}"
         model_dir = models_dir / model_id
