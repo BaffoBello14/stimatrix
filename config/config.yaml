@@ -126,14 +126,16 @@ feature_extraction:
   derived_features:
     enabled: true
     
-    # Ratios basati su correlazioni forti (AI_Rendita: 0.68, Superficie: 0.66)
+    # Ratios SENZA DATA LEAKAGE (rimosso prezzo_per_mq e prezzo_vs_rendita)
     price_ratios:
       enabled: true
       features:
-        - "prezzo_per_mq"           # AI_Prezzo_Ridistribuito / AI_Superficie
-        - "rendita_per_mq"          # AI_Rendita / AI_Superficie
-        - "prezzo_vs_rendita"       # AI_Prezzo_Ridistribuito / AI_Rendita
-        - "superficie_vs_media_zona" # AI_Superficie / media_per_zona
+        # ❌ RIMOSSO - DATA LEAKAGE: "prezzo_per_mq" (deriva da target)
+        # ❌ RIMOSSO - DATA LEAKAGE: "prezzo_vs_rendita" (deriva da target)
+        - "rendita_per_mq"          # ✅ SAFE: AI_Rendita / AI_Superficie
+        - "superficie_vs_media_zona" # ✅ SAFE: AI_Superficie / media_per_zona
+        - "rendita_vs_media_zona"    # ✅ SAFE: AI_Rendita / media_zona
+        - "superficie_per_rendita"   # ✅ SAFE: AI_Superficie / AI_Rendita
     
     # Features geospaziali (POI shopping: 0.29)
     spatial_features:
@@ -153,16 +155,19 @@ feature_extraction:
         - "mese_cos"               # cos(2π * A_MeseStipula / 12)
         - "trimestre"              # Trimestre dell'anno
     
-    # Features categoriche aggregate
+    # Features categoriche aggregate SENZA DATA LEAKAGE
     categorical_aggregates:
       enabled: true
       group_by: ["AI_ZonaOmi", "AI_IdCategoriaCatastale", "AI_IdTipologiaEdilizia"]
       features:
-        - "prezzo_medio_gruppo"
-        - "prezzo_std_gruppo"  
-        - "superficie_media_gruppo"
-        - "count_per_gruppo"
-        - "prezzo_percentile_in_gruppo"
+        # ❌ RIMOSSO - DATA LEAKAGE: "prezzo_medio_gruppo" (deriva da target)
+        # ❌ RIMOSSO - DATA LEAKAGE: "prezzo_std_gruppo" (deriva da target)
+        # ❌ RIMOSSO - DATA LEAKAGE: "prezzo_percentile_in_gruppo" (deriva da target)
+        - "superficie_media_gruppo"  # ✅ SAFE: media superficie per gruppo
+        - "superficie_std_gruppo"    # ✅ SAFE: std superficie per gruppo
+        - "rendita_media_gruppo"     # ✅ SAFE: media rendita per gruppo
+        - "rendita_std_gruppo"       # ✅ SAFE: std rendita per gruppo
+        - "count_per_gruppo"         # ✅ SAFE: conteggio per gruppo
 
 # Surface handling
 surface:

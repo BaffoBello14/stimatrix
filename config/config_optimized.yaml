@@ -124,14 +124,16 @@ feature_extraction:
   derived_features:
     enabled: true
     
-    # Ratios basati su correlazioni forti
+    # Ratios SENZA DATA LEAKAGE
     price_ratios:
       enabled: true
       features:
-        - "prezzo_per_mq"
-        - "rendita_per_mq" 
-        - "prezzo_vs_rendita"
-        - "superficie_vs_media_zona"
+        # ❌ RIMOSSO - DATA LEAKAGE: "prezzo_per_mq" (deriva da target)
+        # ❌ RIMOSSO - DATA LEAKAGE: "prezzo_vs_rendita" (deriva da target)
+        - "rendita_per_mq"           # ✅ SAFE: AI_Rendita / AI_Superficie
+        - "superficie_vs_media_zona" # ✅ SAFE: AI_Superficie / media_zona
+        - "rendita_vs_media_zona"    # ✅ SAFE: AI_Rendita / media_zona
+        - "superficie_per_rendita"   # ✅ SAFE: AI_Superficie / AI_Rendita
     
     # Features geospaziali
     spatial_features:
@@ -151,16 +153,17 @@ feature_extraction:
         - "mese_cos"
         - "trimestre"
     
-    # Features categoriche aggregate
+    # Features categoriche aggregate SENZA DATA LEAKAGE
     categorical_aggregates:
       enabled: true
       group_by: ["AI_ZonaOmi", "AI_IdCategoriaCatastale", "AI_IdTipologiaEdilizia"]
       features:
-        - "prezzo_medio_gruppo"
-        - "prezzo_std_gruppo"
-        - "superficie_media_gruppo"
-        - "count_per_gruppo"
-        - "prezzo_percentile_in_gruppo"
+        # ❌ RIMOSSO - DATA LEAKAGE: target encoding su prezzo
+        - "superficie_media_gruppo"  # ✅ SAFE
+        - "superficie_std_gruppo"    # ✅ SAFE
+        - "rendita_media_gruppo"     # ✅ SAFE
+        - "rendita_std_gruppo"       # ✅ SAFE
+        - "count_per_gruppo"         # ✅ SAFE
 
 # Surface handling
 surface:

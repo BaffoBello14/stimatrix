@@ -14,33 +14,44 @@ logger = get_logger(__name__)
 
 
 def create_price_ratios(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
-    """Crea ratios di prezzo basati su correlazioni forti trovate in EDA."""
+    """
+    Crea ratios SENZA DATA LEAKAGE - NO target-derived features!
+    Solo feature che non dipendono dal target AI_Prezzo_Ridistribuito.
+    """
     df_new = df.copy()
     
-    price_col = 'AI_Prezzo_Ridistribuito'
+    # RIMUOVERE COMPLETAMENTE - CAUSANO DATA LEAKAGE:
+    # - prezzo_per_mq (deriva da target)
+    # - prezzo_vs_rendita (deriva da target) 
+    
+    price_col = 'AI_Prezzo_Ridistribuito'  # TARGET - NON USARE!
     rendita_col = 'AI_Rendita' 
     superficie_col = 'AI_Superficie'
     
-    if price_col in df.columns and superficie_col in df.columns:
-        # Prezzo per metro quadro
-        df_new['prezzo_per_mq'] = df[price_col] / df[superficie_col].clip(lower=1)
-        logger.info("Creata feature: prezzo_per_mq")
-    
+    # ✅ SAFE: Rendita per metro quadro (non deriva dal target)
     if rendita_col in df.columns and superficie_col in df.columns:
-        # Rendita per metro quadro
         df_new['rendita_per_mq'] = df[rendita_col] / df[superficie_col].clip(lower=1)
-        logger.info("Creata feature: rendita_per_mq")
+        logger.info("Creata feature SAFE: rendita_per_mq")
     
-    if price_col in df.columns and rendita_col in df.columns:
-        # Rapporto prezzo/rendita
-        df_new['prezzo_vs_rendita'] = df[price_col] / df[rendita_col].clip(lower=1)
-        logger.info("Creata feature: prezzo_vs_rendita")
-    
-    # Superficie vs media per zona
+    # ✅ SAFE: Superficie vs media per zona (non deriva dal target)
     if superficie_col in df.columns and 'AI_ZonaOmi' in df.columns:
         zona_superficie_mean = df.groupby('AI_ZonaOmi')[superficie_col].transform('mean')
         df_new['superficie_vs_media_zona'] = df[superficie_col] / zona_superficie_mean.clip(lower=1)
-        logger.info("Creata feature: superficie_vs_media_zona")
+        logger.info("Creata feature SAFE: superficie_vs_media_zona")
+    
+    # ✅ SAFE: Nuove feature senza leakage
+    if rendita_col in df.columns and 'AI_ZonaOmi' in df.columns:
+        # Rendita vs media zona (indicatore qualità zona)
+        zona_rendita_mean = df.groupby('AI_ZonaOmi')[rendita_col].transform('mean')
+        df_new['rendita_vs_media_zona'] = df[rendita_col] / zona_rendita_mean.clip(lower=1)
+        logger.info("Creata feature SAFE: rendita_vs_media_zona")
+    
+    # ✅ SAFE: Ratio superficie/rendita (efficienza immobile)
+    if superficie_col in df.columns and rendita_col in df.columns:
+        df_new['superficie_per_rendita'] = df[superficie_col] / df[rendita_col].clip(lower=1)
+        logger.info("Creata feature SAFE: superficie_per_rendita")
+    
+    logger.warning("RIMOSSO DATA LEAKAGE: prezzo_per_mq e prezzo_vs_rendita non create")
     
     return df_new
 
@@ -109,43 +120,59 @@ def create_temporal_features(df: pd.DataFrame, config: Dict[str, Any]) -> pd.Dat
 
 
 def create_categorical_aggregates(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
-    """Crea feature aggregate per categorie (target encoding style)."""
+    """
+    Crea feature aggregate SENZA DATA LEAKAGE.
+    ATTENZIONE: Target encoding causa leakage se fatto su tutto il dataset!
+    """
     df_new = df.copy()
     
     group_cols = ['AI_ZonaOmi', 'AI_IdCategoriaCatastale', 'AI_IdTipologiaEdilizia']
-    target_col = 'AI_Prezzo_Ridistribuito'
+    target_col = 'AI_Prezzo_Ridistribuito'  # TARGET - ATTENZIONE LEAKAGE!
     superficie_col = 'AI_Superficie'
+    rendita_col = 'AI_Rendita'
     
     # Verifica che le colonne esistano
     available_group_cols = [col for col in group_cols if col in df.columns]
     
-    if not available_group_cols or target_col not in df.columns:
-        logger.warning("Colonne necessarie per aggregati categorici non trovate")
+    if not available_group_cols:
+        logger.warning("Colonne di grouping non trovate")
         return df_new
     
+    logger.warning("⚠️  TARGET ENCODING DISABILITATO - CAUSA DATA LEAKAGE!")
+    logger.warning("⚠️  Per implementazione corretta, usare train/val split nel target encoding")
+    
+    # ✅ SAFE: Aggregati su feature NON-TARGET
     for group_col in available_group_cols:
-        # Prezzo medio per gruppo
-        group_mean = df.groupby(group_col)[target_col].transform('mean')
-        df_new[f'prezzo_medio_{group_col}'] = group_mean
         
-        # Deviazione standard per gruppo
-        group_std = df.groupby(group_col)[target_col].transform('std').fillna(0)
-        df_new[f'prezzo_std_{group_col}'] = group_std
+        # ✅ Count per gruppo (sempre safe)
+        group_count = df.groupby(group_col).size()
+        df_new[f'count_{group_col}'] = df[group_col].map(group_count)
         
-        # Count per gruppo
-        group_count = df.groupby(group_col)[target_col].transform('count')
-        df_new[f'count_{group_col}'] = group_count
-        
-        # Percentile del prezzo nel gruppo
-        group_rank = df.groupby(group_col)[target_col].rank(pct=True)
-        df_new[f'prezzo_percentile_{group_col}'] = group_rank
-        
-        # Superficie media per gruppo (se disponibile)
+        # ✅ SAFE: Superficie media per gruppo
         if superficie_col in df.columns:
             superficie_mean = df.groupby(group_col)[superficie_col].transform('mean')
             df_new[f'superficie_media_{group_col}'] = superficie_mean
+            
+            superficie_std = df.groupby(group_col)[superficie_col].transform('std').fillna(0)
+            df_new[f'superficie_std_{group_col}'] = superficie_std
         
-        logger.info(f"Create feature aggregate per {group_col}")
+        # ✅ SAFE: Rendita media per gruppo (se disponibile)
+        if rendita_col in df.columns:
+            rendita_mean = df.groupby(group_col)[rendita_col].transform('mean')
+            df_new[f'rendita_media_{group_col}'] = rendita_mean
+            
+            rendita_std = df.groupby(group_col)[rendita_col].transform('std').fillna(0)
+            df_new[f'rendita_std_{group_col}'] = rendita_std
+        
+        logger.info(f"Create feature aggregate SAFE per {group_col}")
+    
+    # RIMUOVERE COMPLETAMENTE - CAUSANO DATA LEAKAGE:
+    # - prezzo_medio_gruppo (deriva da target)
+    # - prezzo_std_gruppo (deriva da target) 
+    # - prezzo_percentile_gruppo (deriva da target)
+    
+    logger.warning("RIMOSSO DATA LEAKAGE: target encoding su prezzo non implementato")
+    logger.info("Per target encoding corretto, implementare con train/validation split")
     
     return df_new
 
