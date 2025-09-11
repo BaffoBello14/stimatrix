@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from utils.logger import get_logger
+from joblib import load as joblib_load
 from utils.io import save_json
 
 logger = get_logger(__name__)
@@ -114,5 +115,74 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
     except Exception:
         _out_log = str(out)
     logger.info(f"Evaluation completata. Report: {_out_log}")
+
+    # Compute group metrics for ensembles (evaluation-time fallback)
+    try:
+        import json as _json
+        prep_info_path = pre_dir / "preprocessing_info.json"
+        log_applied_global = False
+        if prep_info_path.exists():
+            try:
+                prep_info = _json.loads(prep_info_path.read_text(encoding="utf-8"))
+                log_applied_global = bool(((prep_info or {}).get("log_transformation", {}) or {}).get("applied", False))
+            except Exception:
+                pass
+        gm_cfg = ( ( ( ({} if results is None else {}) ) ) )  # placeholder to avoid linter
+        # Reload evaluation config for group settings
+        from utils.config import load_config as _load_cfg
+        cfg = _load_cfg("config/config.yaml") if (Path("config/config.yaml").exists()) else {}
+        eval_cfg: Dict[str, Any] = cfg.get("evaluation", {}) or {}
+        gm = eval_cfg.get("group_metrics", {}) or {}
+        gb_cols = [c for c in (gm.get("group_by_columns", []) or []) if isinstance(c, str)]
+        if gb_cols:
+            group_cols_path = pre_dir / (f"group_cols_test_{prefix}.parquet" if prefix else "group_cols_test.parquet")
+            grp_df = pd.read_parquet(group_cols_path) if group_cols_path.exists() else pd.DataFrame()
+            # Helper to compute and persist
+            def _ensemble_group_metrics(model_name: str, subdir: str) -> None:
+                model_dir = models_dir / subdir
+                model_path = model_dir / "model.pkl"
+                if not model_path.exists():
+                    return
+                try:
+                    est = joblib_load(model_path)
+                except Exception:
+                    return
+                try:
+                    y_pred = est.predict(X_test.values)
+                except Exception:
+                    try:
+                        y_pred = est.predict(X_test)
+                    except Exception:
+                        return
+                if log_applied_global:
+                    y_true_series = pd.Series(y_test_orig)
+                    y_pred_series = pd.Series(np.expm1(y_pred))
+                else:
+                    y_true_series = pd.Series(y_test)
+                    y_pred_series = pd.Series(y_pred)
+                for gb_col in gb_cols:
+                    if gb_col not in grp_df.columns:
+                        continue
+                    groups = grp_df[gb_col].fillna("MISSING")
+                    gm_df = grouped_regression_metrics(
+                        y_true=y_true_series,
+                        y_pred=y_pred_series,
+                        groups=groups,
+                        report_metrics=eval_cfg.get("report_metrics", ["r2", "rmse", "mse", "mae", "mape", "medae"]),
+                        min_group_size=int(gm.get("min_group_size", 30)),
+                        mape_floor=float((gm.get("price_band", {}) or {}).get("mape_floor", 1e-8)),
+                    )
+                    if not gm_df.empty:
+                        out_csv = model_dir / f"group_metrics_{gb_col}.csv"
+                        gm_df.to_csv(out_csv, index=False)
+                logger.info(f"Group metrics salvati per ensemble '{subdir}'")
+
+            # Voting
+            _ensemble_group_metrics("voting", "voting")
+            # Stacking
+            _ensemble_group_metrics("stacking", "stacking")
+    except Exception as e:
+        logger.warning(f"Ensemble group metrics (evaluation) failed: {e}")
+
     return results
 
