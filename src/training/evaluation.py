@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from utils.logger import get_logger
+from .metrics import grouped_regression_metrics
 from joblib import load as joblib_load
 from utils.io import save_json
 
