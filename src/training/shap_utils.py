@@ -143,15 +143,37 @@ def save_shap_plots(out_dir: str, shap_bundle: Dict[str, Any], model_name: str) 
     out_dir_path = ess(out_dir)
     out_dir_path.mkdir(parents=True, exist_ok=True)
     plot_base = out_dir_path / f"shap_{model_name}"
+    # Try modern beeswarm plot; if it fails, fall back to legacy summary_plot
     try:
         shap.plots.beeswarm(shap_bundle["values"], max_display=shap_bundle.get("max_display", 30), show=False)
         __import__("matplotlib.pyplot").pyplot.savefig(f"{plot_base}_beeswarm.png", bbox_inches="tight", dpi=200)
         __import__("matplotlib.pyplot").pyplot.close()
     except Exception:
-        pass
+        try:
+            shap.summary_plot(shap_bundle["values"], shap_bundle.get("data_sample"), show=False, plot_type="dot", max_display=shap_bundle.get("max_display", 30))
+            __import__("matplotlib.pyplot").pyplot.savefig(f"{plot_base}_beeswarm.png", bbox_inches="tight", dpi=200)
+            __import__("matplotlib.pyplot").pyplot.close()
+        except Exception:
+            pass
+    # Try modern bar plot; if it fails, fall back to legacy summary_plot bar
     try:
         shap.plots.bar(shap_bundle["values"], max_display=shap_bundle.get("max_display", 30), show=False)
         __import__("matplotlib.pyplot").pyplot.savefig(f"{plot_base}_bar.png", bbox_inches="tight", dpi=200)
         __import__("matplotlib.pyplot").pyplot.close()
+    except Exception:
+        try:
+            shap.summary_plot(shap_bundle["values"], shap_bundle.get("data_sample"), show=False, plot_type="bar", max_display=shap_bundle.get("max_display", 30))
+            __import__("matplotlib.pyplot").pyplot.savefig(f"{plot_base}_bar.png", bbox_inches="tight", dpi=200)
+            __import__("matplotlib.pyplot").pyplot.close()
+        except Exception:
+            pass
+    # Always persist importances as CSV for traceability
+    try:
+        import pandas as _pd  # local import to keep module import light
+        importance: Dict[str, Any] = shap_bundle.get("importance", {}) or {}
+        if importance:
+            (_pd.Series(importance).rename("importance")
+                .to_frame()
+                .to_csv(out_dir_path / f"{model_name}_importance.csv"))
     except Exception:
         pass

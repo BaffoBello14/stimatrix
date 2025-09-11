@@ -463,8 +463,18 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     except Exception:
                         pass
                 if bool(shap_cfg.get("save_values", False)):
-                    np.save(model_dir / "shap_values.npy", shap_bundle["values"].values, allow_pickle=False)
-                    shap_bundle["data_sample"].to_parquet(model_dir / "shap_sample.parquet", index=False)
+                    try:
+                        shap_values_obj = shap_bundle.get("values")
+                        values_array = shap_values_obj.values if hasattr(shap_values_obj, "values") else np.asarray(shap_values_obj)
+                        np.save(model_dir / "shap_values.npy", values_array, allow_pickle=False)
+                    except Exception:
+                        # As a last resort, skip saving raw values
+                        pass
+                    try:
+                        # Save the sampled data used for SHAP
+                        shap_bundle["data_sample"].to_parquet(model_dir / "shap_sample.parquet", index=False)
+                    except Exception:
+                        pass
                 try:
                     wb.log_prefixed_metrics(f"shap/{model_key}", {"sample_size": int(shap_bundle.get("sample_size", 0))})
                 except Exception:
@@ -700,7 +710,6 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
 
         # SHAP for stacking meta-model (explain base learner contributions)
         try:
-            from .shap_utils import compute_shap, save_shap_plots
             # Build meta features as predictions of base estimators
             try:
                 base_ests = [est for est in stack.estimators_]
