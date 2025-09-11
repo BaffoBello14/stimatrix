@@ -17,7 +17,7 @@ execution:
   # Passi della pipeline da eseguire: [schema, dataset, preprocessing, training, evaluation] oppure ["all"]
   steps: ["all"]
   # Se true, forza la rielaborazione anche se gli output intermedi esistono già
-  force_reload: false
+  force_reload: true
 
 # Experiment tracking (Weights & Biases)
 tracking:
@@ -362,7 +362,7 @@ evaluation:
   group_metrics:
     enabled: true
     group_by_columns: ['AI_ZonaOmi', 'AI_IdCategoriaCatastale', 'AI_IdTipologiaEdilizia']
-    min_group_size: 30
+    min_group_size: 10
     original_scale: true
     report_metrics: ['r2', 'rmse', 'mse', 'mae', 'mape', 'medae']
     price_band:

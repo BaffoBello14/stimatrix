@@ -220,7 +220,7 @@ training:
     dt:
       enabled: true
       profile: tree
-      trials: 5
+      trials: 3
       base_params: {}
       fit_params: {}
       search_space:
@@ -232,7 +232,7 @@ training:
     rf:
       enabled: true
       profile: tree
-      trials: 5
+      trials: 3
       base_params: {}
       fit_params: {}
       search_space:
@@ -245,7 +245,7 @@ training:
     gbr:
       enabled: true
       profile: tree
-      trials: 10
+      trials: 3
       base_params: {}
       fit_params: {}
       search_space:
@@ -260,7 +260,7 @@ training:
     xgboost:
       enabled: true
       profile: tree
-      trials: 10
+      trials: 3
       base_params: {}
       fit_params: {}
       search_space:
@@ -276,7 +276,7 @@ training:
     lightgbm:
       enabled: true
       profile: tree
-      trials: 10
+      trials: 3
       base_params: {}
       fit_params: {}
       search_space:
@@ -293,7 +293,7 @@ training:
     catboost:
       enabled: true
       profile: catboost
-      trials: 5
+      trials: 3
       base_params: {}
       fit_params:
         cat_features: __categorical_indices__
