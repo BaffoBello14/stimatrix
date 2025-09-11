@@ -17,7 +17,7 @@ execution:
   # Passi della pipeline da eseguire: [schema, dataset, preprocessing, training, evaluation] oppure ["all"]
   steps: ["all"]
   # Se true, forza la rielaborazione anche se gli output intermedi esistono già
-  force_reload: false
+  force_reload: true
 
 # Experiment tracking (Weights & Biases)
 tracking:
@@ -51,13 +51,13 @@ database:
 # Target configuration
 target:
   column_candidates: ['AI_Prezzo_Ridistribuito']
-  log_transform: false
+  log_transform: true
 
 # Outlier detection
 outliers:
   method: 'ensemble'       # 'iqr' | 'zscore' | 'iso_forest' | 'ensemble'
-  z_thresh: 4.0
-  iqr_factor: 3.0
+  z_thresh: 3.5
+  iqr_factor: 1.5
   iso_forest_contamination: 0.01
   group_by_col: 'AI_IdTipologiaEdilizia'
   min_group_size: 30       # minimum samples per group to apply group-wise outlier detection
@@ -79,8 +79,8 @@ temporal_split:
   month_col: 'A_MeseStipula'
   mode: 'fraction'      # 'date' | 'fraction'
   fraction:
-    train: 0.8          # fraction of time-ordered data for train
-    valid: 0.1          # fraction of time-ordered data for validation (0 disables val)
+    train: 0.7          # fraction of time-ordered data for train
+    valid: 0.2          # fraction of time-ordered data for validation (0 disables val)
   date:
     test_start_year: 2023 # used only if mode=='date'
     test_start_month: 1   # used only if mode=='date'
@@ -263,7 +263,7 @@ training:
     gbr:
       enabled: true
       profile: tree
-      trials: *trials_advanced
+      trials: 150
       base_params: {}
       fit_params: {}
       search_space:
@@ -291,35 +291,35 @@ training:
     xgboost:
       enabled: true
       profile: tree
-      trials: *trials_advanced
+      trials: 150
       base_params: {}
       fit_params: {}
       search_space:
         n_estimators: {type: int, low: 300, high: 1500}
-        max_depth: {type: int, low: 3, high: 12}
-        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-        subsample: {type: float, low: 0.5, high: 1.0}
-        colsample_bytree: {type: float, low: 0.5, high: 1.0}
-        min_child_weight: {type: float, low: 0.01, high: 20.0, log: true}
-        reg_alpha: {type: float, low: 1e-8, high: 10.0, log: true}
-        reg_lambda: {type: float, low: 1e-8, high: 10.0, log: true}
-        gamma: {type: float, low: 1e-8, high: 10.0, log: true}
+        max_depth: {type: int, low: 3, high: 8}
+        learning_rate: {type: float, low: 0.01, high: 0.1, log: true}
+        subsample: {type: float, low: 0.6, high: 0.9}
+        colsample_bytree: {type: float, low: 0.6, high: 0.9}
+        min_child_weight: {type: float, low: 1.0, high: 10.0, log: true}
+        reg_alpha: {type: float, low: 1e-4, high: 10.0, log: true}
+        reg_lambda: {type: float, low: 1e-4, high: 10.0, log: true}
+        gamma: {type: float, low: 1e-4, high: 10.0, log: true}
     lightgbm:
       enabled: true
       profile: tree
-      trials: *trials_advanced
+      trials: 150
       base_params: {}
       fit_params: {}
       search_space:
         n_estimators: {type: int, low: 300, high: 1500}
-        max_depth: {type: categorical, choices: [-1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]}
-        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-        num_leaves: {type: int, low: 15, high: 255}
-        subsample: {type: float, low: 0.5, high: 1.0}
-        colsample_bytree: {type: float, low: 0.5, high: 1.0}
-        reg_alpha: {type: float, low: 1e-8, high: 10.0, log: true}
-        reg_lambda: {type: float, low: 1e-8, high: 10.0, log: true}
-        min_child_samples: {type: int, low: 5, high: 100}
+        max_depth: {type: categorical, choices: [-1, 4, 5, 6, 7, 8]}
+        learning_rate: {type: float, low: 0.01, high: 0.1, log: true}
+        num_leaves: {type: int, low: 16, high: 63}
+        subsample: {type: float, low: 0.6, high: 0.9}
+        colsample_bytree: {type: float, low: 0.6, high: 0.9}
+        reg_alpha: {type: float, low: 1e-4, high: 10.0, log: true}
+        reg_lambda: {type: float, low: 1e-4, high: 10.0, log: true}
+        min_child_samples: {type: int, low: 20, high: 200}
         min_split_gain: {type: float, low: 0.0, high: 1.0}
     catboost:
       enabled: true
@@ -362,7 +362,7 @@ evaluation:
   group_metrics:
     enabled: true
     group_by_columns: ['AI_ZonaOmi', 'AI_IdCategoriaCatastale', 'AI_IdTipologiaEdilizia']
-    min_group_size: 30
+    min_group_size: 10
     original_scale: true
     report_metrics: ['r2', 'rmse', 'mse', 'mae', 'mape', 'medae']
     price_band:
