@@ -710,7 +710,6 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
 
         # SHAP for stacking meta-model (explain base learner contributions)
         try:
-            from .shap_utils import compute_shap, save_shap_plots
             # Build meta features as predictions of base estimators
             try:
                 base_ests = [est for est in stack.estimators_]
