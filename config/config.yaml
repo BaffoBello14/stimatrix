@@ -50,7 +50,8 @@ database:
 
 # Target configuration
 target:
-  column_candidates: ['AI_Prezzo_Ridistribuito']
+  # Choose among ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
+  column_candidates: ['AI_Prezzo_MQ', 'AI_Prezzo_Ridistribuito']
   log_transform: true
 
 # Outlier detection
@@ -127,6 +128,8 @@ surface:
     - 'AI_SuperficieVisuraTotaleE'
     - 'AI_SuperficieVisuraTotaleAttuale'
     - 'AI_SuperficieVisuraTotaleEAttuale'
+  # Keep AI_Superficie as a feature (set to false to drop from X)
+  include_ai_superficie: false
 
 # Scaling configuration
 scaling: &scaling_defaults

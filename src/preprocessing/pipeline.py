@@ -135,9 +135,38 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         df["TemporalKey"] = df["A_AnnoStipula"].astype(int) * 100 + df["A_MeseStipula"].astype(int)
         logger.info("Creata colonna TemporalKey (A_AnnoStipula*100 + A_MeseStipula)")
 
+    # Optionally compute AI_Prezzo_MQ if requested among target candidates
+    try:
+        tgt_cfg = config.get("target", {}) or {}
+        tgt_candidates = list(tgt_cfg.get("column_candidates", [
+            "AI_Prezzo_Ridistribuito",
+        ]) or [])
+    except Exception:
+        tgt_candidates = ["AI_Prezzo_Ridistribuito"]
+    if "AI_Prezzo_MQ" in tgt_candidates:
+        if "AI_Prezzo_Ridistribuito" in df.columns and "AI_Superficie" in df.columns:
+            superficie = pd.to_numeric(df["AI_Superficie"], errors="coerce")
+            prezzo = pd.to_numeric(df["AI_Prezzo_Ridistribuito"], errors="coerce")
+            with np.errstate(divide='ignore', invalid='ignore'):
+                mq = prezzo / superficie
+            # Invalidate zero/negative or NaN superficie to avoid infinities
+            mq = mq.where(superficie > 0)
+            # Remove non-finite values
+            mq = mq.replace([np.inf, -np.inf], np.nan)
+            df["AI_Prezzo_MQ"] = mq
+            logger.info("Derivata colonna AI_Prezzo_MQ = AI_Prezzo_Ridistribuito / AI_Superficie")
+        else:
+            logger.warning(
+                "AI_Prezzo_MQ richiesto tra i candidati ma mancano colonne base (AI_Prezzo_Ridistribuito o AI_Superficie)"
+            )
+
     # Decide target
     target_col = choose_target(df, config)
     logger.info(f"Target selezionato: {target_col}")
+    # If using per-m² target, drop redistributed absolute price to avoid leakage and reduce noise
+    if target_col == "AI_Prezzo_MQ" and "AI_Prezzo_Ridistribuito" in df.columns:
+        df = df.drop(columns=["AI_Prezzo_Ridistribuito"], errors="ignore")
+        logger.info("Target=AI_Prezzo_MQ: rimossa colonna AI_Prezzo_Ridistribuito dalle feature")
 
     # Create combined for split key if needed
     Xy_full = df.copy()
@@ -192,6 +221,17 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     if not val_df.empty:
         y_val = val_df[target_col].astype(float)
         X_val = val_df.drop(columns=[target_col])
+
+    # Optionally drop AI_Superficie from features based on configuration
+    include_surface = bool(surface_cfg.get("include_ai_superficie", True))
+    if not include_surface:
+        drop_cols = [c for c in ["AI_Superficie"] if c in X_train.columns]
+        if drop_cols:
+            X_train = X_train.drop(columns=drop_cols, errors="ignore")
+            X_test = X_test.drop(columns=drop_cols, errors="ignore")
+            if X_val is not None:
+                X_val = X_val.drop(columns=drop_cols, errors="ignore")
+            logger.info("Rimossa colonna AI_Superficie dalle feature per configurazione")
 
     # Preserve original-scale targets for evaluation
     y_test_orig = y_test.copy()
