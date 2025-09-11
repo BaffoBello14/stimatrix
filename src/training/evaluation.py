@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from utils.logger import get_logger
-from .metrics import grouped_regression_metrics
+from .metrics import grouped_regression_metrics, _build_price_bands
 from joblib import load as joblib_load
 from utils.io import save_json
 
@@ -176,6 +176,29 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
                     if not gm_df.empty:
                         out_csv = model_dir / f"group_metrics_{gb_col}.csv"
                         gm_df.to_csv(out_csv, index=False)
+                # Price-band grouped metrics
+                price_cfg = (gm.get("price_band", {}) or {})
+                try:
+                    bands = _build_price_bands(
+                        y_true_orig=y_true_series,
+                        method=str(price_cfg.get("method", "quantile")),
+                        quantiles=price_cfg.get("quantiles"),
+                        fixed_edges=price_cfg.get("fixed_edges"),
+                        label_prefix=str(price_cfg.get("label_prefix", "PREZZO_")),
+                    )
+                    gm_price = grouped_regression_metrics(
+                        y_true=y_true_series,
+                        y_pred=y_pred_series,
+                        groups=bands,
+                        report_metrics=eval_cfg.get("report_metrics", ["r2", "rmse", "mse", "mae", "mape", "medae"]),
+                        min_group_size=int(gm.get("min_group_size", 30)),
+                        mape_floor=float(price_cfg.get("mape_floor", 1e-8)),
+                    )
+                    if not gm_price.empty:
+                        out_csv = model_dir / "group_metrics_price_band.csv"
+                        gm_price.to_csv(out_csv, index=False)
+                except Exception:
+                    pass
                 logger.info(f"Group metrics salvati per ensemble '{subdir}'")
 
             # Voting
