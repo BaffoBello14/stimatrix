@@ -101,6 +101,7 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
                 "r2_orig": mt_orig.get("r2"),
                 "rmse_orig": mt_orig.get("rmse"),
                 "mae_orig": mt_orig.get("mae"),
+                "mape_floor_orig": mt_orig.get("mape_floor"),
             })
         results["test_metrics"] = extract
     except Exception as e:

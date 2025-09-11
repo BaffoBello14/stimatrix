@@ -279,6 +279,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         # Also compute metrics on original scale (euros) if log-transform was applied
         m_test_orig = None
         m_train_orig = None
+        smearing_factor: Optional[float] = None
         try:
             if log_applied_global:
                 # Test original scale
@@ -290,12 +291,18 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                         y_test_true_orig = np.expm1(y_test.values)
                 except Exception:
                     y_test_true_orig = np.expm1(y_test.values)
-                y_pred_test_orig = np.expm1(np.asarray(y_pred_test))
+                # Duan's smearing factor from training residuals in log-space
+                try:
+                    residuals_log = (y_tr_final.values - np.asarray(y_pred_train))
+                    smearing_factor = float(np.mean(np.exp(residuals_log)))
+                except Exception:
+                    smearing_factor = 1.0
+                y_pred_test_orig = np.expm1(np.asarray(y_pred_test)) * (smearing_factor if smearing_factor is not None else 1.0)
                 m_test_orig = regression_metrics(y_test_true_orig, y_pred_test_orig)
 
                 # Train original scale
                 y_train_true_orig = np.expm1(y_tr_final.values)
-                y_pred_train_orig = np.expm1(np.asarray(y_pred_train))
+                y_pred_train_orig = np.expm1(np.asarray(y_pred_train)) * (smearing_factor if smearing_factor is not None else 1.0)
                 m_train_orig = regression_metrics(y_train_true_orig, y_pred_train_orig)
             else:
                 # If no log transform, original-scale == current metrics
@@ -313,6 +320,21 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         model_dir = models_dir / model_id
         model_dir.mkdir(parents=True, exist_ok=True)
         dump(estimator, model_dir / "model.pkl")
+        # Add MAPE with floor on original scale if available
+        try:
+            price_cfg: Dict[str, Any] = gm_cfg.get("price_band", {}) if 'gm_cfg' in locals() else {}
+            mape_floor = float(price_cfg.get("mape_floor", 1e-8))
+            if m_test_orig is not None:
+                denom = np.where(np.abs(y_test_true_orig) < max(mape_floor, 1e-8), max(mape_floor, 1e-8), np.abs(y_test_true_orig))
+                mape_orig_floor = float(np.mean(np.abs((y_test_true_orig - y_pred_test_orig) / denom)))
+                m_test_orig["mape_floor"] = mape_orig_floor
+            if m_train_orig is not None:
+                denom_tr = np.where(np.abs(y_train_true_orig) < max(mape_floor, 1e-8), max(mape_floor, 1e-8), np.abs(y_train_true_orig))
+                mape_orig_floor_tr = float(np.mean(np.abs((y_train_true_orig - y_pred_train_orig) / denom_tr)))
+                m_train_orig["mape_floor"] = mape_orig_floor_tr
+        except Exception:
+            pass
+
         meta = {
             "model_key": model_key,
             "prefix": prefix,
@@ -323,6 +345,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "metrics_test": m_test,
             "metrics_train_original": m_train_orig,
             "metrics_test_original": m_test_orig,
+            "smearing_factor": smearing_factor if smearing_factor is not None else (1.0 if not log_applied_global else None),
             "overfit": diag,
         }
         (model_dir / "metrics.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
@@ -456,6 +479,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "metrics_train": m_train,
             "metrics_test_original": m_test_orig,
             "metrics_train_original": m_train_orig,
+            "smearing_factor": meta.get("smearing_factor"),
             "overfit": diag,
         }
         table_rows.append({
@@ -491,6 +515,31 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         y_pred_train = vote.predict(X_tr_final.values)
         m_test = regression_metrics(y_test.values, y_pred_test)
         m_train = regression_metrics(y_tr_final.values, y_pred_train)
+        # Original-scale metrics with Duan smearing (if log applied)
+        m_test_orig = None
+        m_train_orig = None
+        try:
+            if log_applied_global:
+                y_test_true_orig = (pd.read_parquet(pre_dir / (f"y_test_orig_{prefix}.parquet" if prefix else "y_test_orig.parquet")).iloc[:, 0].values
+                                    if (pre_dir / (f"y_test_orig_{prefix}.parquet" if prefix else "y_test_orig.parquet")).exists()
+                                    else np.expm1(y_test.values))
+                residuals_log = y_tr_final.values - y_pred_train
+                smear_v = float(np.mean(np.exp(residuals_log)))
+                y_pred_test_orig = np.expm1(y_pred_test) * smear_v
+                y_train_true_orig = np.expm1(y_tr_final.values)
+                y_pred_train_orig = np.expm1(y_pred_train) * smear_v
+                m_test_orig = regression_metrics(y_test_true_orig, y_pred_test_orig)
+                m_train_orig = regression_metrics(y_train_true_orig, y_pred_train_orig)
+                # mape floor
+                price_cfg: Dict[str, Any] = gm_cfg.get("price_band", {}) if 'gm_cfg' in locals() else {}
+                mape_floor = float(price_cfg.get("mape_floor", 1e-8))
+                denom = np.where(np.abs(y_test_true_orig) < max(mape_floor, 1e-8), max(mape_floor, 1e-8), np.abs(y_test_true_orig))
+                m_test_orig["mape_floor"] = float(np.mean(np.abs((y_test_true_orig - y_pred_test_orig) / denom)))
+            else:
+                m_test_orig = dict(m_test)
+                m_train_orig = dict(m_train)
+        except Exception:
+            pass
         diag = overfit_diagnostics(m_train, m_test)
         ens_id = "voting"
         ens_dir = models_dir / ens_id
@@ -501,6 +550,8 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "members": [k for k, _ in selected],
             "metrics_train": m_train,
             "metrics_test": m_test,
+            "metrics_train_original": m_train_orig,
+            "metrics_test_original": m_test_orig,
             "overfit": diag,
         }
         (ens_dir / "metrics.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
@@ -513,6 +564,39 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         })
         logger.info(f"[voting] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
         wb.log_prefixed_metrics("ensemble/voting", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
+
+        # Group metrics for ensemble voting
+        if gm_enabled:
+            try:
+                y_true_series = pd.Series(y_test_true_orig) if (log_applied_global and 'y_test_true_orig' in locals()) else y_test
+                y_pred_series = pd.Series(y_pred_test_orig) if (log_applied_global and 'y_pred_test_orig' in locals()) else pd.Series(y_pred_test)
+                group_cols_path = pre_dir / (f"group_cols_test_{prefix}.parquet" if prefix else "group_cols_test.parquet")
+                if group_cols_path.exists():
+                    grp_df = pd.read_parquet(group_cols_path)
+                    gb_cols_cfg: List[str] = [c for c in (gm_cfg.get("group_by_columns", []) or []) if c in grp_df.columns]
+                else:
+                    grp_df = pd.DataFrame()
+                    gb_cols_cfg = []
+                for gb_col in gb_cols_cfg:
+                    groups = grp_df[gb_col].fillna("MISSING")
+                    gm_df = grouped_regression_metrics(
+                        y_true=y_true_series,
+                        y_pred=y_pred_series,
+                        groups=groups,
+                        report_metrics=gm_report_metrics,
+                        min_group_size=gm_min_group_size,
+                        mape_floor=float(price_cfg.get("mape_floor", 1e-8)),
+                    )
+                    if not gm_df.empty:
+                        out_csv = ens_dir / f"group_metrics_{gb_col}.csv"
+                        gm_df.to_csv(out_csv, index=False)
+                        if gm_log_wandb:
+                            try:
+                                wb.log_artifact(out_csv, name=f"{ens_id}_{gb_col}_group_metrics.csv", type="metrics")
+                            except Exception:
+                                pass
+            except Exception as e:
+                logger.warning(f"Per-group metrics failed for ensemble {ens_id}: {e}")
 
     if ens_cfg.get("stacking", {}).get("enabled", False) and len(ranked) >= 2:
         top_n = int(ens_cfg.get("stacking", {}).get("top_n", 5))
@@ -530,6 +614,31 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         y_pred_train = stack.predict(X_tr_final.values)
         m_test = regression_metrics(y_test.values, y_pred_test)
         m_train = regression_metrics(y_tr_final.values, y_pred_train)
+        # Original-scale metrics + smearing
+        m_test_orig = None
+        m_train_orig = None
+        try:
+            if log_applied_global:
+                y_test_true_orig = (pd.read_parquet(pre_dir / (f"y_test_orig_{prefix}.parquet" if prefix else "y_test_orig.parquet")).iloc[:, 0].values
+                                    if (pre_dir / (f"y_test_orig_{prefix}.parquet" if prefix else "y_test_orig.parquet")).exists()
+                                    else np.expm1(y_test.values))
+                residuals_log = y_tr_final.values - y_pred_train
+                smear_s = float(np.mean(np.exp(residuals_log)))
+                y_pred_test_orig = np.expm1(y_pred_test) * smear_s
+                y_train_true_orig = np.expm1(y_tr_final.values)
+                y_pred_train_orig = np.expm1(y_pred_train) * smear_s
+                m_test_orig = regression_metrics(y_test_true_orig, y_pred_test_orig)
+                m_train_orig = regression_metrics(y_train_true_orig, y_pred_train_orig)
+                # mape floor
+                price_cfg: Dict[str, Any] = gm_cfg.get("price_band", {}) if 'gm_cfg' in locals() else {}
+                mape_floor = float(price_cfg.get("mape_floor", 1e-8))
+                denom = np.where(np.abs(y_test_true_orig) < max(mape_floor, 1e-8), max(mape_floor, 1e-8), np.abs(y_test_true_orig))
+                m_test_orig["mape_floor"] = float(np.mean(np.abs((y_test_true_orig - y_pred_test_orig) / denom)))
+            else:
+                m_test_orig = dict(m_test)
+                m_train_orig = dict(m_train)
+        except Exception:
+            pass
         diag = overfit_diagnostics(m_train, m_test)
         ens_id = "stacking"
         ens_dir = models_dir / ens_id
@@ -541,6 +650,8 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "final_estimator": final_est_key,
             "metrics_train": m_train,
             "metrics_test": m_test,
+            "metrics_train_original": m_train_orig,
+            "metrics_test_original": m_test_orig,
             "overfit": diag,
         }
         (ens_dir / "metrics.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
@@ -553,6 +664,71 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         })
         logger.info(f"[stacking] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
         wb.log_prefixed_metrics("ensemble/stacking", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
+
+        # Group metrics for stacking ensemble
+        if gm_enabled:
+            try:
+                y_true_series = pd.Series(y_test_true_orig) if (log_applied_global and 'y_test_true_orig' in locals()) else y_test
+                y_pred_series = pd.Series(y_pred_test_orig) if (log_applied_global and 'y_pred_test_orig' in locals()) else pd.Series(y_pred_test)
+                group_cols_path = pre_dir / (f"group_cols_test_{prefix}.parquet" if prefix else "group_cols_test.parquet")
+                if group_cols_path.exists():
+                    grp_df = pd.read_parquet(group_cols_path)
+                    gb_cols_cfg: List[str] = [c for c in (gm_cfg.get("group_by_columns", []) or []) if c in grp_df.columns]
+                else:
+                    grp_df = pd.DataFrame()
+                    gb_cols_cfg = []
+                for gb_col in gb_cols_cfg:
+                    groups = grp_df[gb_col].fillna("MISSING")
+                    gm_df = grouped_regression_metrics(
+                        y_true=y_true_series,
+                        y_pred=y_pred_series,
+                        groups=groups,
+                        report_metrics=gm_report_metrics,
+                        min_group_size=gm_min_group_size,
+                        mape_floor=float(price_cfg.get("mape_floor", 1e-8)),
+                    )
+                    if not gm_df.empty:
+                        out_csv = ens_dir / f"group_metrics_{gb_col}.csv"
+                        gm_df.to_csv(out_csv, index=False)
+                        if gm_log_wandb:
+                            try:
+                                wb.log_artifact(out_csv, name=f"{ens_id}_{gb_col}_group_metrics.csv", type="metrics")
+                            except Exception:
+                                pass
+            except Exception as e:
+                logger.warning(f"Per-group metrics failed for ensemble {ens_id}: {e}")
+
+        # SHAP for stacking meta-model (explain base learner contributions)
+        try:
+            from .shap_utils import compute_shap, save_shap_plots
+            # Build meta features as predictions of base estimators
+            try:
+                base_ests = [est for est in stack.estimators_]
+                base_names = [name for name, _ in selected]
+            except Exception:
+                base_ests = []
+                base_names = []
+            if base_ests:
+                X_meta_train = np.column_stack([est.predict(X_tr_final.values) for est in base_ests])
+                meta_est = getattr(stack, 'final_estimator_', None)
+                if meta_est is not None:
+                    shap_bundle = compute_shap(
+                        model=meta_est,
+                        X=X_meta_train,
+                        sample_size=int(shap_cfg.get("sample_size", 2000)),
+                        max_display=int(shap_cfg.get("max_display", 30)),
+                        keep_as_numpy=True,
+                        random_state=seed,
+                        feature_names=base_names if len(base_names) == X_meta_train.shape[1] else None,
+                    )
+                    save_shap_plots(str(ens_dir / "shap_meta"), shap_bundle, f"{ens_id}_meta")
+                    try:
+                        wb.log_image(key=f"shap/{ens_id}_meta_beeswarm", image_path=ens_dir / "shap_meta" / f"shap_{ens_id}_meta_beeswarm.png")
+                        wb.log_image(key=f"shap/{ens_id}_meta_bar", image_path=ens_dir / "shap_meta" / f"shap_{ens_id}_meta_bar.png")
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.warning(f"SHAP meta-model for stacking failed: {e}")
 
     # Build and persist ranking table
     try:
