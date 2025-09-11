@@ -163,6 +163,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     # Decide target
     target_col = choose_target(df, config)
     logger.info(f"Target selezionato: {target_col}")
+    # If using per-m² target, drop redistributed absolute price to avoid leakage and reduce noise
+    if target_col == "AI_Prezzo_MQ" and "AI_Prezzo_Ridistribuito" in df.columns:
+        df = df.drop(columns=["AI_Prezzo_Ridistribuito"], errors="ignore")
+        logger.info("Target=AI_Prezzo_MQ: rimossa colonna AI_Prezzo_Ridistribuito dalle feature")
 
     # Create combined for split key if needed
     Xy_full = df.copy()
