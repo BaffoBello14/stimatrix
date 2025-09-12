@@ -167,6 +167,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     if target_col == "AI_Prezzo_MQ" and "AI_Prezzo_Ridistribuito" in df.columns:
         df = df.drop(columns=["AI_Prezzo_Ridistribuito"], errors="ignore")
         logger.info("Target=AI_Prezzo_MQ: rimossa colonna AI_Prezzo_Ridistribuito dalle feature")
+    elif target_col == "AI_Prezzo_Ridistribuito" and "AI_Prezzo_MQ" in df.columns:
+        # If using absolute redistributed price as target, drop per-m² price to avoid leakage and collinearity
+        df = df.drop(columns=["AI_Prezzo_MQ"], errors="ignore")
+        logger.info("Target=AI_Prezzo_Ridistribuito: rimossa colonna AI_Prezzo_MQ dalle feature")
 
     # Create combined for split key if needed
     Xy_full = df.copy()
