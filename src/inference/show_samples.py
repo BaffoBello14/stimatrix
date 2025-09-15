@@ -230,7 +230,19 @@ def main() -> None:
     for c in args.features:
         if c in diverse.columns:
             cols_to_show.append(c)
-    cols_to_show.extend(["__PRICE_BAND__", "__y_true__", "__y_pred__"])
+    # Add latitude/longitude columns if present, replacing the price band in output
+    for geo_col in [
+        "AI_Latitudine",
+        "AI_Longitudine",
+        "latitudine",
+        "longitudine",
+        "latitude",
+        "longitude",
+    ]:
+        if geo_col in diverse.columns and geo_col not in cols_to_show:
+            cols_to_show.append(geo_col)
+    # Always append actual and predicted prices
+    cols_to_show.extend(["__y_true__", "__y_pred__"])
     out = diverse[cols_to_show].copy()
 
     # Pretty formatting
