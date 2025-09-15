@@ -167,6 +167,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     if target_col == "AI_Prezzo_MQ" and "AI_Prezzo_Ridistribuito" in df.columns:
         df = df.drop(columns=["AI_Prezzo_Ridistribuito"], errors="ignore")
         logger.info("Target=AI_Prezzo_MQ: rimossa colonna AI_Prezzo_Ridistribuito dalle feature")
+        # If using absolute redistributed price as target, drop per-m² price to avoid leakage and collinearity
+    elif target_col == "AI_Prezzo_Ridistribuito" and "AI_Prezzo_MQ" in df.columns:
+        df = df.drop(columns=["AI_Prezzo_MQ"], errors="ignore")
+        logger.info("Target=AI_Prezzo_Ridistribuito: rimossa colonna AI_Prezzo_MQ dalle feature")
 
     # Create combined for split key if needed
     Xy_full = df.copy()
@@ -570,10 +574,22 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         y_train_bc = pd.read_parquet(pre_dir / f"y_train_{first_profile_saved}.parquet")[target_col]
         y_test_bc = pd.read_parquet(pre_dir / f"y_test_{first_profile_saved}.parquet")[target_col]
         frames = [X_train_bc.assign(**{target_col: y_train_bc})]
-        if (pre_dir / f"X_val_{first_profile_saved}.parquet").exists() and (pre_dir / f"y_val_{first_profile_saved}.parquet").exists():
-            X_val_bc = pd.read_parquet(pre_dir / f"X_val_{first_profile_saved}.parquet")
-            y_val_bc = pd.read_parquet(pre_dir / f"y_val_{first_profile_saved}.parquet")[target_col]
-            frames.append(X_val_bc.assign(**{target_col: y_val_bc}))
+        # Include validation only if present in this run and file has expected target column
+        if base_val is not None and (pre_dir / f"X_val_{first_profile_saved}.parquet").exists() and (pre_dir / f"y_val_{first_profile_saved}.parquet").exists():
+            try:
+                X_val_bc = pd.read_parquet(pre_dir / f"X_val_{first_profile_saved}.parquet")
+                y_val_df = pd.read_parquet(pre_dir / f"y_val_{first_profile_saved}.parquet")
+                if target_col in y_val_df.columns:
+                    y_val_bc = y_val_df[target_col]
+                    frames.append(X_val_bc.assign(**{target_col: y_val_bc}))
+                else:
+                    logger.warning(
+                        f"Back-compat: y_val_{first_profile_saved}.parquet manca la colonna target '{target_col}'. Val set ignorato nella combinazione."
+                    )
+            except Exception as _e:
+                logger.warning(
+                    f"Back-compat: impossibile leggere i file di validation per il profilo '{first_profile_saved}': {_e}. Val set ignorato."
+                )
         frames.append(X_test_bc.assign(**{target_col: y_test_bc}))
         combined = pd.concat(frames, axis=0)
         out_path = pre_dir / paths.get("preprocessed_filename", "preprocessed.parquet")

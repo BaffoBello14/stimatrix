@@ -15,7 +15,7 @@ logging:
 # Execution Configuration - FAST TEST
 execution:
   steps: ["all"]
-  force_reload: false
+  force_reload: true
 
 # Experiment tracking (Weights & Biases)
 tracking:

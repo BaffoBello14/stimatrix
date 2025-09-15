@@ -51,15 +51,15 @@ database:
 # Target configuration
 target:
   # Choose among ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
-  column_candidates: ['AI_Prezzo_MQ', 'AI_Prezzo_Ridistribuito']
+  column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
   log_transform: true
 
 # Outlier detection
 outliers:
   method: 'ensemble'       # 'iqr' | 'zscore' | 'iso_forest' | 'ensemble'
-  z_thresh: 3.5
+  z_thresh: 3.0
   iqr_factor: 1.5
-  iso_forest_contamination: 0.01
+  iso_forest_contamination: 0.02
   group_by_col: 'AI_IdTipologiaEdilizia'
   min_group_size: 30       # minimum samples per group to apply group-wise outlier detection
   fallback_strategy: 'global'  # 'skip' keeps all small groups; 'global' applies global detection
@@ -81,7 +81,7 @@ temporal_split:
   mode: 'fraction'      # 'date' | 'fraction'
   fraction:
     train: 0.7          # fraction of time-ordered data for train
-    valid: 0.2          # fraction of time-ordered data for validation (0 disables val)
+    valid: 0            # fraction of time-ordered data for validation (0 disables val)
   date:
     test_start_year: 2023 # used only if mode=='date'
     test_start_month: 1   # used only if mode=='date'
@@ -108,11 +108,11 @@ pca: &pca_defaults
 
 # Correlation pruning
 correlation: &correlation_defaults
-  numeric_threshold: 0.98
+  numeric_threshold: 0.80
 
 # Non-descriptive columns pruning
 drop_non_descriptive:
-  na_threshold: 0.98
+  na_threshold: 0.50
 
 # Feature extraction toggles
 feature_extraction:
@@ -129,7 +129,7 @@ surface:
     - 'AI_SuperficieVisuraTotaleAttuale'
     - 'AI_SuperficieVisuraTotaleEAttuale'
   # Keep AI_Superficie as a feature (set to false to drop from X)
-  include_ai_superficie: false
+  include_ai_superficie: true
 
 # Scaling configuration
 scaling: &scaling_defaults
@@ -139,7 +139,7 @@ scaling: &scaling_defaults
 
 # Winsorization (quantile clipping on numeric features)
 winsorization: &winsor_defaults
-  enabled: false
+  enabled: true
   lower_quantile: 0.01
   upper_quantile: 0.99
 
@@ -177,9 +177,9 @@ training:
   # Cross-validation usata quando non esiste un validation set esterno (valid_fraction=0)
   cv_when_no_val:
     enabled: true
-    kind: timeseries   # 'timeseries' | 'kfold'
+    kind: kfold   # 'timeseries' | 'kfold'
     n_splits: 5
-    shuffle: false     # usato solo per kfold
+    shuffle: true     # usato solo per kfold
 
   # Definizione per-modello (schema minimale)
   models:
@@ -370,7 +370,7 @@ evaluation:
     report_metrics: ['r2', 'rmse', 'mse', 'mae', 'mape', 'medae']
     price_band:
       method: 'quantile'   # 'quantile' | 'fixed'
-      quantiles: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+      quantiles: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
       # fixed_edges: [0, 100000, 200000, 400000, 800000, 1600000, .inf]
       mape_floor: 1000.0
       merge_small_bins: true
