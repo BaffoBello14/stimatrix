@@ -89,8 +89,15 @@ def tune_model(
                     splitter = TimeSeriesSplit(n_splits=n_splits)
                 scores: List[float] = []
                 for tr_idx, va_idx in splitter.split(X_train):
-                    X_tr, X_va = X_train[tr_idx], X_train[va_idx]
-                    y_tr, y_va = y_train[tr_idx], y_train[va_idx]
+                    # Use row-based indexing for pandas objects to avoid interpreting indices as column labels
+                    if hasattr(X_train, 'iloc'):
+                        X_tr = X_train.iloc[tr_idx]
+                        X_va = X_train.iloc[va_idx]
+                        y_tr = y_train.iloc[tr_idx] if hasattr(y_train, 'iloc') else y_train[tr_idx]
+                        y_va = y_train.iloc[va_idx] if hasattr(y_train, 'iloc') else y_train[va_idx]
+                    else:
+                        X_tr, X_va = X_train[tr_idx], X_train[va_idx]
+                        y_tr, y_va = y_train[tr_idx], y_train[va_idx]
                     mk = model_key.lower()
                     try:
                         if mk == "xgboost":
