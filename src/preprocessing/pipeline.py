@@ -227,8 +227,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_val = val_df.drop(columns=[target_col])
 
     # Optionally drop AI_Superficie from features based on configuration
-    include_surface = bool(prune_cfg.get("include_ai_superficie", True))
-    if not include_surface:
+    include_ai_superficie_flag = bool(prune_cfg.get("include_ai_superficie", True))
+    if not include_ai_superficie_flag:
         drop_cols = [c for c in ["AI_Superficie"] if c in X_train.columns]
         if drop_cols:
             X_train = X_train.drop(columns=drop_cols, errors="ignore")
