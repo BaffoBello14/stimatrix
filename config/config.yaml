@@ -128,6 +128,15 @@ surface:
     - 'AI_SuperficieVisuraTotaleE'
     - 'AI_SuperficieVisuraTotaleAttuale'
     - 'AI_SuperficieVisuraTotaleEAttuale'
+    - 'A_AcquirentiCount'
+    - 'A_VenditoriCount'
+    - 'A_EtaMediaAcquirenti'
+    - 'A_EtaMediaVenditori'
+    - 'A_AcquirentiVenditoriStessoCognome'
+    - 'A_VenditoriEredita'
+    - 'AI_Subalterno'
+    - 'AI_Piano'
+    - 'AI_Rendita'
   # Keep AI_Superficie as a feature (set to false to drop from X)
   include_ai_superficie: true
 
@@ -344,7 +353,7 @@ training:
   shap:
     enabled: true
     sample_size: 500
-    max_display: 30
+    max_display: 50
     save_plots: true
     save_values: true
 

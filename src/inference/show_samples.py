@@ -140,7 +140,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Mostra sample di test con prezzo reale e predetto")
     parser.add_argument("--config", type=str, default="config/config.yaml", help="Path al config YAML")
     parser.add_argument("--model", type=str, default=None, help="Chiave modello da caricare (es. 'rf', 'xgboost'); default migliore")
-    parser.add_argument("--n", type=int, default=12, help="Numero di sample da mostrare")
+    parser.add_argument("--n", type=int, default=500, help="Numero di sample da mostrare")
     parser.add_argument("--profile", type=str, default=None, help="Profilo dataset (scaled/tree/catboost). Default basato sul modello")
     parser.add_argument("--features", type=str, nargs="*", default=[
         "AI_ZonaOmi", "AI_IdTipologiaEdilizia", "AI_IdCategoriaCatastale", "AI_Superficie"
@@ -230,7 +230,15 @@ def main() -> None:
     for c in args.features:
         if c in diverse.columns:
             cols_to_show.append(c)
-    cols_to_show.extend(["__PRICE_BAND__", "__y_true__", "__y_pred__"])
+    # Add latitude/longitude columns if present, replacing the price band in output
+    for geo_col in [
+        "AI_Latitudine",
+        "AI_Longitudine",
+    ]:
+        if geo_col in diverse.columns and geo_col not in cols_to_show:
+            cols_to_show.append(geo_col)
+    # Always append actual and predicted prices
+    cols_to_show.extend(["__y_true__", "__y_pred__"])
     out = diverse[cols_to_show].copy()
 
     # Pretty formatting
