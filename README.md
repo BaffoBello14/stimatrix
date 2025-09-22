@@ -50,7 +50,7 @@ Sezioni principali:
 - `imputation`: strategie numeriche/categoriche e grouping
 - `encoding`: soglia per One-Hot Encoding
 - `numeric_coercion`: coercizione stringhe numeriche -> numeric (con blacklist)
-- `pca`, `correlation`, `drop_non_descriptive`, `feature_extraction`, `surface`, `scaling`, `winsorization`: controlli dettagli preprocessing
+- `pca`, `correlation`, `drop_non_descriptive`, `feature_extraction`, `feature_pruning` (alias legacy: `surface`), `scaling`, `winsorization`: controlli dettagli preprocessing
 - `profiles`: profili multipli (es. `scaled`, `tree`, `catboost`) con override locale
 - `training`: metriche, seme, parallelismo, spazi di ricerca per modello, SHAP, ensemble
 - `execution`: passi da eseguire e flag di rielaborazione
@@ -118,7 +118,16 @@ Note:
   - Report Markdown con profili DataFrame in `preprocessed/reports/preprocessing.md`
 
 Config chiave per preprocessing:
-- `feature_extraction`, `surface.drop_columns`, `temporal_split`, `outliers`, `imputation`, `encoding.max_ohe_cardinality`, `winsorization`, `scaling`, `pca`, `correlation.numeric_threshold`, `drop_non_descriptive.na_threshold`, `profiles.*`
+- `feature_extraction`, `feature_pruning.drop_columns` (alias legacy: `surface.drop_columns`), `temporal_split`, `outliers`, `imputation`, `encoding.max_ohe_cardinality`, `winsorization`, `scaling`, `pca`, `correlation.numeric_threshold`, `drop_non_descriptive.na_threshold`, `profiles.*`
+
+Sezione `feature_pruning` (alias legacy: `surface`):
+```yaml
+feature_pruning:
+  drop_columns: ["col1", "col2", ...]
+  # Flag specifico legacy mantenuto per compatibilità
+  include_ai_superficie: true   # se false, rimuove `AI_Superficie` dalle feature X
+```
+Se presente sia `feature_pruning` che `surface`, viene usata `feature_pruning`.
 
 Artefatti salvati:
 - `preprocessed/` con Parquet di train/val/test per ciascun profilo, `preprocessed/artifacts` (imputers, encoders, scaler/pca, winsorizer), `preprocessing_info.json`, report markdown.

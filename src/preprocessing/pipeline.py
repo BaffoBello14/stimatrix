@@ -95,9 +95,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         df = df.drop(columns=cols_to_drop_now, errors="ignore")
     logger.info(f"Estrazione feature: aggiunte/derivate, dropped_raw={len(cols_to_drop_now)} -> cols={len(df.columns)}")
 
-    # Keep only canonical surface in m²
-    surface_cfg = config.get("surface", {})
-    surface_cols_to_drop = surface_cfg.get(
+    # Feature pruning (generic): drop configured columns
+    # Support both new 'feature_pruning' section and legacy 'surface'
+    prune_cfg = config.get("feature_pruning") or config.get("surface", {})
+    prune_cols_to_drop = prune_cfg.get(
         "drop_columns",
         [
             "A_ImmobiliPrincipaliConSuperficieValorizzata",
@@ -108,7 +109,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             "AI_SuperficieVisuraTotaleEAttuale",
         ],
     )
-    df = df.drop(columns=[c for c in surface_cols_to_drop if c in df.columns], errors="ignore")
+    df = df.drop(columns=[c for c in prune_cols_to_drop if c in df.columns], errors="ignore")
     # Drop useless geo SRID (constant)
     df = df.drop(columns=[c for c in ["PC_PoligonoMetricoSrid"] if c in df.columns], errors="ignore")
 
@@ -227,7 +228,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_val = val_df.drop(columns=[target_col])
 
     # Optionally drop AI_Superficie from features based on configuration
-    include_surface = bool(surface_cfg.get("include_ai_superficie", True))
+    # Honor flag from either 'feature_pruning' or legacy 'surface'
+    include_surface = bool(prune_cfg.get("include_ai_superficie", True))
     if not include_surface:
         drop_cols = [c for c in ["AI_Superficie"] if c in X_train.columns]
         if drop_cols:
