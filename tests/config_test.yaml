@@ -91,8 +91,8 @@ feature_extraction:
   geometry: true
   json: true
 
-# Surface handling
-surface:
+# Feature pruning
+feature_pruning:
   drop_columns:
     - 'A_ImmobiliPrincipaliConSuperficieValorizzata'
     - 'AI_SuperficieCalcolata'

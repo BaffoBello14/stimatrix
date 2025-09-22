@@ -96,8 +96,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     logger.info(f"Estrazione feature: aggiunte/derivate, dropped_raw={len(cols_to_drop_now)} -> cols={len(df.columns)}")
 
     # Feature pruning (generic): drop configured columns
-    # Support both new 'feature_pruning' section and legacy 'surface'
-    prune_cfg = config.get("feature_pruning") or config.get("surface", {})
+    prune_cfg = config.get("feature_pruning", {})
     prune_cols_to_drop = prune_cfg.get(
         "drop_columns",
         [
@@ -228,7 +227,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_val = val_df.drop(columns=[target_col])
 
     # Optionally drop AI_Superficie from features based on configuration
-    # Honor flag from either 'feature_pruning' or legacy 'surface'
     include_surface = bool(prune_cfg.get("include_ai_superficie", True))
     if not include_surface:
         drop_cols = [c for c in ["AI_Superficie"] if c in X_train.columns]
