@@ -329,40 +329,272 @@ def plot_target_distribution(
     df: pd.DataFrame,
     target_col: str,
     output_dir: Optional[Path] = None,
-    save_filename: Optional[str] = None
+    save_filename: Optional[str] = None,
+    include_transformations: bool = False
 ):
     """
-    Crea un plot della distribuzione del target
+    Crea un plot della distribuzione del target con trasformazioni opzionali
     
     Args:
         df: DataFrame contenente i dati
         target_col: Nome della colonna target
         output_dir: Directory dove salvare (opzionale)
         save_filename: Nome del file di output (opzionale)
+        include_transformations: Se True, include trasformazioni (log, sqrt, box-cox)
     """
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    
     target_data = df[target_col].dropna()
     
-    # Histogram
-    axes[0].hist(target_data, bins=50, edgecolor='black', alpha=0.7)
-    axes[0].set_xlabel(target_col)
-    axes[0].set_ylabel('Frequenza')
-    axes[0].set_title(f'Distribuzione {target_col}')
-    axes[0].grid(True, alpha=0.3)
-    
-    # Box plot
-    axes[1].boxplot(target_data, vert=True)
-    axes[1].set_ylabel(target_col)
-    axes[1].set_title(f'Box Plot {target_col}')
-    axes[1].grid(True, alpha=0.3)
+    if not include_transformations:
+        # Plot semplice (2 subplot)
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        
+        # Histogram
+        axes[0].hist(target_data, bins=50, edgecolor='black', alpha=0.7)
+        axes[0].set_xlabel(target_col)
+        axes[0].set_ylabel('Frequenza')
+        axes[0].set_title(f'Distribuzione {target_col}')
+        axes[0].grid(True, alpha=0.3)
+        
+        # Box plot
+        axes[1].boxplot(target_data, vert=True)
+        axes[1].set_ylabel(target_col)
+        axes[1].set_title(f'Box Plot {target_col}')
+        axes[1].grid(True, alpha=0.3)
+        
+    else:
+        # Plot esteso con trasformazioni (2x3 grid)
+        fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+        fig.suptitle(f'Analisi Distribuzione {target_col} con Trasformazioni', 
+                     fontsize=14, fontweight='bold')
+        
+        # 1. Distribuzione originale
+        axes[0, 0].hist(target_data, bins=50, edgecolor='black', alpha=0.7)
+        axes[0, 0].set_title('Originale')
+        axes[0, 0].set_xlabel(target_col)
+        axes[0, 0].set_ylabel('Frequenza')
+        axes[0, 0].grid(True, alpha=0.3)
+        
+        # 2. Log transform (se tutti i valori sono positivi)
+        if (target_data > 0).all():
+            log_data = np.log1p(target_data)
+            axes[0, 1].hist(log_data, bins=50, edgecolor='black', alpha=0.7, color='orange')
+            axes[0, 1].set_title('Log Transform (log1p)')
+            axes[0, 1].set_xlabel(f'log({target_col})')
+            axes[0, 1].set_ylabel('Frequenza')
+            axes[0, 1].grid(True, alpha=0.3)
+        else:
+            axes[0, 1].text(0.5, 0.5, 'Log transform\nnon applicabile\n(valori ≤ 0)', 
+                           ha='center', va='center', transform=axes[0, 1].transAxes)
+            axes[0, 1].set_title('Log Transform')
+        
+        # 3. Sqrt transform
+        if (target_data >= 0).all():
+            sqrt_data = np.sqrt(target_data)
+            axes[0, 2].hist(sqrt_data, bins=50, edgecolor='black', alpha=0.7, color='green')
+            axes[0, 2].set_title('Sqrt Transform')
+            axes[0, 2].set_xlabel(f'sqrt({target_col})')
+            axes[0, 2].set_ylabel('Frequenza')
+            axes[0, 2].grid(True, alpha=0.3)
+        else:
+            axes[0, 2].text(0.5, 0.5, 'Sqrt transform\nnon applicabile\n(valori < 0)', 
+                           ha='center', va='center', transform=axes[0, 2].transAxes)
+            axes[0, 2].set_title('Sqrt Transform')
+        
+        # 4. Box-Cox transform (richiede valori > 0)
+        if (target_data > 0).all():
+            try:
+                from scipy import stats as scipy_stats
+                boxcox_data, lambda_param = scipy_stats.boxcox(target_data)
+                axes[1, 0].hist(boxcox_data, bins=50, edgecolor='black', alpha=0.7, color='red')
+                axes[1, 0].set_title(f'Box-Cox (λ={lambda_param:.3f})')
+                axes[1, 0].set_xlabel(f'Box-Cox({target_col})')
+                axes[1, 0].set_ylabel('Frequenza')
+                axes[1, 0].grid(True, alpha=0.3)
+            except:
+                axes[1, 0].text(0.5, 0.5, 'Box-Cox\nfallita', 
+                               ha='center', va='center', transform=axes[1, 0].transAxes)
+                axes[1, 0].set_title('Box-Cox Transform')
+        else:
+            axes[1, 0].text(0.5, 0.5, 'Box-Cox\nnon applicabile\n(valori ≤ 0)', 
+                           ha='center', va='center', transform=axes[1, 0].transAxes)
+            axes[1, 0].set_title('Box-Cox Transform')
+        
+        # 5. QQ-plot originale
+        from scipy import stats as scipy_stats
+        scipy_stats.probplot(target_data, dist="norm", plot=axes[1, 1])
+        axes[1, 1].set_title('Q-Q Plot (Originale)')
+        axes[1, 1].grid(True, alpha=0.3)
+        
+        # 6. Box plots comparativi
+        box_data = [target_data]
+        labels = ['Originale']
+        if (target_data > 0).all():
+            box_data.append(np.log1p(target_data))
+            labels.append('Log')
+        axes[1, 2].boxplot(box_data, labels=labels, vert=True)
+        axes[1, 2].set_ylabel('Valore')
+        axes[1, 2].set_title('Box Plots Comparativi')
+        axes[1, 2].grid(True, alpha=0.3)
     
     plt.tight_layout()
     
     if output_dir and save_filename:
         save_plot(save_filename, output_dir)
     elif output_dir:
-        save_plot(f'target_distribution_{target_col}', output_dir)
+        suffix = '_with_transforms' if include_transformations else ''
+        save_plot(f'target_distribution_{target_col}{suffix}', output_dir)
+
+
+def test_normality(data: pd.Series, alpha: float = 0.05) -> Dict:
+    """
+    Esegue test di normalità sui dati
+    
+    Args:
+        data: Serie di dati da testare
+        alpha: Livello di significatività (default 0.05)
+        
+    Returns:
+        Dictionary con risultati dei test
+    """
+    from scipy import stats as scipy_stats
+    
+    results = {}
+    
+    # Shapiro-Wilk test (migliore per campioni piccoli)
+    if len(data) <= 5000:
+        stat, p_value = scipy_stats.shapiro(data)
+        results['shapiro'] = {
+            'statistic': stat,
+            'p_value': p_value,
+            'is_normal': p_value > alpha
+        }
+    
+    # Kolmogorov-Smirnov test
+    stat, p_value = scipy_stats.kstest(data, 'norm', args=(data.mean(), data.std()))
+    results['ks'] = {
+        'statistic': stat,
+        'p_value': p_value,
+        'is_normal': p_value > alpha
+    }
+    
+    # Anderson-Darling test
+    result = scipy_stats.anderson(data, dist='norm')
+    # Critical value per alpha=0.05 è tipicamente all'indice 2
+    critical_idx = 2  # 5%
+    results['anderson'] = {
+        'statistic': result.statistic,
+        'critical_value': result.critical_values[critical_idx],
+        'is_normal': result.statistic < result.critical_values[critical_idx]
+    }
+    
+    # Calcola skewness e kurtosis
+    results['skewness'] = scipy_stats.skew(data)
+    results['kurtosis'] = scipy_stats.kurtosis(data)
+    
+    return results
+
+
+def analyze_target_with_transformations(
+    df: pd.DataFrame,
+    target_col: str,
+    output_dir: Optional[Path] = None
+) -> Dict:
+    """
+    Analizza il target con diverse trasformazioni e test di normalità
+    
+    Args:
+        df: DataFrame contenente i dati
+        target_col: Nome della colonna target
+        output_dir: Directory dove salvare i risultati (opzionale)
+        
+    Returns:
+        Dictionary con risultati delle trasformazioni
+    """
+    logger.info("\n" + "="*60)
+    logger.info(f"🔬 ANALISI TRASFORMAZIONI TARGET: {target_col}")
+    logger.info("="*60)
+    
+    target_data = df[target_col].dropna()
+    results = {}
+    
+    # Test normalità su dati originali
+    logger.info("\n📊 Test di Normalità (Dati Originali):")
+    norm_tests = test_normality(target_data)
+    results['original'] = {
+        'data': target_data,
+        'normality_tests': norm_tests
+    }
+    
+    if 'shapiro' in norm_tests:
+        logger.info(f"  Shapiro-Wilk: p-value={norm_tests['shapiro']['p_value']:.4f} "
+                   f"({'✅ Normale' if norm_tests['shapiro']['is_normal'] else '❌ Non normale'})")
+    logger.info(f"  Kolmogorov-Smirnov: p-value={norm_tests['ks']['p_value']:.4f} "
+               f"({'✅ Normale' if norm_tests['ks']['is_normal'] else '❌ Non normale'})")
+    logger.info(f"  Anderson-Darling: statistic={norm_tests['anderson']['statistic']:.4f} "
+               f"({'✅ Normale' if norm_tests['anderson']['is_normal'] else '❌ Non normale'})")
+    logger.info(f"  Skewness: {norm_tests['skewness']:.4f}")
+    logger.info(f"  Kurtosis: {norm_tests['kurtosis']:.4f}")
+    
+    # Log transform
+    if (target_data > 0).all():
+        logger.info("\n📊 Test di Normalità (Log Transform):")
+        log_data = np.log1p(target_data)
+        log_tests = test_normality(log_data)
+        results['log'] = {
+            'data': log_data,
+            'normality_tests': log_tests
+        }
+        
+        if 'shapiro' in log_tests:
+            logger.info(f"  Shapiro-Wilk: p-value={log_tests['shapiro']['p_value']:.4f} "
+                       f"({'✅ Normale' if log_tests['shapiro']['is_normal'] else '❌ Non normale'})")
+        logger.info(f"  Skewness: {log_tests['skewness']:.4f} "
+                   f"(originale: {norm_tests['skewness']:.4f})")
+    
+    # Box-Cox transform
+    if (target_data > 0).all():
+        try:
+            from scipy import stats as scipy_stats
+            boxcox_data, lambda_param = scipy_stats.boxcox(target_data)
+            logger.info("\n📊 Test di Normalità (Box-Cox Transform):")
+            logger.info(f"  Lambda ottimale: {lambda_param:.4f}")
+            
+            boxcox_tests = test_normality(pd.Series(boxcox_data))
+            results['boxcox'] = {
+                'data': pd.Series(boxcox_data),
+                'lambda': lambda_param,
+                'normality_tests': boxcox_tests
+            }
+            
+            if 'shapiro' in boxcox_tests:
+                logger.info(f"  Shapiro-Wilk: p-value={boxcox_tests['shapiro']['p_value']:.4f} "
+                           f"({'✅ Normale' if boxcox_tests['shapiro']['is_normal'] else '❌ Non normale'})")
+            logger.info(f"  Skewness: {boxcox_tests['skewness']:.4f}")
+        except Exception as e:
+            logger.warning(f"  ⚠️  Box-Cox transform fallita: {e}")
+    
+    # Salva risultati
+    if output_dir:
+        summary_data = []
+        for transform_name, transform_data in results.items():
+            if 'normality_tests' in transform_data:
+                tests = transform_data['normality_tests']
+                summary_data.append({
+                    'Transform': transform_name,
+                    'Skewness': tests['skewness'],
+                    'Kurtosis': tests['kurtosis'],
+                    'KS_pvalue': tests['ks']['p_value'],
+                    'KS_normal': tests['ks']['is_normal'],
+                    'Anderson_normal': tests['anderson']['is_normal']
+                })
+        
+        if summary_data:
+            summary_df = pd.DataFrame(summary_data)
+            output_file = output_dir / f'transformations_summary_{target_col}.csv'
+            summary_df.to_csv(output_file, index=False)
+            logger.info(f"\n💾 Summary trasformazioni salvato in {output_file}")
+    
+    return results
 
 
 def create_correlation_heatmap(
