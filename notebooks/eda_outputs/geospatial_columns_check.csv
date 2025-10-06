@@ -1,16 +1,7 @@
-Colonna,Tipo,Pattern,NonNull_Count,Esempi
-AI_Latitudine,float64,lat,5733,"[45.149932861328125, 45.149932861328125, 45.1503481]"
-AI_Longitudine,float64,lon,5733,"[10.783458709716797, 10.783458709716797, 10.7645318]"
-AI_Posizione,object,posizione,5733,"['POINT (10.7835 45.1499)', 'POINT (10.7835 45.1499)', 'POINT (10.7645318 45.1503481)']"
-AI_SuperficieCalcolata,float64,lat,5730,"[12.0, 128.0, 18.0]"
-ISC_Geometry,object,geometry,5733,"['MULTIPOLYGON (((10.783887942194134 45.150017769836687, 10.783915607638837 45.149583863996654, 10.7"
-ISC_ShapeLeng,float64,shape,5733,"[577.102281765, 577.102281765, 3178.32180066]"
-ISC_ShapeArea,float64,shape,5733,"[11747.5895737, 11747.5895737, 177693.4543]"
-OV_ValoreMercatoMax_normale,float64,x_,5733,"[262.5, 1050.0, 950.0]"
-OV_ValoreMercatoMax_ottimo,float64,x_,2280,"[425.0, 1700.0, 1500.0]"
-OV_ValoreMercatoMax_scadente,float64,x_,385,"[750.0, 750.0, 750.0]"
-OV_ValoreLocazioneMax_normale,float64,x_,5082,"[7.3, 4.5, 5.5]"
-OV_ValoreLocazioneMax_ottimo,float64,x_,1724,"[7.5, 6.5, 7.0]"
-PC_PoligonoGeoJson,object,geojson,5733,"['{""type"": ""FeatureCollection"", ""features"": [{""type"": ""Feature"", ""geometry"": {""crs"": {""type"": ""name"""
-POI_pharmacy_count,int64,y_,5733,"[1, 1, 1]"
-POI_university_count,int64,y_,5733,"[1, 1, 2]"
+Colonna,Tipo,Pattern,NonNull,Esempio
+AI_Latitudine,float64,lat,5733,45.149932861328125
+AI_Longitudine,float64,lon,5733,10.783458709716797
+AI_Posizione,object,posizione,5733,POINT (10.7835 45.1499)
+AI_SuperficieCalcolata,float64,lat,5730,12.0
+ISC_Geometry,object,geometry,5733,MULTIPOLYGON (((10.783887942194134 45.150017769836
+PC_PoligonoGeoJson,object,geojson,5733,"{""type"": ""FeatureCollection"", ""features"": [{""type"""

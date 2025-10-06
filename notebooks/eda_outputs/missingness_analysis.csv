@@ -261,3 +261,4 @@ POI_supermarket_count,0,0.0,int64
 POI_university_count,0,0.0,int64
 InZTL,0,0.0,int64
 AI_Prezzo_Ridistribuito,0,0.0,float64
+AI_Prezzo_MQ,0,0.0,float64

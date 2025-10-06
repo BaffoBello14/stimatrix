@@ -1,0 +1,31 @@
+# Jupyter Notebook
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Output directories (ma mantieni i file committati)
+# Gli output sono già generati e committati, quindi non ignoriamoli
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook cell outputs
+# IMPORTANTE: I notebook dovrebbero essere committati senza output
+# Usa: jupyter nbconvert --clear-output --inplace *.ipynb prima del commit
