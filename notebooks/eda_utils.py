@@ -295,8 +295,7 @@ def save_plot(
     output_dir: Path, 
     dpi: int = 100, 
     format: str = 'png',
-    bbox_inches: str = 'tight',
-    optimize: bool = True
+    bbox_inches: str = 'tight'
 ):
     """
     Salva un plot ottimizzato senza mostrarlo
@@ -307,19 +306,18 @@ def save_plot(
         dpi: Risoluzione (default 100 per dimensioni ragionevoli)
         format: Formato file (png, jpg, pdf)
         bbox_inches: Gestione dei bordi
-        optimize: Se True, ottimizza il file (solo PNG)
     """
     if not filename.endswith(f'.{format}'):
         filename = f'{filename}.{format}'
     
     filepath = output_dir / filename
     
+    # Salva il plot - matplotlib non supporta 'optimize' come parametro
     plt.savefig(
         filepath,
         dpi=dpi,
         format=format,
-        bbox_inches=bbox_inches,
-        optimize=optimize if format == 'png' else False
+        bbox_inches=bbox_inches
     )
     plt.close()  # Chiude la figura per liberare memoria
     
