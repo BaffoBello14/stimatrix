@@ -15,13 +15,6 @@ sql/
 
 ## 🎯 Vantaggi del sistema a template
 
-### Prima (hardcoded in Python):
-❌ Query SQL distribuite in 3+ metodi Python  
-❌ Difficile aggiungere nuove JOIN  
-❌ Non supportava view dal database  
-❌ Logica SQL mescolata con logica Python  
-
-### Dopo (template SQL):
 ✅ Query SQL leggibili in file dedicati  
 ✅ Facile aggiungere JOIN (anche con view!)  
 ✅ DBA può modificare SQL senza toccare Python  
@@ -207,14 +200,6 @@ print(query)
   - `IdAttoImmobile` (per CENED views)
   - `IdParticella` (per POI joins)
   - Colonne usate in `STContains` (geometrie)
-
-## 🔄 Migration Path
-
-Se devi tornare al sistema precedente:
-
-1. I metodi vecchi sono stati rimossi da `retrieval.py`
-2. Backup del codice pre-refactoring disponibile in git history
-3. Per rollback: `git revert <commit>`
 
 ## 📞 Supporto
 
