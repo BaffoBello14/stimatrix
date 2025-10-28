@@ -8,14 +8,16 @@ import pandas as pd
 from db.connect import DatabaseConnector
 from utils.io import load_json, save_dataframe
 from utils.logger import get_logger
+from utils.sql_templates import SQLTemplateLoader
 from pathlib import Path
 
 logger = get_logger(__name__)
 
 
 class DatasetBuilder:
-    def __init__(self, engine: Optional[object] = None) -> None:
+    def __init__(self, engine: Optional[object] = None, sql_templates_dir: str = "sql") -> None:
         self._engine = engine  # lazy; may be None until needed
+        self.sql_loader = SQLTemplateLoader(sql_templates_dir)
 
     @property
     def engine(self):
@@ -71,145 +73,6 @@ class DatasetBuilder:
             """
         )
 
-    @staticmethod
-    def generate_poi_counts_subquery() -> str:
-        return (
-            """
-            POI_COUNTS AS (
-                SELECT 
-                    PC_MAIN.Id as IdParticella,
-                    PDIT.Id as TipologiaPOI,
-                    PDIT.Denominazione as DenominazionePOI,
-                    COUNT(PDI.Id) as ConteggioPOI
-                FROM 
-                    ParticelleCatastali PC_MAIN
-                    CROSS JOIN PuntiDiInteresseTipologie PDIT
-                    LEFT JOIN (
-                        PuntiDiInteresse PDI 
-                        INNER JOIN PuntiDiInteresse_Tipologie PDI_T ON PDI.Id = PDI_T.IdPuntoDiInteresse
-                    ) ON PDI_T.IdTipologia = PDIT.Id 
-                        AND PC_MAIN.Isodistanza.STContains(PDI.Posizione) = 1
-                GROUP BY PC_MAIN.Id, PDIT.Id, PDIT.Denominazione
-            )
-            """
-        )
-
-    @staticmethod
-    def generate_ztl_subquery() -> str:
-        return (
-            """
-            ZTL_CHECK AS (
-                SELECT 
-                    PC_MAIN.Id as IdParticella,
-                    CASE 
-                        WHEN EXISTS (
-                            SELECT 1 
-                            FROM ZoneTrafficoLimitato ZTL 
-                            WHERE ZTL.Poligono.STContains(PC_MAIN.Centroide) = 1
-                        ) THEN 1 
-                        ELSE 0 
-                    END as InZTL
-                FROM ParticelleCatastali PC_MAIN
-            )
-            """
-        )
-
-    def generate_query_with_poi_and_ztl(
-        self, select_clause: str, poi_categories: List[str]
-    ) -> str:
-        poi_subquery = self.generate_poi_counts_subquery()
-        ztl_subquery = self.generate_ztl_subquery()
-        poi_joins: List[str] = []
-        poi_selects: List[str] = []
-        for category in poi_categories:
-            safe_category = (
-                str(category).replace("-", "_").replace(" ", "_").replace(".", "_")
-            )
-            alias = f"POI_{safe_category}"
-            poi_joins.append(
-                f"""
-            LEFT JOIN POI_COUNTS {alias} ON PC.Id = {alias}.IdParticella 
-                AND {alias}.TipologiaPOI = '{category}'"""
-            )
-            poi_selects.append(
-                f"COALESCE({alias}.ConteggioPOI, 0) AS POI_{safe_category}_count"
-            )
-        poi_joins_str = "".join(poi_joins)
-        poi_selects_str = ",\n        ".join(poi_selects) if poi_selects else "0 as no_poi"
-        return f"""
-        WITH 
-        {poi_subquery},
-        {ztl_subquery}
-        
-        SELECT
-            {select_clause},
-            {poi_selects_str},
-            ZTL_INFO.InZTL as InZTL
-        FROM
-            Atti A
-            INNER JOIN AttiImmobili AI ON AI.IdAtto = A.Id
-            INNER JOIN ParticelleCatastali PC ON AI.IdParticellaCatastale = PC.Id
-            INNER JOIN IstatSezioniCensuarie2021 ISC ON PC.IdSezioneCensuaria = ISC.Id
-            INNER JOIN IstatIndicatori2021 II ON II.IdIstatZonaCensuaria = ISC.Id
-            INNER JOIN ParticelleCatastali_OmiZone PC_OZ ON PC_OZ.IdParticella = PC.Id
-            INNER JOIN OmiZone OZ ON PC_OZ.IdZona = OZ.Id
-            INNER JOIN OmiValori OVN ON OZ.Id = OVN.IdZona
-                AND OVN.Stato = 'Normale'
-                AND OVN.IdTipologiaEdilizia = CASE WHEN AI.IdTipologiaEdilizia = 8 THEN 2 ELSE AI.IdTipologiaEdilizia END
-                AND A.Semestre = OZ.IdAnnoSemestre
-            LEFT JOIN OmiValori OVO ON OZ.Id = OVO.IdZona
-                AND OVO.Stato = 'Ottimo'
-                AND OVO.IdTipologiaEdilizia = CASE WHEN AI.IdTipologiaEdilizia = 8 THEN 2 ELSE AI.IdTipologiaEdilizia END
-                AND A.Semestre = OZ.IdAnnoSemestre
-            LEFT JOIN OmiValori OVS ON OZ.Id = OVS.IdZona
-                AND OVS.Stato = 'Scadente'
-                AND OVS.IdTipologiaEdilizia = CASE WHEN AI.IdTipologiaEdilizia = 8 THEN 2 ELSE AI.IdTipologiaEdilizia END
-                AND A.Semestre = OZ.IdAnnoSemestre
-            LEFT JOIN ZTL_CHECK ZTL_INFO ON PC.Id = ZTL_INFO.IdParticella
-            {poi_joins_str}
-        WHERE 
-            A.TotaleFabbricati = A.TotaleImmobili
-            AND A.Id NOT IN (
-                SELECT IdAtto
-                FROM AttiImmobili
-                WHERE Superficie IS NULL
-            )
-        ORDER BY A.Id
-        """
-
-    def generate_query_dual_omi(self, select_clause: str) -> str:
-        return f"""
-        SELECT
-            {select_clause}
-        FROM
-            Atti A
-            INNER JOIN AttiImmobili AI ON AI.IdAtto = A.Id
-            INNER JOIN ParticelleCatastali PC ON AI.IdParticellaCatastale = PC.Id
-            INNER JOIN IstatSezioniCensuarie2021 ISC ON PC.IdSezioneCensuaria = ISC.Id
-            INNER JOIN IstatIndicatori2021 II ON II.IdIstatZonaCensuaria = ISC.Id
-            INNER JOIN ParticelleCatastali_OmiZone PC_OZ ON PC_OZ.IdParticella = PC.Id
-            INNER JOIN OmiZone OZ ON PC_OZ.IdZona = OZ.Id
-            INNER JOIN OmiValori OVN ON OZ.Id = OVN.IdZona
-                AND OVN.Stato = 'Normale'
-                AND OVN.IdTipologiaEdilizia = CASE WHEN AI.IdTipologiaEdilizia = 8 THEN 2 ELSE AI.IdTipologiaEdilizia END
-                AND A.Semestre = OZ.IdAnnoSemestre
-            LEFT JOIN OmiValori OVO ON OZ.Id = OVO.IdZona
-                AND OVO.Stato = 'Ottimo'
-                AND OVO.IdTipologiaEdilizia = CASE WHEN AI.IdTipologiaEdilizia = 8 THEN 2 ELSE AI.IdTipologiaEdilizia END
-                AND A.Semestre = OZ.IdAnnoSemestre
-            LEFT JOIN OmiValori OVS ON OZ.Id = OVS.IdZona
-                AND OVS.Stato = 'Scadente'
-                AND OVS.IdTipologiaEdilizia = CASE WHEN AI.IdTipologiaEdilizia = 8 THEN 2 ELSE AI.IdTipologiaEdilizia END
-                AND A.Semestre = OZ.IdAnnoSemestre
-        WHERE 
-            A.TotaleFabbricati = A.TotaleImmobili
-            AND A.Id NOT IN (
-                SELECT IdAtto
-                FROM AttiImmobili
-                WHERE Superficie IS NULL
-            )
-        ORDER BY A.Id
-        """
 
     @staticmethod
     def clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
@@ -390,8 +253,10 @@ class DatasetBuilder:
         logger.info(f"Alias selezionati: {selected_aliases}")
         logger.info(f"Include POI: {include_poi}, Include ZTL: {include_ztl}")
         schema = load_json(schema_path)
-        logger.info(f"Schema caricato con {len(schema)} tabelle")
+        logger.info(f"Schema caricato con {len(schema)} tabelle/view")
         select_clause = self.build_select_clause_dual_omi(schema, selected_aliases)
+        
+        # Build query using SQL templates
         if include_poi or include_ztl:
             if include_poi:
                 if poi_categories is None:
@@ -399,10 +264,17 @@ class DatasetBuilder:
                 logger.info(f"Usando {len(poi_categories)} categorie POI")
             else:
                 poi_categories = []
-            query = self.generate_query_with_poi_and_ztl(select_clause, poi_categories)
+            
+            query = self.sql_loader.build_query_with_poi_ztl(
+                select_clause=select_clause,
+                poi_categories=poi_categories,
+                include_poi=include_poi,
+                include_ztl=include_ztl
+            )
         else:
-            query = self.generate_query_dual_omi(select_clause)
-        logger.info("Query SQL generata")
+            query = self.sql_loader.build_base_query(select_clause)
+        
+        logger.info("Query SQL generata da template")
         with self.engine.connect() as connection:
             logger.info("Esecuzione query in corso…")
             df = pd.read_sql(query, connection)
