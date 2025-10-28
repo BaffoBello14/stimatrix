@@ -112,12 +112,15 @@ pca: &pca_defaults
   random_state: 42
 
 # Correlation pruning
+# NOTA: Threshold aumentato a 0.95 per evitare rimozione eccessiva di feature utili
+# La correlazione viene calcolata solo sulle colonne numeriche, non sulle OHE
 correlation: &correlation_defaults
-  numeric_threshold: 0.80
+  numeric_threshold: 0.95
 
 # Non-descriptive columns pruning
+# Threshold aumentato a 0.80 per essere meno aggressivi
 drop_non_descriptive:
-  na_threshold: 0.50
+  na_threshold: 0.80
 
 # Feature extraction toggles
 feature_extraction:
@@ -158,9 +161,11 @@ winsorization: &winsor_defaults
   upper_quantile: 0.99
 
 # Profiles: generate multiple datasets tailored to model families
+# SEMPLIFICATO: Solo 2 profili necessari per modelli tree-based
 profiles:
   scaled:
-    enabled: true
+    # Disabilitato: non più necessario dopo rimozione modelli lineari
+    enabled: false
     output_prefix: 'scaled'
     encoding: *encoding_defaults
     winsorization: *winsor_defaults
@@ -168,11 +173,13 @@ profiles:
     pca: *pca_defaults
     correlation: *correlation_defaults
   tree:
+    # Profilo principale per XGBoost, LightGBM, Random Forest, GBR, HGBT
     enabled: true
     output_prefix: 'tree'
     encoding: *encoding_defaults
     correlation: *correlation_defaults
   catboost:
+    # Profilo specifico per CatBoost (mantiene categoriche native)
     enabled: true
     output_prefix: 'catboost'
     correlation: *correlation_defaults
@@ -196,16 +203,21 @@ training:
     shuffle: true     # usato solo per kfold
 
   # Definizione per-modello (schema minimale)
+  # SEMPLIFICATO: Solo modelli tree-based, i migliori per dati immobiliari
   models:
+    # ========================================
+    # MODELLI LINEARI: DISABILITATI
+    # Troppo semplici per dati immobiliari complessi
+    # ========================================
     linear:
-      enabled: true
+      enabled: false
       profile: scaled
-      trials: 1 # no hyperparams
+      trials: 1
       base_params: {}
       fit_params: {}
       search_space: {}
     ridge:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: *trials_base
       base_params: {}
@@ -213,7 +225,7 @@ training:
       search_space:
         alpha: {type: float, low: 0.000001, high: 1000.0, log: true}
     lasso:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: *trials_base
       base_params: {}
@@ -221,7 +233,7 @@ training:
       search_space:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
     elasticnet:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: *trials_base
       base_params: {}
@@ -229,8 +241,12 @@ training:
       search_space:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
         l1_ratio: {type: float, low: 0.0, high: 1.0}
+    # ========================================
+    # KNN: DISABILITATO
+    # Lento e poco performante con molte feature
+    # ========================================
     knn:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: *trials_base
       base_params: {}
@@ -239,6 +255,9 @@ training:
         n_neighbors: {type: int, low: 3, high: 50}
         weights: {type: categorical, choices: ["uniform", "distance"]}
         p: {type: int, low: 1, high: 2}
+    # ========================================
+    # SVR: DISABILITATO (già era disabilitato)
+    # ========================================
     svr:
       enabled: false
       profile: scaled
@@ -252,8 +271,12 @@ training:
         gamma: {type: float, low: 0.0001, high: 10.0, log: true}
         degree: {type: int, low: 2, high: 5}
         coef0: {type: float, low: 0.0, high: 1.0}
+    # ========================================
+    # DECISION TREE SINGOLO: DISABILITATO
+    # Ridondante quando hai ensemble (RF, GBR, etc.)
+    # ========================================
     dt:
-      enabled: true
+      enabled: false
       profile: tree
       trials: *trials_advanced
       base_params: {}
@@ -264,7 +287,12 @@ training:
         min_samples_leaf: {type: int, low: 1, high: 20}
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
         min_impurity_decrease: {type: float, low: 0.0, high: 0.01}
+    # ========================================
+    # MODELLI TREE-BASED: ABILITATI ✅
+    # I migliori per dati immobiliari complessi
+    # ========================================
     rf:
+      # Random Forest: robusto, veloce, ottimo baseline
       enabled: true
       profile: tree
       trials: *trials_advanced
@@ -278,6 +306,7 @@ training:
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
         bootstrap: {type: categorical, choices: [true, false]}
     gbr:
+      # Gradient Boosting (sklearn): buone performance ma più lento
       enabled: true
       profile: tree
       trials: 150
@@ -293,6 +322,7 @@ training:
         min_samples_split: {type: int, low: 2, high: 20}
         min_impurity_decrease: {type: float, low: 0.0, high: 0.01}
     hgbt:
+      # HistGradientBoosting: veloce e performante, supporta NaN nativamente
       enabled: true
       profile: tree
       trials: *trials_advanced
@@ -306,6 +336,7 @@ training:
         max_bins: {type: int, low: 64, high: 255}
         min_samples_leaf: {type: int, low: 1, high: 50}
     xgboost:
+      # XGBoost: solitamente il migliore per problemi tabular
       enabled: true
       profile: tree
       trials: 150
@@ -322,6 +353,7 @@ training:
         reg_lambda: {type: float, low: 1e-4, high: 10.0, log: true}
         gamma: {type: float, low: 1e-4, high: 10.0, log: true}
     lightgbm:
+      # LightGBM: molto veloce, ottimo per dataset grandi
       enabled: true
       profile: tree
       trials: 150
@@ -339,6 +371,7 @@ training:
         min_child_samples: {type: int, low: 20, high: 200}
         min_split_gain: {type: float, low: 0.0, high: 1.0}
     catboost:
+      # CatBoost: ottima gestione categoriche, no preprocessing necessario
       enabled: true
       profile: catboost
       trials: *trials_advanced
@@ -371,7 +404,8 @@ training:
     stacking:
       enabled: true
       top_n: 5
-      final_estimator: "ridge"
+      # AGGIORNATO: Usa hgbt invece di ridge (disabilitato)
+      final_estimator: "hgbt"
       cv_folds: 5
 
 # Evaluation configuration

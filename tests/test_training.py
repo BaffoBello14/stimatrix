@@ -246,11 +246,11 @@ class TestTrainingPipeline:
                 "report_metrics": ["r2", "rmse"],
                 "seed": 42,
                 "models": {
-                    "linear": {
+                    "rf": {
                         "enabled": True,
                         "profile": "tree",
                         "trials": 1,
-                        "base_params": {},
+                        "base_params": {"n_estimators": 10, "max_depth": 3},
                         "fit_params": {},
                         "search_space": {}
                     }
@@ -266,9 +266,9 @@ class TestTrainingPipeline:
         results = run_training(config)
         
         assert "models" in results
-        assert "linear" in results["models"]
-        assert "metrics_test" in results["models"]["linear"]
-        assert "metrics_train" in results["models"]["linear"]
+        assert "rf" in results["models"]
+        assert "metrics_test" in results["models"]["rf"]
+        assert "metrics_train" in results["models"]["rf"]
     
     def test_run_training_with_validation(self, sample_training_data):
         """Test training with validation set."""
@@ -295,14 +295,14 @@ class TestTrainingPipeline:
                 "report_metrics": ["r2", "rmse"],
                 "seed": 42,
                 "models": {
-                    "ridge": {
+                    "xgboost": {
                         "enabled": True,
                         "profile": "tree",
                         "trials": 5,
-                        "base_params": {},
+                        "base_params": {"n_estimators": 50},
                         "fit_params": {},
                         "search_space": {
-                            "alpha": {"type": "float", "low": 0.1, "high": 10.0, "log": True}
+                            "max_depth": {"type": "int", "low": 3, "high": 8}
                         }
                     }
                 },
@@ -317,8 +317,8 @@ class TestTrainingPipeline:
         results = run_training(config)
         
         assert "models" in results
-        assert "ridge" in results["models"]
-        model_results = results["models"]["ridge"]
+        assert "xgboost" in results["models"]
+        model_results = results["models"]["xgboost"]
         
         # Should have train and test metrics
         assert "metrics_train" in model_results
@@ -339,11 +339,11 @@ class TestTrainingPipeline:
                 "primary_metric": "r2",
                 "seed": 42,
                 "models": {
-                    "linear": {
+                    "rf": {
                         "enabled": True,
                         "profile": "tree",
                         "trials": 1,
-                        "base_params": {},
+                        "base_params": {"n_estimators": 10},
                         "fit_params": {},
                         "search_space": {}
                     }
@@ -369,7 +369,7 @@ class TestTrainingPipeline:
                 "primary_metric": "r2",
                 "seed": 42,
                 "models": {
-                    "linear": {"enabled": False}
+                    "rf": {"enabled": False}
                 },
                 "shap": {"enabled": False},
                 "ensembles": {"voting": {"enabled": False}, "stacking": {"enabled": False}}
@@ -391,10 +391,11 @@ class TestTrainingPipeline:
             },
             "training": {
                 "models": {
-                    "linear": {
+                    "rf": {
                         "enabled": True,
                         "profile": "tree",
-                        "trials": 1
+                        "trials": 1,
+                        "base_params": {"n_estimators": 10}
                     }
                 }
             }
