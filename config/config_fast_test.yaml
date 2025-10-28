@@ -194,6 +194,8 @@ training:
       fit_params: {}
       search_space: {}
     ridge:
+      # NOTA: Disabilitato per training normale, ma USATO come meta-learner per stacking
+      # Ridge è ideale per stacking: semplice, veloce, previene overfitting
       enabled: false
       profile: scaled
       trials: 3
@@ -334,8 +336,9 @@ training:
     stacking:
       enabled: true
       top_n: 3
-      # AGGIORNATO: Usa xgboost invece di ridge (disabilitato)
-      final_estimator: "xgboost"
+      # Meta-learner: Ridge è ideale (semplice, previene overfitting, interpretabile)
+      # Nota: Ridge può essere usato qui anche se disabled sopra
+      final_estimator: "ridge"
       cv_folds: 3
 
 # Evaluation configuration

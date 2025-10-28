@@ -165,6 +165,7 @@ training:
       fit_params: {}
       search_space: {}
     ridge:
+      # NOTA: Disabilitato per training normale, ma USATO come meta-learner per stacking
       enabled: false
       profile: scaled
       trials: 5
@@ -331,6 +332,6 @@ training:
     stacking:
       enabled: true
       top_n: 5
-      # AGGIORNATO: Usa hgbt invece di ridge (disabilitato)
-      final_estimator: "hgbt"
+      # Meta-learner: Ridge è ideale per stacking
+      final_estimator: "ridge"
       cv_folds: 5

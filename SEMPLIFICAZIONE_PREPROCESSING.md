@@ -72,14 +72,16 @@ drop_non_descriptive:
 ### 4. **Ensemble Configuration Update**
 
 ```yaml
-# PRIMA
+# Meta-learner dello stacking
 stacking:
-  final_estimator: "ridge"  # ❌ Disabilitato!
-
-# DOPO
-stacking:
-  final_estimator: "hgbt"   # ✅ Tree-based veloce
+  final_estimator: "ridge"  # ✅ Ridge mantenuto per stacking
 ```
+
+**Nota importante**: Ridge è **disabilitato** come modello standalone (`enabled: false`), ma **attivo** come meta-learner per lo stacking. Questo perché:
+- ✅ **Semplice**: Combina linearmente le predizioni dei modelli base
+- ✅ **Veloce**: Non aggiunge overhead significativo
+- ✅ **Previene overfitting**: I modelli base già catturano la complessità
+- ✅ **Interpretabile**: I coefficienti mostrano il peso di ogni modello base
 
 ## 📊 Benefici Attesi
 
@@ -137,6 +139,32 @@ Abbiamo **semplificato drasticamente** il preprocessing mantenendo solo i modell
 - 🎯 **Più focalizzato**
 - 📊 **Altrettanto performante** (se non migliore)
 - 🧹 **Più pulito e manutenibile**
+
+## 🎯 Nota Importante: Ridge e Stacking
+
+**Ridge è disabilitato come modello standalone ma mantenuto per stacking** perché:
+
+### Perché Ridge è disabilitato?
+- ❌ Troppo semplice per catturare relazioni complesse nei dati immobiliari
+- ❌ Performance inferiore rispetto a tree-based models
+- ❌ Non giustifica il tempo di preprocessing del profilo `scaled`
+
+### Perché Ridge è perfetto per lo stacking meta-learner?
+- ✅ **Semplice e veloce**: Combina linearmente le predizioni già complesse
+- ✅ **Previene overfitting**: I modelli base già catturano la complessità
+- ✅ **Interpretabile**: I coefficienti mostrano il peso di ogni modello
+- ✅ **Regularizzato**: Ridge penalizza dipendenze eccessive da un singolo modello
+
+### Implementazione
+Il codice in `src/training/ensembles.py` gestisce automaticamente Ridge per lo stacking:
+
+```python
+def build_stacking(..., final_estimator_key: str, ...):
+    if final_estimator_key.lower() in {"ridge", "linear", "lasso", "elasticnet"}:
+        fe = build_estimator(final_estimator_key, {})  # Costruisce Ridge anche se disabled
+```
+
+**Conclusione**: Ridge come meta-learner è una best practice consolidata nel machine learning. I modelli base catturano pattern complessi, il meta-learner li combina ottimamente.
 
 ---
 *Documento generato automaticamente il 28/10/2025*
