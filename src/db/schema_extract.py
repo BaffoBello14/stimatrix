@@ -63,7 +63,22 @@ def normalize_type(col_name: str, raw_type_str: str) -> str:
     return "unknown"
 
 
-def generate_table_alias(table_name: str) -> str:
+def generate_table_alias(table_name: str, custom_aliases: Optional[Dict[str, str]] = None) -> str:
+    """
+    Generate alias for a table/view name.
+    
+    Args:
+        table_name: Name of the table or view
+        custom_aliases: Optional dictionary mapping table names to custom aliases
+    
+    Returns:
+        Alias string (e.g., 'A', 'AI', 'C1', etc.)
+    """
+    # Check for custom alias first
+    if custom_aliases and table_name in custom_aliases:
+        return custom_aliases[table_name]
+    
+    # Default: extract uppercase letters or first letters
     parts = table_name.split("_")
     aliases = []
     for part in parts:
@@ -75,13 +90,36 @@ def generate_table_alias(table_name: str) -> str:
     return "_".join(aliases)
 
 
-def extract_schema(engine, schema_name: Optional[str] = None) -> Dict[str, Any]:
+def extract_schema(engine, schema_name: Optional[str] = None, custom_aliases: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    """
+    Extract database schema including tables and views.
+    
+    Args:
+        engine: SQLAlchemy engine
+        schema_name: Database schema name (optional)
+        custom_aliases: Dictionary mapping table/view names to custom aliases
+    
+    Returns:
+        Dictionary containing schema information
+    """
     inspector = inspect(engine)
     schema: Dict[str, Any] = {}
+    
+    # Define default custom aliases for common cases
+    if custom_aliases is None:
+        custom_aliases = {
+            'attiimmobili_cened1': 'C1',
+            'attiimmobili_cened2': 'C2',
+        }
 
+    # Extract tables
     for table_name in inspector.get_table_names(schema=schema_name):
         columns = inspector.get_columns(table_name, schema=schema_name)
-        schema[table_name] = {"alias": generate_table_alias(table_name), "columns": []}
+        schema[table_name] = {
+            "alias": generate_table_alias(table_name, custom_aliases),
+            "type": "table",
+            "columns": []
+        }
 
         for col in columns:
             try:
@@ -101,6 +139,37 @@ def extract_schema(engine, schema_name: Optional[str] = None) -> Dict[str, Any]:
                 }
             )
 
+    # Extract views (same as tables from a retrieval perspective)
+    try:
+        for view_name in inspector.get_view_names(schema=schema_name):
+            columns = inspector.get_columns(view_name, schema=schema_name)
+            schema[view_name] = {
+                "alias": generate_table_alias(view_name, custom_aliases),
+                "type": "view",
+                "columns": []
+            }
+
+            for col in columns:
+                try:
+                    raw_type = str(col["type"])  # type: ignore[index]
+                    if raw_type.upper() in ("NULL", "NULLTYPE", "UNKNOWN"):
+                        raw_type = col["type"].compile(dialect=engine.dialect)  # type: ignore[index]
+                except Exception:
+                    raw_type = "unknown"
+
+                normalized_type = normalize_type(str(col.get("name")), raw_type)
+
+                schema[view_name]["columns"].append(
+                    {
+                        "name": col.get("name"),
+                        "type": normalized_type,
+                        "retrieve": True,
+                    }
+                )
+    except Exception as e:
+        # Some databases might not support views or have permission issues
+        print(f"Warning: Could not extract views: {e}")
+
     return schema
 
 def run_schema(config: Dict[str, Any]) -> None:
@@ -110,9 +179,10 @@ def run_schema(config: Dict[str, Any]) -> None:
     ensure_parent_dir(out)
 
     schema_name = config.get("database", {}).get("schema_name", None)
+    custom_aliases = config.get("database", {}).get("custom_aliases", None)
 
     engine = DatabaseConnector().engine
-    schema_dict = extract_schema(engine, schema_name=schema_name)
+    schema_dict = extract_schema(engine, schema_name=schema_name, custom_aliases=custom_aliases)
 
     with open(out, "w", encoding="utf-8") as f:
         json.dump(schema_dict, f, indent=4, ensure_ascii=False)
