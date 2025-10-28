@@ -104,12 +104,14 @@ pca: &pca_defaults
   random_state: 42
 
 # Correlation pruning
+# NOTA: Threshold aumentato a 0.95 per evitare rimozione eccessiva di feature utili
 correlation: &correlation_defaults
-  numeric_threshold: 0.98
+  numeric_threshold: 0.95
 
 # Non-descriptive columns pruning
+# Threshold aumentato a 0.80 per essere meno aggressivi
 drop_non_descriptive:
-  na_threshold: 0.98
+  na_threshold: 0.80
 
 # Feature extraction toggles
 feature_extraction:
@@ -140,9 +142,11 @@ winsorization: &winsor_defaults
   upper_quantile: 0.99
 
 # Profiles: generate multiple datasets tailored to model families
+# SEMPLIFICATO: Solo 2 profili necessari per modelli tree-based
 profiles:
   scaled:
-    enabled: true
+    # Disabilitato: non più necessario dopo rimozione modelli lineari
+    enabled: false
     output_prefix: 'scaled'
     encoding: *encoding_defaults
     winsorization: *winsor_defaults
@@ -150,11 +154,13 @@ profiles:
     pca: *pca_defaults
     correlation: *correlation_defaults
   tree:
+    # Profilo principale per XGBoost, LightGBM, Random Forest, GBR
     enabled: true
     output_prefix: 'tree'
     encoding: *encoding_defaults
     correlation: *correlation_defaults
   catboost:
+    # Profilo specifico per CatBoost (mantiene categoriche native)
     enabled: true
     output_prefix: 'catboost'
     correlation: *correlation_defaults
@@ -175,16 +181,22 @@ training:
     shuffle: false
 
   # Definizione per-modello - FAST TEST VERSION
+  # SEMPLIFICATO: Solo modelli tree-based, i migliori per dati immobiliari
   models:
+    # ========================================
+    # MODELLI LINEARI: DISABILITATI
+    # ========================================
     linear:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: 1
       base_params: {}
       fit_params: {}
       search_space: {}
     ridge:
-      enabled: true
+      # NOTA: Disabilitato per training normale, ma USATO come meta-learner per stacking
+      # Ridge è ideale per stacking: semplice, veloce, previene overfitting
+      enabled: false
       profile: scaled
       trials: 3
       base_params: {}
@@ -192,7 +204,7 @@ training:
       search_space:
         alpha: {type: float, low: 0.000001, high: 1000.0, log: true}
     lasso:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: 3
       base_params: {}
@@ -200,7 +212,7 @@ training:
       search_space:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
     elasticnet:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: 3
       base_params: {}
@@ -209,7 +221,7 @@ training:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
         l1_ratio: {type: float, low: 0.0, high: 1.0}
     knn:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: 3
       base_params: {}
@@ -219,7 +231,7 @@ training:
         weights: {type: categorical, choices: ["uniform", "distance"]}
         p: {type: int, low: 1, high: 2}
     dt:
-      enabled: true
+      enabled: false
       profile: tree
       trials: 3
       base_params: {}
@@ -324,6 +336,8 @@ training:
     stacking:
       enabled: true
       top_n: 3
+      # Meta-learner: Ridge è ideale (semplice, previene overfitting, interpretabile)
+      # Nota: Ridge può essere usato qui anche se disabled sopra
       final_estimator: "ridge"
       cv_folds: 3
 

@@ -83,8 +83,9 @@ pca: &pca_defaults
   random_state: 42
 
 # Correlation pruning
+# NOTA: Threshold aumentato a 0.95 per evitare rimozione eccessiva
 correlation: &correlation_defaults
-  numeric_threshold: 0.98
+  numeric_threshold: 0.95
 
 # Feature extraction toggles
 feature_extraction:
@@ -114,9 +115,11 @@ winsorization: &winsor_defaults
   upper_quantile: 0.99
 
 # Profiles: generate multiple datasets tailored to model families
+# SEMPLIFICATO: Solo 2 profili necessari per modelli tree-based
 profiles:
   scaled:
-    enabled: true
+    # Disabilitato: non più necessario dopo rimozione modelli lineari
+    enabled: false
     output_prefix: 'scaled'
     encoding: *encoding_defaults
     winsorization: *winsor_defaults
@@ -124,11 +127,13 @@ profiles:
     pca: *pca_defaults
     correlation: *correlation_defaults
   tree:
+    # Profilo principale per tree-based models
     enabled: true
     output_prefix: 'tree'
     encoding: *encoding_defaults
     correlation: *correlation_defaults
   catboost:
+    # Profilo specifico per CatBoost
     enabled: true
     output_prefix: 'catboost'
     correlation: *correlation_defaults
@@ -149,16 +154,19 @@ training:
     shuffle: false     # usato solo per kfold
 
   # Definizione per-modello (schema minimale)
+  # SEMPLIFICATO: Solo modelli tree-based per test
   models:
+    # MODELLI LINEARI: DISABILITATI
     linear:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: 5
       base_params: {}
       fit_params: {}
       search_space: {}
     ridge:
-      enabled: true
+      # NOTA: Disabilitato per training normale, ma USATO come meta-learner per stacking
+      enabled: false
       profile: scaled
       trials: 5
       base_params: {}
@@ -166,7 +174,7 @@ training:
       search_space:
         alpha: {type: float, low: 0.000001, high: 1000.0, log: true}
     lasso:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: 5
       base_params: {}
@@ -174,7 +182,7 @@ training:
       search_space:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
     elasticnet:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: 5
       base_params: {}
@@ -183,7 +191,7 @@ training:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
         l1_ratio: {type: float, low: 0.0, high: 1.0}
     knn:
-      enabled: true
+      enabled: false
       profile: scaled
       trials: 5
       base_params: {}
@@ -206,7 +214,7 @@ training:
         degree: {type: int, low: 2, high: 5}
         coef0: {type: float, low: 0.0, high: 1.0}
     dt:
-      enabled: true
+      enabled: false
       profile: tree
       trials: 5
       base_params: {}
@@ -324,5 +332,6 @@ training:
     stacking:
       enabled: true
       top_n: 5
+      # Meta-learner: Ridge è ideale per stacking
       final_estimator: "ridge"
       cv_folds: 5
