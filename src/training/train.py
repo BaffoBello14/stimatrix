@@ -88,7 +88,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     gm_log_wandb: bool = bool(gm_cfg.get("log_wandb", True))
     price_cfg: Dict[str, Any] = gm_cfg.get("price_band", {}) or {}
 
-    # Read preprocessing info to know if log-transform was applied
+    # Read preprocessing info to get target transformation metadata
     prep_info_path = pre_dir / "preprocessing_info.json"
     # Check if target transformation was applied
     transform_applied = False
@@ -282,7 +282,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
 
         m_test = regression_metrics(y_test.values, y_pred_test)
         m_train = regression_metrics(y_tr_final.values, y_pred_train)
-        # Also compute metrics on original scale (euros) if log-transform was applied
+        # Also compute metrics on original scale if target transformation was applied
         m_test_orig = None
         m_train_orig = None
         smearing_factor: Optional[float] = None
@@ -315,7 +315,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     y_pred_train_orig = y_pred_train_orig * smearing_factor
                 m_train_orig = regression_metrics(y_train_true_orig, y_pred_train_orig)
             else:
-                # If no log transform, original-scale == current metrics
+                # If no transform, original-scale == current metrics
                 m_test_orig = dict(m_test)
                 m_train_orig = dict(m_train)
         except Exception as _e:
@@ -535,7 +535,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         y_pred_train = vote.predict(X_tr_final.values)
         m_test = regression_metrics(y_test.values, y_pred_test)
         m_train = regression_metrics(y_tr_final.values, y_pred_train)
-        # Original-scale metrics with Duan smearing (if transform applied)
+        # Original-scale metrics (if transform applied)
         m_test_orig = None
         m_train_orig = None
         try:
@@ -638,7 +638,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         y_pred_train = stack.predict(X_tr_final.values)
         m_test = regression_metrics(y_test.values, y_pred_test)
         m_train = regression_metrics(y_tr_final.values, y_pred_train)
-        # Original-scale metrics + smearing
+        # Original-scale metrics (if transform applied)
         m_test_orig = None
         m_train_orig = None
         try:

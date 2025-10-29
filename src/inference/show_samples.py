@@ -99,11 +99,11 @@ def _maybe_inverse_log(cfg: dict, y_pred: "np.ndarray", y_true_series: "pd.Serie
             y_true_orig = inverse_transform_target(y_true_series.values, transform_meta) if transform_meta else y_true_series.values
         # Apply inverse transformation to predictions
         y_pred_orig = inverse_transform_target(np.asarray(y_pred), transform_meta) if transform_meta else y_pred
-        # Apply smearing factor if provided (for log transform compatibility)
+        # Apply smearing factor if provided
         if smearing_factor is not None:
             y_pred_orig = y_pred_orig * float(smearing_factor)
         return y_true_orig, y_pred_orig
-    # No log: identity
+    # No transformation applied
     return y_true_series.values, np.asarray(y_pred)
 
 

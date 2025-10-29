@@ -194,7 +194,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Temporal split FIRST to avoid leakage
     split_cfg_dict = config.get("temporal_split", {})
-    # Support new schema with nested fraction/date keys and keep backward compatibility
+    # Support nested fraction/date keys in temporal_split config
     mode = split_cfg_dict.get("mode", "date")
     frac = split_cfg_dict.get("fraction", {})
     date = split_cfg_dict.get("date", {})
@@ -375,8 +375,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         numc_cfg = config.get("numeric_coercion", {})
         enabled = bool(numc_cfg.get("enabled", True))
         threshold = float(numc_cfg.get("threshold", 0.95))
-        # Accept both new key 'blacklist_globs' and legacy 'blacklist_patterns'
-        patterns = [str(p) for p in (numc_cfg.get("blacklist_globs") or numc_cfg.get("blacklist_patterns") or [
+        # Use blacklist_globs for numeric coercion filtering
+        patterns = [str(p) for p in (numc_cfg.get("blacklist_globs") or [
             "II_*",
             "AI_Id*",
             "Foglio",
@@ -660,7 +660,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if first_profile_saved is None:
             first_profile_saved = prefix
 
-    # Backward-compatible symlinks (copy) to default filenames using first enabled profile
+    # Copy files to default filenames using first enabled profile
     if first_profile_saved is not None:
         X_train_bc = pd.read_parquet(pre_dir / f"X_train_{first_profile_saved}.parquet")
         X_test_bc = pd.read_parquet(pre_dir / f"X_test_{first_profile_saved}.parquet")

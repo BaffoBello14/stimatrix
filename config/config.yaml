@@ -14,9 +14,7 @@ logging:
 
 # Execution Configuration
 execution:
-  # Passi della pipeline da eseguire: [schema, dataset, preprocessing, training, evaluation] oppure ["all"]
   steps: ["all"]
-  # Se true, forza la rielaborazione anche se gli output intermedi esistono già
   force_reload: true
 
 # Experiment tracking (Weights & Biases)
@@ -139,13 +137,10 @@ pca: &pca_defaults
   random_state: 42
 
 # Correlation pruning
-# NOTA: Threshold aumentato a 0.95 per evitare rimozione eccessiva di feature utili
-# La correlazione viene calcolata solo sulle colonne numeriche, non sulle OHE
 correlation: &correlation_defaults
   numeric_threshold: 0.95
 
 # Non-descriptive columns pruning
-# Threshold aumentato a 0.80 per essere meno aggressivi
 drop_non_descriptive:
   na_threshold: 0.80
 
@@ -242,10 +237,8 @@ winsorization: &winsor_defaults
   upper_quantile: 0.99
 
 # Profiles: generate multiple datasets tailored to model families
-# SEMPLIFICATO: Solo 2 profili necessari per modelli tree-based
 profiles:
   scaled:
-    # Disabilitato: non più necessario dopo rimozione modelli lineari
     enabled: false
     output_prefix: 'scaled'
     encoding: *encoding_defaults
@@ -253,22 +246,18 @@ profiles:
     scaling: *scaling_defaults
     pca: *pca_defaults
     correlation: *correlation_defaults
-    # ✨ NEW: Enable advanced encoding for this profile
     apply_advanced_encoding: false
   tree:
-    # Profilo principale per XGBoost, LightGBM, Random Forest, GBR, HGBT
     enabled: true
     output_prefix: 'tree'
     encoding: *encoding_defaults
     correlation: *correlation_defaults
-    # ✨ NEW: Enable advanced encoding for this profile
-    apply_advanced_encoding: true  # Use multi-strategy encoding (Target, Frequency, Ordinal)
+    apply_advanced_encoding: true
   catboost:
-    # Profilo specifico per CatBoost (mantiene categoriche native)
     enabled: true
     output_prefix: 'catboost'
     correlation: *correlation_defaults
-    apply_advanced_encoding: false  # CatBoost handles categoricals natively
+    apply_advanced_encoding: false
 
 # Training configuration
 training:
@@ -296,13 +285,7 @@ training:
     n_splits: 5
     shuffle: true     # usato solo per kfold
 
-  # Definizione per-modello (schema minimale)
-  # SEMPLIFICATO: Solo modelli tree-based, i migliori per dati immobiliari
   models:
-    # ========================================
-    # MODELLI LINEARI: DISABILITATI
-    # Troppo semplici per dati immobiliari complessi
-    # ========================================
     linear:
       enabled: false
       profile: scaled
@@ -311,8 +294,6 @@ training:
       fit_params: {}
       search_space: {}
     ridge:
-      # NOTA: Disabilitato per training normale, ma USATO come meta-learner per stacking
-      # Ridge è ideale per stacking: semplice, veloce, previene overfitting
       enabled: false
       profile: scaled
       trials: *trials_base
@@ -337,10 +318,6 @@ training:
       search_space:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
         l1_ratio: {type: float, low: 0.0, high: 1.0}
-    # ========================================
-    # KNN: DISABILITATO
-    # Lento e poco performante con molte feature
-    # ========================================
     knn:
       enabled: false
       profile: scaled
@@ -351,9 +328,6 @@ training:
         n_neighbors: {type: int, low: 3, high: 50}
         weights: {type: categorical, choices: ["uniform", "distance"]}
         p: {type: int, low: 1, high: 2}
-    # ========================================
-    # SVR: DISABILITATO (già era disabilitato)
-    # ========================================
     svr:
       enabled: false
       profile: scaled
@@ -367,10 +341,6 @@ training:
         gamma: {type: float, low: 0.0001, high: 10.0, log: true}
         degree: {type: int, low: 2, high: 5}
         coef0: {type: float, low: 0.0, high: 1.0}
-    # ========================================
-    # DECISION TREE SINGOLO: DISABILITATO
-    # Ridondante quando hai ensemble (RF, GBR, etc.)
-    # ========================================
     dt:
       enabled: false
       profile: tree
@@ -383,12 +353,7 @@ training:
         min_samples_leaf: {type: int, low: 1, high: 20}
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
         min_impurity_decrease: {type: float, low: 0.0, high: 0.01}
-    # ========================================
-    # MODELLI TREE-BASED: ABILITATI ✅
-    # I migliori per dati immobiliari complessi
-    # ========================================
     rf:
-      # Random Forest: robusto, veloce, ottimo baseline
       enabled: true
       profile: tree
       trials: *trials_advanced
@@ -402,7 +367,6 @@ training:
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
         bootstrap: {type: categorical, choices: [true, false]}
     gbr:
-      # Gradient Boosting (sklearn): buone performance ma più lento
       enabled: true
       profile: tree
       trials: 150
@@ -418,7 +382,6 @@ training:
         min_samples_split: {type: int, low: 2, high: 20}
         min_impurity_decrease: {type: float, low: 0.0, high: 0.01}
     hgbt:
-      # HistGradientBoosting: veloce e performante, supporta NaN nativamente
       enabled: true
       profile: tree
       trials: *trials_advanced
@@ -432,7 +395,6 @@ training:
         max_bins: {type: int, low: 64, high: 255}
         min_samples_leaf: {type: int, low: 1, high: 50}
     xgboost:
-      # XGBoost: solitamente il migliore per problemi tabular
       enabled: true
       profile: tree
       trials: 150
@@ -449,7 +411,6 @@ training:
         reg_lambda: {type: float, low: 1e-4, high: 10.0, log: true}
         gamma: {type: float, low: 1e-4, high: 10.0, log: true}
     lightgbm:
-      # LightGBM: molto veloce, ottimo per dataset grandi
       enabled: true
       profile: tree
       trials: 150
@@ -467,7 +428,6 @@ training:
         min_child_samples: {type: int, low: 20, high: 200}
         min_split_gain: {type: float, low: 0.0, high: 1.0}
     catboost:
-      # CatBoost: ottima gestione categoriche, no preprocessing necessario
       enabled: true
       profile: catboost
       trials: *trials_advanced
@@ -500,8 +460,6 @@ training:
     stacking:
       enabled: true
       top_n: 5
-      # Meta-learner: Ridge è ideale (semplice, previene overfitting, interpretabile)
-      # Nota: Ridge può essere usato qui anche se disabled sopra
       final_estimator: "ridge"
       cv_folds: 5
 

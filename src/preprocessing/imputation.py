@@ -97,7 +97,7 @@ def _apply_fill_values(df: pd.DataFrame, fitted: FittedImputers) -> pd.DataFrame
     return result
 
 
-# Backwards-compatible simple API (not train/test safe)
+# Simple API wrapper (use fit_imputers/transform_with_imputers for train/test safety)
 def impute_missing(df: pd.DataFrame, cfg: ImputationConfig) -> pd.DataFrame:
     fitted = _fit_fill_values(df, cfg)
     return _apply_fill_values(df, fitted)

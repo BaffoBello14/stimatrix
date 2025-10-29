@@ -9,22 +9,22 @@ Questo documento riassume tutte le nuove feature implementate nel progetto Stima
 #### 1.1 Trasformazioni Target Multiple ⭐⭐⭐
 **File modificati**: `src/utils/transforms.py` (NEW), `src/preprocessing/pipeline.py`
 
-**Cosa fa**: Supporto completo per trasformazioni target oltre al semplice log:
-- **`log`** (log1p) - default precedente
-- **`log10`** - log base 10 con offset configurabile
-- **`sqrt`** - radice quadrata
-- **`boxcox`** - Box-Cox con λ ottimizzato automaticamente
+**Cosa fa**: Supporto completo per trasformazioni target con metodi avanzati:
+- **`boxcox`** - Box-Cox con λ ottimizzato automaticamente (**DEFAULT**)
 - **`yeojohnson`** - Yeo-Johnson (come Box-Cox ma gestisce negativi/zero)
+- **`sqrt`** - radice quadrata
+- **`log`** (log1p) - logaritmo naturale
+- **`log10`** - log base 10 con offset configurabile
 - **`none`** - nessuna trasformazione
 
 **Configurazione**:
 ```yaml
 target:
-  transform: 'boxcox'  # DEFAULT - Spesso superiore a log per dati di prezzo!
-  log10_offset: 1.0  # Solo per log10
+  transform: 'boxcox'  # DEFAULT - Ottimizza automaticamente la trasformazione!
+  log10_offset: 1.0    # Usato solo se transform: 'log10'
 ```
 
-**Benefici**: Box-Cox e Yeo-Johnson possono dare +5-10% di performance rispetto a log standard.
+**Benefici**: Box-Cox e Yeo-Johnson ottimizzano automaticamente la trasformazione per massimizzare la normalità dei dati.
 
 ---
 
