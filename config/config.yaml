@@ -308,7 +308,7 @@ training:
       # Gradient Boosting (sklearn): buone performance ma più lento
       enabled: true
       profile: tree
-      trials: 150
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
@@ -338,7 +338,7 @@ training:
       # XGBoost: solitamente il migliore per problemi tabular
       enabled: true
       profile: tree
-      trials: 150
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
@@ -355,7 +355,7 @@ training:
       # LightGBM: molto veloce, ottimo per dataset grandi
       enabled: true
       profile: tree
-      trials: 150
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:

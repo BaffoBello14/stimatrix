@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple, Any
+import datetime
 
 import numpy as np
 import pandas as pd
@@ -26,6 +27,17 @@ class FittedImputers:
 
 
 def _fit_fill_values(df: pd.DataFrame, cfg: ImputationConfig) -> FittedImputers:
+    # Convert any datetime.date or datetime.datetime objects to strings before imputation
+    # This prevents type errors in downstream processing
+    df = df.copy()
+    for col in df.select_dtypes(include=["object"]).columns:
+        sample = df[col].dropna().head(100)
+        if len(sample) > 0:
+            sample_types = set(type(x) for x in sample)
+            if datetime.date in sample_types or datetime.datetime in sample_types:
+                df[col] = df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) else x)
+                logger.info(f"[imputation] Converted datetime objects to strings in column: {col}")
+    
     numeric_fill: Dict[str, Any] = {}
     categorical_fill: Dict[str, Any] = {}
 
@@ -68,6 +80,16 @@ def _fit_fill_values(df: pd.DataFrame, cfg: ImputationConfig) -> FittedImputers:
 
 def _apply_fill_values(df: pd.DataFrame, fitted: FittedImputers) -> pd.DataFrame:
     result = df.copy()
+    
+    # Convert any datetime.date or datetime.datetime objects to strings
+    for col in result.select_dtypes(include=["object"]).columns:
+        sample = result[col].dropna().head(100)
+        if len(sample) > 0:
+            sample_types = set(type(x) for x in sample)
+            if datetime.date in sample_types or datetime.datetime in sample_types:
+                result[col] = result[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) else x)
+                logger.debug(f"[imputation] Converted datetime objects to strings in column: {col}")
+    
     if fitted.group_by_col and fitted.group_by_col in result.columns and isinstance(next(iter(fitted.numeric_fill_values.values()), None), pd.Series):
         group_key = fitted.group_by_col
         grouped = result.groupby(group_key)
