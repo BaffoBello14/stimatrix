@@ -72,29 +72,36 @@ def _load_test_split(pre_dir: Path, prefix: Optional[str]) -> Tuple["pd.DataFram
 def _maybe_inverse_log(cfg: dict, y_pred: "np.ndarray", y_true_series: "pd.Series", smearing_factor: Optional[float]) -> Tuple["np.ndarray", "np.ndarray"]:
     import numpy as np
     import pandas as pd
-    # Determine if global log transform was applied
+    # Determine if target transformation was applied
     pre_dir = Path(cfg.get("paths", {}).get("preprocessed_data", "data/preprocessed"))
     prep_info_path = pre_dir / "preprocessing_info.json"
-    log_applied_global = False
+    transform_applied = False
+    transform_meta = None
     if prep_info_path.exists():
         try:
             info = json.loads(prep_info_path.read_text(encoding="utf-8"))
-            log_applied_global = bool(((info or {}).get("log_transformation", {}) or {}).get("applied", False))
+            transform_meta = info.get("target_transformation", {})
+            transform_type = transform_meta.get("transform", "none")
+            transform_applied = (transform_type != "none")
         except Exception:
-            log_applied_global = False
-    if log_applied_global:
+            transform_applied = False
+            transform_meta = None
+    
+    if transform_applied:
         # Prefer y_test_orig file if available to avoid numerical drift
         try:
             y_test_orig_path = pre_dir / "y_test_orig.parquet"
             if y_test_orig_path.exists():
                 y_true_orig = pd.read_parquet(y_test_orig_path).iloc[:, 0].values
             else:
-                y_true_orig = np.expm1(y_true_series.values)
+                y_true_orig = inverse_transform_target(y_true_series.values, transform_meta) if transform_meta else y_true_series.values
         except Exception:
-            y_true_orig = np.expm1(y_true_series.values)
-        # Duan's smearing if provided
-        smear = float(smearing_factor) if smearing_factor is not None else 1.0
-        y_pred_orig = np.expm1(np.asarray(y_pred)) * smear
+            y_true_orig = inverse_transform_target(y_true_series.values, transform_meta) if transform_meta else y_true_series.values
+        # Apply inverse transformation to predictions
+        y_pred_orig = inverse_transform_target(np.asarray(y_pred), transform_meta) if transform_meta else y_pred
+        # Apply smearing factor if provided (for log transform compatibility)
+        if smearing_factor is not None:
+            y_pred_orig = y_pred_orig * float(smearing_factor)
         return y_true_orig, y_pred_orig
     # No log: identity
     return y_true_series.values, np.asarray(y_pred)

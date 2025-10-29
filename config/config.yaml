@@ -58,14 +58,11 @@ target:
   # Choose among ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
   column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
   
-  # ✨ NEW: Target transformation (more options than just log)
+  # Target transformation
   # Options: 'none', 'log', 'log10', 'sqrt', 'boxcox', 'yeojohnson'
-  # Note: 'transform' takes precedence over 'log_transform' (legacy)
-  transform: 'log'  # 'boxcox' often works better for prices!
+  # Default: 'boxcox' (often works better for price data than log)
+  transform: 'boxcox'
   log10_offset: 1.0  # Used only for log10 transform
-  
-  # Legacy (backward compatibility)
-  log_transform: true  # Only used if 'transform' is not set
 
 # Outlier detection
 outliers:

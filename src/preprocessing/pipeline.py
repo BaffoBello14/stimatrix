@@ -59,34 +59,6 @@ def choose_target(df: pd.DataFrame, config: Dict[str, Any]) -> str:
     raise ValueError(f"Nessuna colonna target trovata tra {preferred}. Disponibili simili: {available[:10]}")
 
 
-def apply_log_target_if(config: Dict[str, Any], y: pd.Series) -> Tuple[pd.Series, Dict[str, Any]]:
-    """
-    Legacy wrapper for backward compatibility.
-    Now delegates to the new apply_target_transform function.
-    """
-    target_cfg = config.get("target", {})
-    
-    # Check for new 'transform' key, fallback to old 'log_transform' for backward compatibility
-    transform_type = target_cfg.get("transform", None)
-    if transform_type is None:
-        # Legacy behavior: use log_transform flag
-        use_log = bool(target_cfg.get("log_transform", False))
-        transform_type = "log" if use_log else "none"
-    
-    # Get additional parameters
-    log10_offset = float(target_cfg.get("log10_offset", 1.0))
-    
-    # Apply transformation
-    y_transformed, metadata = apply_target_transform(
-        y, 
-        transform_type=transform_type,
-        log10_offset=log10_offset
-    )
-    
-    # For backward compatibility, add 'log' key to metadata
-    metadata["log"] = (transform_type != "none")
-    
-    return y_transformed, metadata
 
 
 def run_preprocessing(config: Dict[str, Any]) -> Path:
@@ -287,27 +259,31 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     y_val_orig = y_val.copy() if y_val is not None else None
 
     # Apply target transformation
-    y_train, transform_meta = apply_log_target_if(config, y_train)
+    target_cfg = config.get("target", {})
+    transform_type = target_cfg.get("transform", "boxcox")  # Default: boxcox
+    log10_offset = float(target_cfg.get("log10_offset", 1.0))
+    
+    y_train, transform_meta = apply_target_transform(
+        y_train, 
+        transform_type=transform_type,
+        log10_offset=log10_offset
+    )
     transform_name = get_transform_name(transform_meta)
     logger.info(f"Target transformation: {transform_name}")
     
     # Apply same transformation to validation and test
-    if transform_meta.get("transform", "none") != "none":
-        target_cfg = config.get("target", {})
+    if transform_type != "none":
         y_test, _ = apply_target_transform(
             y_test, 
-            transform_type=transform_meta.get("transform"),
-            log10_offset=transform_meta.get("log10_offset", 1.0)
+            transform_type=transform_type,
+            log10_offset=log10_offset
         )
         if y_val is not None:
             y_val, _ = apply_target_transform(
                 y_val,
-                transform_type=transform_meta.get("transform"),
-                log10_offset=transform_meta.get("log10_offset", 1.0)
+                transform_type=transform_type,
+                log10_offset=log10_offset
             )
-    
-    # Keep log_meta for backward compatibility
-    log_meta = transform_meta
 
     # Fit imputers on train, transform train/test
     imp_cfg_dict = config.get("imputation", {})

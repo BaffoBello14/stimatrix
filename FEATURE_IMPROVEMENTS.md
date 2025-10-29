@@ -20,8 +20,8 @@ Questo documento riassume tutte le nuove feature implementate nel progetto Stima
 **Configurazione**:
 ```yaml
 target:
-  transform: 'boxcox'  # Spesso superiore a log per dati di prezzo!
-  log10_offset: 1.0
+  transform: 'boxcox'  # DEFAULT - Spesso superiore a log per dati di prezzo!
+  log10_offset: 1.0  # Solo per log10
 ```
 
 **Benefici**: Box-Cox e Yeo-Johnson possono dare +5-10% di performance rispetto a log standard.
@@ -336,7 +336,7 @@ uncertainty:
 ```yaml
 # config/config.yaml
 target:
-  transform: 'boxcox'
+  transform: 'boxcox'  # Default, puoi cambiare a 'log', 'yeojohnson', etc.
 
 advanced_features:
   temporal:
