@@ -597,10 +597,14 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_tr_num_pruned, dropped_corr = remove_highly_correlated(X_tr_num, threshold=corr_thr)
         logger.info(f"[tree] Pruning correlazioni numeriche: {len(dropped_corr)}")
         kept_num_cols = X_tr_num_pruned.columns
-        X_tr_final = pd.concat([X_tr[kept_num_cols], X_tr.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
-        X_te_final = pd.concat([X_te[kept_num_cols], X_te.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        # Verify columns exist in each dataset before accessing
+        kept_num_cols_tr = [c for c in kept_num_cols if c in X_tr.columns]
+        kept_num_cols_te = [c for c in kept_num_cols if c in X_te.columns]
+        X_tr_final = pd.concat([X_tr[kept_num_cols_tr], X_tr.drop(columns=kept_num_cols_tr, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        X_te_final = pd.concat([X_te[kept_num_cols_te], X_te.drop(columns=kept_num_cols_te, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
         if X_va is not None:
-            X_va_final = pd.concat([X_va[kept_num_cols], X_va.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+            kept_num_cols_va = [c for c in kept_num_cols if c in X_va.columns]
+            X_va_final = pd.concat([X_va[kept_num_cols_va], X_va.drop(columns=kept_num_cols_va, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
         else:
             X_va_final = None
         prefix = profiles_cfg.get("tree", {}).get("output_prefix", "tree")
@@ -639,10 +643,14 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_tr_num_pruned, dropped_corr = remove_highly_correlated(X_tr_num, threshold=corr_thr)
         logger.info(f"[catboost] Pruning correlazioni numeriche: {len(dropped_corr)}")
         kept_num_cols = X_tr_num_pruned.columns
-        X_tr_final = pd.concat([X_tr[kept_num_cols], X_tr.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
-        X_te_final = pd.concat([X_te[kept_num_cols], X_te.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        # Verify columns exist in each dataset before accessing
+        kept_num_cols_tr = [c for c in kept_num_cols if c in X_tr.columns]
+        kept_num_cols_te = [c for c in kept_num_cols if c in X_te.columns]
+        X_tr_final = pd.concat([X_tr[kept_num_cols_tr], X_tr.drop(columns=kept_num_cols_tr, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        X_te_final = pd.concat([X_te[kept_num_cols_te], X_te.drop(columns=kept_num_cols_te, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
         if X_va is not None:
-            X_va_final = pd.concat([X_va[kept_num_cols], X_va.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+            kept_num_cols_va = [c for c in kept_num_cols if c in X_va.columns]
+            X_va_final = pd.concat([X_va[kept_num_cols_va], X_va.drop(columns=kept_num_cols_va, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
         else:
             X_va_final = None
         # Audit: ensure no NaN in numeric parts post-prune
