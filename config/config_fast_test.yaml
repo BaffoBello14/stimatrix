@@ -40,7 +40,12 @@ paths:
 # Database Configuration (for data retrieval)
 database:
   schema_name: null
-  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV']
+  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV', 'C1', 'C2']  # C1=attiimmobili_cened1, C2=attiimmobili_cened2
+  # Custom alias mapping for specific tables/views (optional)
+  # If not specified, defaults are used for known views (C1, C2)
+  custom_aliases:
+    attiimmobili_cened1: 'C1'
+    attiimmobili_cened2: 'C2'
   use_poi: true
   use_ztl: true
   output_format: 'parquet'
@@ -48,18 +53,19 @@ database:
 
 # Target configuration
 target:
-  column_candidates: ['AI_Prezzo_MQ', 'AI_Prezzo_Ridistribuito']
+  # Choose among ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
+  column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
   log_transform: true
 
 # Outlier detection
 outliers:
-  method: 'ensemble'
-  z_thresh: 3.5
+  method: 'ensemble'       # 'iqr' | 'zscore' | 'iso_forest' | 'ensemble'
+  z_thresh: 3.0
   iqr_factor: 1.5
-  iso_forest_contamination: 0.01
+  iso_forest_contamination: 0.02
   group_by_col: 'AI_IdTipologiaEdilizia'
-  min_group_size: 30
-  fallback_strategy: 'global'
+  min_group_size: 30       # minimum samples per group to apply group-wise outlier detection
+  fallback_strategy: 'global'  # 'skip' keeps all small groups; 'global' applies global detection
 
 # Missing value imputation
 imputation:
@@ -105,6 +111,7 @@ pca: &pca_defaults
 
 # Correlation pruning
 # NOTA: Threshold aumentato a 0.95 per evitare rimozione eccessiva di feature utili
+# La correlazione viene calcolata solo sulle colonne numeriche, non sulle OHE
 correlation: &correlation_defaults
   numeric_threshold: 0.95
 
@@ -127,7 +134,17 @@ feature_pruning:
     - 'AI_SuperficieVisuraTotaleE'
     - 'AI_SuperficieVisuraTotaleAttuale'
     - 'AI_SuperficieVisuraTotaleEAttuale'
-  include_ai_superficie: false
+    - 'A_AcquirentiCount'
+    - 'A_VenditoriCount'
+    - 'A_EtaMediaAcquirenti'
+    - 'A_EtaMediaVenditori'
+    - 'A_AcquirentiVenditoriStessoCognome'
+    - 'A_VenditoriEredita'
+    - 'AI_Subalterno'
+    - 'AI_Piano'
+    - 'AI_Rendita'
+  # Keep AI_Superficie as a feature (set to false to drop from X)
+  include_ai_superficie: true
 
 # Scaling configuration
 scaling: &scaling_defaults
@@ -135,9 +152,9 @@ scaling: &scaling_defaults
   with_mean: true
   with_std: true
 
-# Winsorization
+# Winsorization (quantile clipping on numeric features)
 winsorization: &winsor_defaults
-  enabled: false
+  enabled: true
   lower_quantile: 0.01
   upper_quantile: 0.99
 
@@ -154,7 +171,7 @@ profiles:
     pca: *pca_defaults
     correlation: *correlation_defaults
   tree:
-    # Profilo principale per XGBoost, LightGBM, Random Forest, GBR
+    # Profilo principale per XGBoost, LightGBM, Random Forest, GBR, HGBT
     enabled: true
     output_prefix: 'tree'
     encoding: *encoding_defaults
@@ -168,19 +185,22 @@ profiles:
 # Training configuration - FAST TEST VERSION
 training:
   # Opzioni globali
-  primary_metric: "neg_root_mean_squared_error" # allinea tuning e ranking
+  primary_metric: "neg_root_mean_squared_error" # 'r2' | 'neg_root_mean_squared_error' | 'neg_mean_squared_error' | 'neg_mean_absolute_error' | 'neg_mean_absolute_percentage_error'
   report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
-  sampler: "auto"
+  sampler: "auto"   # auto (OptunaHub) | tpe
   seed: ${SEED:-42}
   n_jobs_default: ${N_JOBS:--1}
   timeout: ${TRAIN_TIMEOUT:-null}
+  trials_base: &trials_base 3
+  trials_advanced: &trials_advanced 5
+  # Cross-validation usata quando non esiste un validation set esterno (valid_fraction=0)
   cv_when_no_val:
     enabled: true
-    kind: timeseries
+    kind: kfold   # 'timeseries' | 'kfold'
     n_splits: 3
-    shuffle: false
+    shuffle: true     # usato solo per kfold
 
-  # Definizione per-modello - FAST TEST VERSION
+  # Definizione per-modello (schema minimale)
   # SEMPLIFICATO: Solo modelli tree-based, i migliori per dati immobiliari
   models:
     # ========================================
@@ -194,11 +214,9 @@ training:
       fit_params: {}
       search_space: {}
     ridge:
-      # NOTA: Disabilitato per training normale, ma USATO come meta-learner per stacking
-      # Ridge è ideale per stacking: semplice, veloce, previene overfitting
       enabled: false
       profile: scaled
-      trials: 3
+      trials: *trials_base
       base_params: {}
       fit_params: {}
       search_space:
@@ -206,7 +224,7 @@ training:
     lasso:
       enabled: false
       profile: scaled
-      trials: 3
+      trials: *trials_base
       base_params: {}
       fit_params: {}
       search_space:
@@ -214,70 +232,115 @@ training:
     elasticnet:
       enabled: false
       profile: scaled
-      trials: 3
+      trials: *trials_base
       base_params: {}
       fit_params: {}
       search_space:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
         l1_ratio: {type: float, low: 0.0, high: 1.0}
+    # ========================================
+    # KNN: DISABILITATO
+    # Lento e poco performante con molte feature
+    # ========================================
     knn:
       enabled: false
       profile: scaled
-      trials: 3
+      trials: *trials_base
       base_params: {}
       fit_params: {}
       search_space:
         n_neighbors: {type: int, low: 3, high: 50}
         weights: {type: categorical, choices: ["uniform", "distance"]}
         p: {type: int, low: 1, high: 2}
+    # ========================================
+    # SVR: DISABILITATO
+    # Lento su dataset grandi, poco performante
+    # ========================================
+    svr:
+      enabled: false
+      profile: scaled
+      trials: *trials_base
+      base_params: {}
+      fit_params: {}
+      search_space:
+        kernel: {type: categorical, choices: ["rbf", "poly", "sigmoid"]}
+        C: {type: float, low: 0.01, high: 1000.0, log: true}
+        epsilon: {type: float, low: 0.001, high: 1.0, log: true}
+        gamma: {type: float, low: 0.0001, high: 10.0, log: true}
+        degree: {type: int, low: 2, high: 5}
+        coef0: {type: float, low: 0.0, high: 1.0}
+    # ========================================
+    # DECISION TREE SINGOLO: DISABILITATO
+    # ========================================
     dt:
       enabled: false
       profile: tree
-      trials: 3
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
-        max_depth: {type: int, low: 3, high: 15}
-        min_samples_split: {type: int, low: 2, high: 10}
-        min_samples_leaf: {type: int, low: 1, high: 10}
+        max_depth: {type: int, low: 3, high: 30}
+        min_samples_split: {type: int, low: 2, high: 20}
+        min_samples_leaf: {type: int, low: 1, high: 20}
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
         min_impurity_decrease: {type: float, low: 0.0, high: 0.01}
+    # ========================================
+    # MODELLI TREE-BASED: ABILITATI ✅
+    # I migliori per dati immobiliari complessi
+    # ========================================
     rf:
+      # Random Forest: robusto, veloce, ottimo baseline
       enabled: true
       profile: tree
-      trials: 3
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
-        n_estimators: {type: int, low: 50, high: 200}
-        max_depth: {type: int, low: 4, high: 20}
-        min_samples_split: {type: int, low: 2, high: 10}
-        min_samples_leaf: {type: int, low: 1, high: 10}
+        n_estimators: {type: int, low: 200, high: 1200}
+        max_depth: {type: int, low: 4, high: 40}
+        min_samples_split: {type: int, low: 2, high: 20}
+        min_samples_leaf: {type: int, low: 1, high: 20}
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
         bootstrap: {type: categorical, choices: [true, false]}
     gbr:
+      # Gradient Boosting (sklearn): buone performance ma più lento
       enabled: true
       profile: tree
-      trials: 3
+      trials: 5
       base_params: {}
       fit_params: {}
       search_space:
-        learning_rate: {type: float, low: 0.01, high: 0.3, log: true}
-        n_estimators: {type: int, low: 50, high: 300}
-        max_depth: {type: int, low: 2, high: 6}
-        subsample: {type: float, low: 0.7, high: 1.0}
-        min_samples_leaf: {type: int, low: 1, high: 10}
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        n_estimators: {type: int, low: 200, high: 1500}
+        max_depth: {type: int, low: 2, high: 8}
+        subsample: {type: float, low: 0.5, high: 1.0}
+        min_samples_leaf: {type: int, low: 1, high: 20}
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
-        min_samples_split: {type: int, low: 2, high: 10}
+        min_samples_split: {type: int, low: 2, high: 20}
         min_impurity_decrease: {type: float, low: 0.0, high: 0.01}
-    xgboost:
+    hgbt:
+      # HistGradientBoosting: veloce e performante, supporta NaN nativamente
       enabled: true
       profile: tree
-      trials: 3
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
-        n_estimators: {type: int, low: 50, high: 300}
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        max_depth: {type: int, low: 2, high: 16}
+        max_leaf_nodes: {type: int, low: 7, high: 255}
+        l2_regularization: {type: float, low: 0.000001, high: 10.0, log: true}
+        max_bins: {type: int, low: 64, high: 255}
+        min_samples_leaf: {type: int, low: 1, high: 50}
+    xgboost:
+      # XGBoost: solitamente il migliore per problemi tabular
+      enabled: true
+      profile: tree
+      trials: 5
+      base_params: {}
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 300, high: 1500}
         max_depth: {type: int, low: 3, high: 8}
         learning_rate: {type: float, low: 0.01, high: 0.1, log: true}
         subsample: {type: float, low: 0.6, high: 0.9}
@@ -287,13 +350,14 @@ training:
         reg_lambda: {type: float, low: 1e-4, high: 10.0, log: true}
         gamma: {type: float, low: 1e-4, high: 10.0, log: true}
     lightgbm:
+      # LightGBM: molto veloce, ottimo per dataset grandi
       enabled: true
       profile: tree
-      trials: 3
+      trials: 5
       base_params: {}
       fit_params: {}
       search_space:
-        n_estimators: {type: int, low: 50, high: 300}
+        n_estimators: {type: int, low: 300, high: 1500}
         max_depth: {type: categorical, choices: [-1, 4, 5, 6, 7, 8]}
         learning_rate: {type: float, low: 0.01, high: 0.1, log: true}
         num_leaves: {type: int, low: 16, high: 63}
@@ -301,29 +365,30 @@ training:
         colsample_bytree: {type: float, low: 0.6, high: 0.9}
         reg_alpha: {type: float, low: 1e-4, high: 10.0, log: true}
         reg_lambda: {type: float, low: 1e-4, high: 10.0, log: true}
-        min_child_samples: {type: int, low: 20, high: 100}
+        min_child_samples: {type: int, low: 20, high: 200}
         min_split_gain: {type: float, low: 0.0, high: 1.0}
     catboost:
+      # CatBoost: ottima gestione categoriche, no preprocessing necessario
       enabled: true
       profile: catboost
-      trials: 3
+      trials: *trials_advanced
       base_params: {}
       fit_params:
         cat_features: __categorical_indices__
       search_space:
-        depth: {type: int, low: 4, high: 8}
-        learning_rate: {type: float, low: 0.01, high: 0.3, log: true}
-        l2_leaf_reg: {type: float, low: 1.0, high: 10.0}
-        bagging_temperature: {type: float, low: 0.0, high: 3.0}
-        border_count: {type: int, low: 32, high: 128}
-        random_strength: {type: float, low: 0.0, high: 1.0}
-        rsm: {type: float, low: 0.7, high: 1.0}
+        depth: {type: int, low: 4, high: 10}
+        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
+        l2_leaf_reg: {type: float, low: 1.0, high: 15.0}
+        bagging_temperature: {type: float, low: 0.0, high: 5.0}
+        border_count: {type: int, low: 16, high: 255}
+        random_strength: {type: float, low: 0.0, high: 2.0}
+        rsm: {type: float, low: 0.5, high: 1.0}
 
-  # SHAP feature importance - FAST TEST VERSION
+  # SHAP feature importance
   shap:
     enabled: true
-    sample_size: 5
-    max_display: 10
+    sample_size: 100
+    max_display: 20
     save_plots: true
     save_values: true
 
@@ -331,13 +396,12 @@ training:
   ensembles:
     voting:
       enabled: true
-      top_n: 2
+      top_n: 3
       tune_weights: true
     stacking:
       enabled: true
-      top_n: 3
+      top_n: 5
       # Meta-learner: Ridge è ideale (semplice, previene overfitting, interpretabile)
-      # Nota: Ridge può essere usato qui anche se disabled sopra
       final_estimator: "ridge"
       cv_folds: 3
 
@@ -351,7 +415,7 @@ evaluation:
     report_metrics: ['r2', 'rmse', 'mse', 'mae', 'mape', 'medae']
     price_band:
       method: 'quantile'   # 'quantile' | 'fixed'
-      quantiles: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+      quantiles: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
       # fixed_edges: [0, 100000, 200000, 400000, 800000, 1600000, .inf]
       mape_floor: 1000.0
       merge_small_bins: true
