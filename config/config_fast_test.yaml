@@ -55,7 +55,13 @@ database:
 target:
   # Choose among ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
   column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
-  log_transform: true
+  
+  # Target transformation (applied to reduce skewness and improve model performance)
+  # Options: 'none', 'log', 'log10', 'sqrt', 'boxcox', 'yeojohnson'
+  transform: 'boxcox'  # Fast config: same as normal for consistency
+  
+  # Optional: offset for log10 transform
+  log10_offset: 1.0
 
 # Outlier detection
 outliers:

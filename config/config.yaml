@@ -57,7 +57,21 @@ database:
 target:
   # Choose among ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
   column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
-  log_transform: true
+  
+  # Target transformation (applied to reduce skewness and improve model performance)
+  # Options: 'none', 'log', 'log10', 'sqrt', 'boxcox', 'yeojohnson'
+  transform: 'boxcox'  # Recommended: boxcox or yeojohnson for price data
+  
+  # Optional: offset for log10 transform (y -> log10(y + offset))
+  log10_offset: 1.0
+  
+  # Transformation guide:
+  # - 'none': No transformation
+  # - 'log': log(1+y) - handles zeros, best for right-skewed data
+  # - 'log10': log10(y + offset) - similar to log but different scale
+  # - 'sqrt': sqrt(y) - milder than log, requires y >= 0
+  # - 'boxcox': Automatically finds optimal lambda, requires y > 0 (auto-shifts if needed)
+  # - 'yeojohnson': Like Box-Cox but works with any y (recommended for flexibility)
 
 # Outlier detection
 outliers:

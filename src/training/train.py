@@ -9,6 +9,7 @@ import pandas as pd
 from joblib import dump
 
 from utils.logger import get_logger
+from preprocessing.target_transforms import inverse_target_transform
 from .tuner import tune_model
 from .model_zoo import build_estimator
 from .metrics import regression_metrics, overfit_diagnostics, grouped_regression_metrics, _build_price_bands
@@ -17,6 +18,27 @@ from .shap_utils import compute_shap, save_shap_plots
 from utils.wandb_utils import WandbTracker
 
 logger = get_logger(__name__)
+
+
+def _inverse_transform_predictions(
+    y_pred: np.ndarray,
+    transform_metadata: Dict[str, Any],
+    smearing_factor: Optional[float] = None
+) -> np.ndarray:
+    """
+    Apply inverse transformation to predictions.
+    
+    For log transform: applies Duan smearing if smearing_factor provided.
+    For other transforms: applies inverse directly (no smearing).
+    """
+    # Apply inverse transformation
+    y_pred_orig = inverse_target_transform(y_pred, transform_metadata)
+    
+    # Apply Duan smearing for log transform if provided
+    if transform_metadata.get("transform") == "log" and smearing_factor is not None:
+        y_pred_orig = y_pred_orig * smearing_factor
+    
+    return y_pred_orig
 
 
 def _load_xy(pre_dir: Path, prefix: Optional[str]) -> Tuple[pd.DataFrame, pd.Series, Optional[pd.DataFrame], Optional[pd.Series], pd.DataFrame, pd.Series]:
@@ -88,15 +110,25 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     gm_log_wandb: bool = bool(gm_cfg.get("log_wandb", True))
     price_cfg: Dict[str, Any] = gm_cfg.get("price_band", {}) or {}
 
-    # Read preprocessing info to know if log-transform was applied
+    # Read preprocessing info for target transformation metadata
     prep_info_path = pre_dir / "preprocessing_info.json"
-    log_applied_global: bool = False
+    transform_metadata: Dict[str, Any] = {"transform": "none"}
     if prep_info_path.exists():
         try:
             prep_info = json.loads(prep_info_path.read_text(encoding="utf-8"))
-            log_applied_global = bool(((prep_info or {}).get("log_transformation", {}) or {}).get("applied", False))
-        except Exception:
-            log_applied_global = False
+            transform_metadata = prep_info.get("target_transformation", {"transform": "none"})
+            # Backward compatibility with old log_transformation format
+            if transform_metadata.get("transform") == "none":
+                old_log_flag = ((prep_info.get("log_transformation", {}) or {}).get("applied", False))
+                if old_log_flag:
+                    transform_metadata = {"transform": "log"}
+                    logger.warning("⚠️  Using legacy log_transformation format from preprocessing_info.json")
+        except Exception as e:
+            logger.warning(f"Could not load preprocessing_info.json: {e}")
+            transform_metadata = {"transform": "none"}
+    
+    # Helper flag for backward compatibility
+    log_applied_global = transform_metadata.get("transform") != "none"
 
     # Raccogli definizioni per-modello
     models_cfg: Dict[str, Any] = tr_cfg.get("models", {})
