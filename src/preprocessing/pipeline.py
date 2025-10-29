@@ -69,6 +69,22 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     df = pd.read_parquet(raw_files[0])
     logger.info(f"Caricamento raw completato: rows={len(df)}, cols={len(df.columns)}")
 
+    # CRITICAL: Convert datetime columns to strings to prevent NaT issues
+    # NaT (Not a Time) cannot be handled by CatBoost and causes errors
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            # Convert datetime to ISO format strings, replacing NaT with None
+            df[col] = df[col].apply(lambda x: x.isoformat() if pd.notna(x) else None)
+            logger.info(f"Converted datetime column to strings: {col}")
+        elif df[col].dtype == 'object':
+            # Check for datetime objects in object columns
+            sample = df[col].dropna().head(100)
+            if len(sample) > 0:
+                sample_types = set(type(x) for x in sample)
+                if datetime.date in sample_types or datetime.datetime in sample_types:
+                    df[col] = df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) and pd.notna(x) else (None if pd.isna(x) else x))
+                    logger.info(f"Converted datetime objects to strings in object column: {col}")
+
     # Initial cleanup
     prev_cols = len(df.columns)
     df = df.dropna(axis=1, how="all")
@@ -346,6 +362,17 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         ])]
         patterns_upper = [p.upper() for p in patterns]
         train = train_df.copy()
+        
+        # CRITICAL: Replace NaT (Not a Time) values with None before any coercion
+        # NaT cannot be converted to float and causes CatBoost errors
+        for col in train.columns:
+            if train[col].dtype == 'object':
+                # Check if column contains NaT values
+                try:
+                    train[col] = train[col].replace({pd.NaT: None})
+                except (TypeError, ValueError):
+                    pass  # Column doesn't contain datetime-like values
+        
         cols_to_coerce: List[str] = []
         if enabled:
             for col in train.select_dtypes(include=["object"]).columns:
@@ -364,6 +391,13 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 outs.append(None)
             else:
                 tmp = df_.copy()
+                # Replace NaT in other dataframes too
+                for col in tmp.columns:
+                    if tmp[col].dtype == 'object':
+                        try:
+                            tmp[col] = tmp[col].replace({pd.NaT: None})
+                        except (TypeError, ValueError):
+                            pass
                 for col in cols_to_coerce:
                     if col in tmp.columns:
                         tmp[col] = pd.to_numeric(tmp[col].astype(str).str.replace(",", "."), errors="coerce")
@@ -558,6 +592,19 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                             # Convert all datetime objects to ISO format strings
                             _df[col] = _df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) else x)
                             logger.info(f"[catboost] Converted datetime objects to strings in column: {col}")
+                
+                # CRITICAL: Replace NaT values in all columns (both object and numeric)
+                # NaT cannot be converted to float and causes CatBoost errors
+                for col in _df.columns:
+                    try:
+                        # Replace NaT with None/NaN depending on dtype
+                        if _df[col].dtype == 'object':
+                            _df[col] = _df[col].replace({pd.NaT: None})
+                        else:
+                            # For numeric columns, replace NaT with NaN
+                            _df[col] = _df[col].replace({pd.NaT: np.nan})
+                    except (TypeError, ValueError, AttributeError):
+                        pass
         
         # Coerce numeric-like strings to numeric
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
@@ -598,6 +645,26 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 logger.warning(f"[catboost] Residual NaN detected in numeric columns of {name}, filling with 0")
                 num_cols = _df.select_dtypes(include=[np.number]).columns
                 _df[num_cols] = _df[num_cols].fillna(0)
+        
+        # CRITICAL: Final check for NaT values before saving
+        # Convert any remaining NaT to appropriate missing values
+        for name, _df in [("X_tr_final", X_tr_final), ("X_te_final", X_te_final), ("X_va_final", X_va_final)]:
+            if _df is not None:
+                for col in _df.columns:
+                    # Check each cell for NaT (pandas NaT is a singleton)
+                    if _df[col].dtype == 'object':
+                        # For object columns, check if any values are NaT
+                        mask = _df[col].apply(lambda x: pd.isna(x) if not isinstance(x, str) else False)
+                        if mask.any():
+                            _df.loc[mask, col] = None
+                            logger.info(f"[catboost] Replaced {mask.sum()} NaT/NA values with None in {name}.{col}")
+                    elif pd.api.types.is_numeric_dtype(_df[col]):
+                        # For numeric columns, ensure no object-type NaT leaked through
+                        try:
+                            _df[col] = pd.to_numeric(_df[col], errors='coerce')
+                        except (TypeError, ValueError):
+                            pass
+        
         prefix = profiles_cfg.get("catboost", {}).get("output_prefix", "catboost")
         save_profile(X_tr_final, X_te_final, y_train, y_test, X_va_final, y_val, prefix)
         # Save list of categorical columns for catboost
