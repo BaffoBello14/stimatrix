@@ -191,8 +191,8 @@ training:
   seed: ${SEED:-42}
   n_jobs_default: ${N_JOBS:--1}
   timeout: ${TRAIN_TIMEOUT:-null}
-  trials_base: &trials_base 3
-  trials_advanced: &trials_advanced 5
+  trials_base: &trials_base 2
+  trials_advanced: &trials_advanced 2
   # Cross-validation usata quando non esiste un validation set esterno (valid_fraction=0)
   cv_when_no_val:
     enabled: true
@@ -306,7 +306,7 @@ training:
       # Gradient Boosting (sklearn): buone performance ma più lento
       enabled: true
       profile: tree
-      trials: 5
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
@@ -336,7 +336,7 @@ training:
       # XGBoost: solitamente il migliore per problemi tabular
       enabled: true
       profile: tree
-      trials: 5
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
@@ -353,7 +353,7 @@ training:
       # LightGBM: molto veloce, ottimo per dataset grandi
       enabled: true
       profile: tree
-      trials: 5
+      trials: *trials_advanced
       base_params: {}
       fit_params: {}
       search_space:
