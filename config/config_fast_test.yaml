@@ -40,7 +40,10 @@ paths:
 # Database Configuration (for data retrieval)
 database:
   schema_name: null
-  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV']
+  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV', 'C1', 'C2']
+  custom_aliases:
+    attiimmobili_cened1: 'C1'
+    attiimmobili_cened2: 'C2'
   use_poi: true
   use_ztl: true
   output_format: 'parquet'
