@@ -40,7 +40,10 @@ paths:
 # Database Configuration (for data retrieval)
 database:
   schema_name: null
-  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV']
+  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV', 'C1', 'C2']
+  custom_aliases:
+    attiimmobili_cened1: 'C1'
+    attiimmobili_cened2: 'C2'
   use_poi: true
   use_ztl: true
   output_format: 'parquet'
@@ -49,7 +52,8 @@ database:
 # Target configuration
 target:
   column_candidates: ['AI_Prezzo_MQ', 'AI_Prezzo_Ridistribuito']
-  log_transform: true
+  transform: 'boxcox'
+  log10_offset: 1.0
 
 # Outlier detection
 outliers:
@@ -69,7 +73,16 @@ imputation:
 
 # Categorical encoding
 encoding: &encoding_defaults
-  max_ohe_cardinality: 12
+  one_hot_max: 10
+  target_encoding_range: [11, 30]
+  frequency_encoding_range: [31, 100]
+  ordinal_encoding_range: [101, 200]
+  drop_above: 200
+  target_encoder:
+    smoothing: 1.0
+    min_samples_leaf: 1
+  handle_booleans: true
+  boolean_null_value: -1
 
 # Temporal split configuration
 temporal_split:
@@ -104,12 +117,10 @@ pca: &pca_defaults
   random_state: 42
 
 # Correlation pruning
-# NOTA: Threshold aumentato a 0.95 per evitare rimozione eccessiva di feature utili
 correlation: &correlation_defaults
   numeric_threshold: 0.95
 
 # Non-descriptive columns pruning
-# Threshold aumentato a 0.80 per essere meno aggressivi
 drop_non_descriptive:
   na_threshold: 0.80
 
@@ -117,6 +128,41 @@ drop_non_descriptive:
 feature_extraction:
   geometry: true
   json: true
+
+# Advanced Features Configuration
+advanced_features:
+  temporal:
+    enabled: true
+    features: ['quarter', 'is_summer', 'month_sin', 'month_cos', 'months_since_start']
+  geographic:
+    enabled: true
+    spatial_clusters:
+      enabled: true
+      n_clusters: 8
+      feature_name: 'geo_cluster'
+    distance_to_center:
+      enabled: true
+      center_lat: 45.1564
+      center_lon: 10.7914
+      feature_name: 'distance_to_center_km'
+    density:
+      enabled: true
+      radius_km: 0.5
+      feature_name: 'density_500m'
+  interactions:
+    enabled: true
+    categorical_numeric:
+      - ['AI_Superficie', 'AI_ZonaOmi']
+      - ['AI_Superficie', 'AI_IdTipologiaEdilizia']
+    categorical_categorical:
+      - ['AI_IdCategoriaCatastale', 'AI_ZonaOmi']
+    polynomial:
+      columns: ['AI_Superficie']
+      degree: 2
+  missing_patterns:
+    enabled: true
+    create_flags_for_prefixes: ['C1_', 'C2_']
+    feature_name_template: 'has_{prefix}'
 
 # Feature pruning
 feature_pruning:
@@ -142,10 +188,8 @@ winsorization: &winsor_defaults
   upper_quantile: 0.99
 
 # Profiles: generate multiple datasets tailored to model families
-# SEMPLIFICATO: Solo 2 profili necessari per modelli tree-based
 profiles:
   scaled:
-    # Disabilitato: non più necessario dopo rimozione modelli lineari
     enabled: false
     output_prefix: 'scaled'
     encoding: *encoding_defaults
@@ -153,39 +197,38 @@ profiles:
     scaling: *scaling_defaults
     pca: *pca_defaults
     correlation: *correlation_defaults
+    apply_advanced_encoding: false
   tree:
-    # Profilo principale per XGBoost, LightGBM, Random Forest, GBR
     enabled: true
     output_prefix: 'tree'
     encoding: *encoding_defaults
     correlation: *correlation_defaults
+    apply_advanced_encoding: true
   catboost:
-    # Profilo specifico per CatBoost (mantiene categoriche native)
     enabled: true
     output_prefix: 'catboost'
     correlation: *correlation_defaults
+    apply_advanced_encoding: false
 
 # Training configuration - FAST TEST VERSION
 training:
-  # Opzioni globali
-  primary_metric: "neg_root_mean_squared_error" # allinea tuning e ranking
+  primary_metric: "neg_root_mean_squared_error"
   report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
-  sampler: "auto"
+  sampler: "tpe"
   seed: ${SEED:-42}
   n_jobs_default: ${N_JOBS:--1}
   timeout: ${TRAIN_TIMEOUT:-null}
+  pruner:
+    enabled: true
+    type: "median"
+    n_warmup_steps: 5
   cv_when_no_val:
     enabled: true
     kind: timeseries
     n_splits: 3
     shuffle: false
 
-  # Definizione per-modello - FAST TEST VERSION
-  # SEMPLIFICATO: Solo modelli tree-based, i migliori per dati immobiliari
   models:
-    # ========================================
-    # MODELLI LINEARI: DISABILITATI
-    # ========================================
     linear:
       enabled: false
       profile: scaled
@@ -194,8 +237,6 @@ training:
       fit_params: {}
       search_space: {}
     ridge:
-      # NOTA: Disabilitato per training normale, ma USATO come meta-learner per stacking
-      # Ridge è ideale per stacking: semplice, veloce, previene overfitting
       enabled: false
       profile: scaled
       trials: 3
@@ -336,10 +377,31 @@ training:
     stacking:
       enabled: true
       top_n: 3
-      # Meta-learner: Ridge è ideale (semplice, previene overfitting, interpretabile)
-      # Nota: Ridge può essere usato qui anche se disabled sopra
       final_estimator: "ridge"
       cv_folds: 3
+
+# Advanced Diagnostics Configuration
+diagnostics:
+  residual_analysis:
+    enabled: true
+    by_groups: ['AI_ZonaOmi', 'AI_IdCategoriaCatastale', 'price_quartile']
+    save_worst_predictions: true
+    top_n_worst: 20
+    plots: ['residual_vs_predicted', 'residual_distribution']
+  drift_detection:
+    enabled: true
+    methods: ['psi', 'ks_test']
+    alert_threshold: 0.15
+    save_report: true
+    output_file: 'models/drift_report.json'
+
+# Uncertainty Quantification
+uncertainty:
+  prediction_intervals:
+    enabled: false  # Disabled in fast test for speed
+    method: 'residual_bootstrap'
+    n_bootstraps: 50
+    confidence_levels: [0.9]
 
 # Evaluation configuration
 evaluation:

@@ -121,11 +121,14 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
     try:
         import json as _json
         prep_info_path = pre_dir / "preprocessing_info.json"
-        log_applied_global = False
+        transform_applied = False
+        transform_meta = None
         if prep_info_path.exists():
             try:
                 prep_info = _json.loads(prep_info_path.read_text(encoding="utf-8"))
-                log_applied_global = bool(((prep_info or {}).get("log_transformation", {}) or {}).get("applied", False))
+                transform_meta = prep_info.get("target_transformation", {})
+                transform_type = transform_meta.get("transform", "none")
+                transform_applied = (transform_type != "none")
             except Exception:
                 pass
         gm_cfg = ( ( ( ({} if results is None else {}) ) ) )  # placeholder to avoid linter
@@ -155,9 +158,10 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
                         y_pred = est.predict(X_test)
                     except Exception:
                         return
-                if log_applied_global:
+                if transform_applied:
+                    from utils.transforms import inverse_transform_target
                     y_true_series = pd.Series(y_test_orig)
-                    y_pred_series = pd.Series(np.expm1(y_pred))
+                    y_pred_series = pd.Series(inverse_transform_target(y_pred, transform_meta) if transform_meta else y_pred)
                 else:
                     y_true_series = pd.Series(y_test)
                     y_pred_series = pd.Series(y_pred)

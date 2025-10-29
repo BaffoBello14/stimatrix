@@ -51,10 +51,12 @@ def tune_model(
     search_space: Optional[Dict[str, Any]] = None,
     cat_features: Optional[List[int]] = None,
     cv_config: Optional[Dict[str, Any]] = None,
+    pruner_config: Optional[Dict[str, Any]] = None,
     tuning_split_fraction: float = 0.8,  # fraction for temporal split (consistent with preprocessing)
 ) -> TuningResult:
     direction = "maximize"
 
+    # Setup sampler
     if sampler_name == "auto":
         try:
             module = optunahub.load_module(package="samplers/auto_sampler")
@@ -65,6 +67,26 @@ def tune_model(
         sampler = optuna.samplers.TPESampler(seed=seed)
     else:
         sampler = optuna.samplers.TPESampler(seed=seed)
+    
+    # Setup pruner (MedianPruner for early stopping of unpromising trials)
+    pruner = None
+    if pruner_config and pruner_config.get('enabled', False):
+        pruner_type = pruner_config.get('type', 'median')
+        if pruner_type == 'median':
+            n_warmup = int(pruner_config.get('n_warmup_steps', 10))
+            pruner = optuna.pruners.MedianPruner(
+                n_startup_trials=5,  # Wait for 5 trials before starting to prune
+                n_warmup_steps=n_warmup,  # Number of warmup steps before pruning
+                interval_steps=1
+            )
+        elif pruner_type == 'percentile':
+            percentile = float(pruner_config.get('percentile', 25.0))
+            pruner = optuna.pruners.PercentilePruner(
+                percentile=percentile,
+                n_startup_trials=5,
+                n_warmup_steps=10
+            )
+        # If None, no pruning is applied
 
     def objective(trial: optuna.Trial) -> float:
         params = _apply_suggestions(trial, search_space or {}, base_params or {})
@@ -201,7 +223,7 @@ def tune_model(
             y_pred = est.predict(X_val)
             return select_primary_value(primary_metric, y_val, y_pred)
 
-    study = optuna.create_study(direction=direction, sampler=sampler)
+    study = optuna.create_study(direction=direction, sampler=sampler, pruner=pruner)
     study.optimize(objective, n_trials=n_trials, timeout=timeout)
 
     return TuningResult(best_params=study.best_params, best_value=study.best_value, study=study)

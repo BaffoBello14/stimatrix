@@ -14,9 +14,7 @@ logging:
 
 # Execution Configuration
 execution:
-  # Passi della pipeline da eseguire: [schema, dataset, preprocessing, training, evaluation] oppure ["all"]
   steps: ["all"]
-  # Se true, forza la rielaborazione anche se gli output intermedi esistono già
   force_reload: true
 
 # Experiment tracking (Weights & Biases)
@@ -57,7 +55,12 @@ database:
 target:
   # Choose among ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
   column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
-  log_transform: true
+  
+  # Target transformation
+  # Options: 'none', 'log', 'log10', 'sqrt', 'boxcox', 'yeojohnson'
+  # Default: 'boxcox' (often works better for price data than log)
+  transform: 'boxcox'
+  log10_offset: 1.0  # Used only for log10 transform
 
 # Outlier detection
 outliers:
@@ -76,8 +79,28 @@ imputation:
   group_by_col: 'AI_IdTipologiaEdilizia'
 
 # Categorical encoding
+# Advanced multi-strategy encoding (enabled via profile config)
+# Automatic strategy selection based on cardinality:
+# - ≤one_hot_max → One-Hot Encoding
+# - target_encoding_range → Target Encoding (smoothed)
+# - frequency_encoding_range → Frequency Encoding
+# - ordinal_encoding_range → Ordinal Encoding
+# - >drop_above → DROP
 encoding: &encoding_defaults
-  max_ohe_cardinality: 12
+  one_hot_max: 10
+  target_encoding_range: [11, 30]
+  frequency_encoding_range: [31, 100]
+  ordinal_encoding_range: [101, 200]
+  drop_above: 200
+  
+  # Target encoder settings (category_encoders.TargetEncoder)
+  target_encoder:
+    smoothing: 1.0  # Regularization parameter
+    min_samples_leaf: 1
+  
+  # Boolean handling
+  handle_booleans: true
+  boolean_null_value: -1  # Value for missing booleans
 
 # Temporal split configuration
 temporal_split:
@@ -112,13 +135,10 @@ pca: &pca_defaults
   random_state: 42
 
 # Correlation pruning
-# NOTA: Threshold aumentato a 0.95 per evitare rimozione eccessiva di feature utili
-# La correlazione viene calcolata solo sulle colonne numeriche, non sulle OHE
 correlation: &correlation_defaults
   numeric_threshold: 0.95
 
 # Non-descriptive columns pruning
-# Threshold aumentato a 0.80 per essere meno aggressivi
 drop_non_descriptive:
   na_threshold: 0.80
 
@@ -126,6 +146,60 @@ drop_non_descriptive:
 feature_extraction:
   geometry: true
   json: true
+
+# ✨ NEW: Advanced Features Configuration
+advanced_features:
+  # === TEMPORAL FEATURES ===
+  temporal:
+    enabled: true
+    features:
+      - 'quarter'              # Q1, Q2, Q3, Q4
+      - 'is_summer'            # June-August flag
+      - 'month_sin'            # Cyclic encoding (sin)
+      - 'month_cos'            # Cyclic encoding (cos)
+      - 'months_since_start'   # Progressive time counter
+  
+  # === GEOGRAPHIC FEATURES ===
+  geographic:
+    enabled: true
+    # Spatial clustering (KMeans on lat/lon)
+    spatial_clusters:
+      enabled: true
+      n_clusters: 8
+      feature_name: 'geo_cluster'
+    # Distance from city center (Haversine)
+    distance_to_center:
+      enabled: true
+      center_lat: 45.1564  # Mantova center
+      center_lon: 10.7914
+      feature_name: 'distance_to_center_km'
+    # Property density (neighbors within radius)
+    density:
+      enabled: true
+      radius_km: 0.5  # 500m radius
+      feature_name: 'density_500m'
+  
+  # === INTERACTION FEATURES ===
+  interactions:
+    enabled: true
+    # Categorical × Numeric interactions
+    categorical_numeric:
+      - ['AI_Superficie', 'AI_ZonaOmi']
+      - ['AI_Superficie', 'AI_IdTipologiaEdilizia']
+    # Categorical × Categorical interactions
+    categorical_categorical:
+      - ['AI_IdCategoriaCatastale', 'AI_ZonaOmi']
+    # Polynomial features
+    polynomial:
+      columns: ['AI_Superficie']
+      degree: 2  # superficie²
+  
+  # === MISSING PATTERN FLAGS ===
+  missing_patterns:
+    enabled: true
+    # Create "has_CENED" flags for CENED data availability
+    create_flags_for_prefixes: ['C1_', 'C2_']
+    feature_name_template: 'has_{prefix}'
 
 # Feature pruning
 feature_pruning:
@@ -161,10 +235,8 @@ winsorization: &winsor_defaults
   upper_quantile: 0.99
 
 # Profiles: generate multiple datasets tailored to model families
-# SEMPLIFICATO: Solo 2 profili necessari per modelli tree-based
 profiles:
   scaled:
-    # Disabilitato: non più necessario dopo rimozione modelli lineari
     enabled: false
     output_prefix: 'scaled'
     encoding: *encoding_defaults
@@ -172,17 +244,18 @@ profiles:
     scaling: *scaling_defaults
     pca: *pca_defaults
     correlation: *correlation_defaults
+    apply_advanced_encoding: false
   tree:
-    # Profilo principale per XGBoost, LightGBM, Random Forest, GBR, HGBT
     enabled: true
     output_prefix: 'tree'
     encoding: *encoding_defaults
     correlation: *correlation_defaults
+    apply_advanced_encoding: true
   catboost:
-    # Profilo specifico per CatBoost (mantiene categoriche native)
     enabled: true
     output_prefix: 'catboost'
     correlation: *correlation_defaults
+    apply_advanced_encoding: false
 
 # Training configuration
 training:
@@ -195,6 +268,14 @@ training:
   timeout: ${TRAIN_TIMEOUT:-null}
   trials_base: &trials_base 50
   trials_advanced: &trials_advanced 100
+  
+  # ✨ NEW: Optuna Pruner for early stopping of unpromising trials
+  pruner:
+    enabled: true
+    type: "median"  # 'median' | 'percentile'
+    n_warmup_steps: 10  # Number of warmup steps before pruning starts
+    # percentile: 25.0  # Only for percentile pruner
+  
   # Cross-validation usata quando non esiste un validation set esterno (valid_fraction=0)
   cv_when_no_val:
     enabled: true
@@ -202,13 +283,7 @@ training:
     n_splits: 5
     shuffle: true     # usato solo per kfold
 
-  # Definizione per-modello (schema minimale)
-  # SEMPLIFICATO: Solo modelli tree-based, i migliori per dati immobiliari
   models:
-    # ========================================
-    # MODELLI LINEARI: DISABILITATI
-    # Troppo semplici per dati immobiliari complessi
-    # ========================================
     linear:
       enabled: false
       profile: scaled
@@ -217,8 +292,6 @@ training:
       fit_params: {}
       search_space: {}
     ridge:
-      # NOTA: Disabilitato per training normale, ma USATO come meta-learner per stacking
-      # Ridge è ideale per stacking: semplice, veloce, previene overfitting
       enabled: false
       profile: scaled
       trials: *trials_base
@@ -243,10 +316,6 @@ training:
       search_space:
         alpha: {type: float, low: 0.0001, high: 10.0, log: true}
         l1_ratio: {type: float, low: 0.0, high: 1.0}
-    # ========================================
-    # KNN: DISABILITATO
-    # Lento e poco performante con molte feature
-    # ========================================
     knn:
       enabled: false
       profile: scaled
@@ -257,9 +326,6 @@ training:
         n_neighbors: {type: int, low: 3, high: 50}
         weights: {type: categorical, choices: ["uniform", "distance"]}
         p: {type: int, low: 1, high: 2}
-    # ========================================
-    # SVR: DISABILITATO (già era disabilitato)
-    # ========================================
     svr:
       enabled: false
       profile: scaled
@@ -273,10 +339,6 @@ training:
         gamma: {type: float, low: 0.0001, high: 10.0, log: true}
         degree: {type: int, low: 2, high: 5}
         coef0: {type: float, low: 0.0, high: 1.0}
-    # ========================================
-    # DECISION TREE SINGOLO: DISABILITATO
-    # Ridondante quando hai ensemble (RF, GBR, etc.)
-    # ========================================
     dt:
       enabled: false
       profile: tree
@@ -289,12 +351,7 @@ training:
         min_samples_leaf: {type: int, low: 1, high: 20}
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
         min_impurity_decrease: {type: float, low: 0.0, high: 0.01}
-    # ========================================
-    # MODELLI TREE-BASED: ABILITATI ✅
-    # I migliori per dati immobiliari complessi
-    # ========================================
     rf:
-      # Random Forest: robusto, veloce, ottimo baseline
       enabled: true
       profile: tree
       trials: *trials_advanced
@@ -308,7 +365,6 @@ training:
         max_features: {type: categorical, choices: ["sqrt", "log2", null]}
         bootstrap: {type: categorical, choices: [true, false]}
     gbr:
-      # Gradient Boosting (sklearn): buone performance ma più lento
       enabled: true
       profile: tree
       trials: 150
@@ -324,7 +380,6 @@ training:
         min_samples_split: {type: int, low: 2, high: 20}
         min_impurity_decrease: {type: float, low: 0.0, high: 0.01}
     hgbt:
-      # HistGradientBoosting: veloce e performante, supporta NaN nativamente
       enabled: true
       profile: tree
       trials: *trials_advanced
@@ -338,7 +393,6 @@ training:
         max_bins: {type: int, low: 64, high: 255}
         min_samples_leaf: {type: int, low: 1, high: 50}
     xgboost:
-      # XGBoost: solitamente il migliore per problemi tabular
       enabled: true
       profile: tree
       trials: 150
@@ -355,7 +409,6 @@ training:
         reg_lambda: {type: float, low: 1e-4, high: 10.0, log: true}
         gamma: {type: float, low: 1e-4, high: 10.0, log: true}
     lightgbm:
-      # LightGBM: molto veloce, ottimo per dataset grandi
       enabled: true
       profile: tree
       trials: 150
@@ -373,7 +426,6 @@ training:
         min_child_samples: {type: int, low: 20, high: 200}
         min_split_gain: {type: float, low: 0.0, high: 1.0}
     catboost:
-      # CatBoost: ottima gestione categoriche, no preprocessing necessario
       enabled: true
       profile: catboost
       trials: *trials_advanced
@@ -406,10 +458,44 @@ training:
     stacking:
       enabled: true
       top_n: 5
-      # Meta-learner: Ridge è ideale (semplice, previene overfitting, interpretabile)
-      # Nota: Ridge può essere usato qui anche se disabled sopra
       final_estimator: "ridge"
       cv_folds: 5
+
+# ✨ NEW: Advanced Diagnostics Configuration
+diagnostics:
+  # Residual analysis by group
+  residual_analysis:
+    enabled: true
+    by_groups:
+      - 'AI_ZonaOmi'
+      - 'AI_IdCategoriaCatastale'
+      - 'AI_IdTipologiaEdilizia'
+      - 'price_quartile'  # Errors higher on expensive properties?
+    save_worst_predictions: true
+    top_n_worst: 50
+    plots:
+      - 'residual_vs_predicted'
+      - 'residual_vs_actual'
+      - 'residual_distribution'
+  
+  # Drift detection (train vs test)
+  drift_detection:
+    enabled: true
+    methods:
+      - 'psi'      # Population Stability Index
+      - 'ks_test'  # Kolmogorov-Smirnov
+    alert_threshold: 0.15  # PSI > 0.15 = significant drift
+    save_report: true
+    output_file: 'models/drift_report.json'
+
+# ✨ NEW: Uncertainty Quantification
+uncertainty:
+  # Prediction intervals (empirical, fast)
+  prediction_intervals:
+    enabled: true
+    method: 'residual_bootstrap'
+    n_bootstraps: 100
+    confidence_levels: [0.8, 0.9]  # 80% and 90% CI
 
 # Evaluation configuration
 evaluation:
