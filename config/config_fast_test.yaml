@@ -157,8 +157,8 @@ advanced_features:
       columns: ['AI_Superficie']
       degree: 2
   missing_patterns:
-    enabled: false
-    create_flags_for_prefixes: []
+    enabled: true
+    create_flags_for_prefixes: ['C1_', 'C2_']
     feature_name_template: 'has_{prefix}'
 
 # Feature pruning
