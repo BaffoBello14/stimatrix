@@ -133,6 +133,11 @@ def fit_apply_advanced_encoders(
     if plan.one_hot_cols:
         valid_cols = [c for c in plan.one_hot_cols if c in result.columns]
         if valid_cols:
+            # Ensure all columns are string type for OHE and handle missing values
+            for col in valid_cols:
+                # Convert to string, handling None/NaN properly
+                result[col] = result[col].fillna('missing').astype(str)
+            
             enc_one_hot = OneHotEncoder(sparse_output=False, handle_unknown='ignore', dtype=np.float64)
             ohe_arr = enc_one_hot.fit_transform(result[valid_cols])
             ohe_cols = enc_one_hot.get_feature_names_out(valid_cols)
@@ -243,10 +248,13 @@ def transform_with_advanced_encoders(X: pd.DataFrame, fitted: FittedAdvancedEnco
     if fitted.one_hot is not None and fitted.one_hot_input_cols:
         valid_cols = [c for c in fitted.one_hot_input_cols if c in result.columns]
         
-        # Handle missing columns
+        # Handle missing columns and ensure string dtype
         for col in fitted.one_hot_input_cols:
             if col not in result.columns:
-                result[col] = None
+                result[col] = 'missing'
+            else:
+                # Convert to string, handling None/NaN properly
+                result[col] = result[col].fillna('missing').astype(str)
         
         ohe_arr = fitted.one_hot.transform(result[fitted.one_hot_input_cols])
         ohe_cols = fitted.one_hot.get_feature_names_out(fitted.one_hot_input_cols)
