@@ -73,9 +73,19 @@ imputation:
   categorical_strategy: 'most_frequent'
   group_by_col: 'AI_IdTipologiaEdilizia'
 
-# Categorical encoding
+# Categorical encoding - Multi-strategy based on cardinality
 encoding: &encoding_defaults
-  max_ohe_cardinality: 12
+  # Strategy selection by number of unique values:
+  one_hot_max: 10                     # ≤10 unique → One-Hot Encoding
+  target_encoding_range: [11, 30]     # 11-30 → Target Encoding (with smoothing)
+  frequency_encoding_range: [31, 100] # 31-100 → Frequency Encoding
+  ordinal_encoding_range: [101, 200]  # 101-200 → Ordinal Encoding
+  drop_above: 200                     # >200 unique → DROP (too high cardinality)
+  
+  # Target encoding configuration (requires y_train)
+  target_encoder:
+    smoothing: 1.0              # Bayesian smoothing for rare categories
+    min_samples_leaf: 1         # Minimum samples per leaf for target encoding
 
 # Temporal split configuration
 temporal_split:

@@ -406,8 +406,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Profile: scaled
     if profiles_cfg.get("scaled", {}).get("enabled", False):
-        enc_max = int(profiles_cfg.get("scaled", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
-        logger.info(f"[scaled] Encoding plan con max_ohe_cardinality={enc_max}")
+        logger.info(f"[scaled] Starting multi-strategy encoding")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
         
         # CRITICAL: Convert datetime.date objects to strings before encoding
@@ -422,8 +421,14 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                             logger.info(f"[scaled] Converted datetime objects to strings in column: {col}")
         
         # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
-        plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
-        X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
+        # Create profile-specific config with encoding overrides
+        profile_config = config.copy()
+        profile_encoding = profiles_cfg.get("scaled", {}).get("encoding", {})
+        if profile_encoding:
+            profile_config["encoding"] = {**config.get("encoding", {}), **profile_encoding}
+        
+        plan = plan_encodings(X_tr, profile_config)
+        X_tr, encoders = fit_apply_encoders(X_tr, y_train, plan, profile_config)
         # Persist encoders
         _prof_dir = artifacts_dir / profiles_cfg.get("scaled", {}).get("output_prefix", "scaled")
         _prof_dir.mkdir(parents=True, exist_ok=True)
@@ -502,8 +507,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Profile: tree (no scaling/PCA)
     if profiles_cfg.get("tree", {}).get("enabled", False):
-        enc_max = int(profiles_cfg.get("tree", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
-        logger.info(f"[tree] Encoding plan con max_ohe_cardinality={enc_max}")
+        logger.info(f"[tree] Starting multi-strategy encoding")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
         
         # CRITICAL: Convert datetime.date objects to strings before encoding
@@ -518,8 +522,14 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                             logger.info(f"[tree] Converted datetime objects to strings in column: {col}")
         
         # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
-        plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
-        X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
+        # Create profile-specific config with encoding overrides
+        profile_config = config.copy()
+        profile_encoding = profiles_cfg.get("tree", {}).get("encoding", {})
+        if profile_encoding:
+            profile_config["encoding"] = {**config.get("encoding", {}), **profile_encoding}
+        
+        plan = plan_encodings(X_tr, profile_config)
+        X_tr, encoders = fit_apply_encoders(X_tr, y_train, plan, profile_config)
         # Persist encoders
         _prof_dir = artifacts_dir / profiles_cfg.get("tree", {}).get("output_prefix", "tree")
         _prof_dir.mkdir(parents=True, exist_ok=True)
