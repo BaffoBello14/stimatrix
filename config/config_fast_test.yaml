@@ -150,14 +150,15 @@ advanced_features:
     enabled: true
     categorical_numeric:
       - ['AI_Superficie', 'AI_ZonaOmi']
+      - ['AI_Superficie', 'AI_IdTipologiaEdilizia']
     categorical_categorical:
       - ['AI_IdCategoriaCatastale', 'AI_ZonaOmi']
     polynomial:
       columns: ['AI_Superficie']
       degree: 2
   missing_patterns:
-    enabled: true
-    create_flags_for_prefixes: ['C1_', 'C2_']
+    enabled: false
+    create_flags_for_prefixes: []
     feature_name_template: 'has_{prefix}'
 
 # Feature pruning
