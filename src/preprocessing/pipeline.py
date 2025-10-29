@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, Any, List, Tuple
+import datetime
 
 import numpy as np
 import pandas as pd
@@ -374,6 +375,18 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         enc_max = int(profiles_cfg.get("scaled", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
         logger.info(f"[scaled] Encoding plan con max_ohe_cardinality={enc_max}")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
+        
+        # CRITICAL: Convert datetime.date objects to strings before encoding
+        for _df in (X_tr, X_te, X_va):
+            if _df is not None:
+                for col in _df.select_dtypes(include=["object"]).columns:
+                    sample = _df[col].dropna().head(100)
+                    if len(sample) > 0:
+                        sample_types = set(type(x) for x in sample)
+                        if datetime.date in sample_types or datetime.datetime in sample_types:
+                            _df[col] = _df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) else x)
+                            logger.info(f"[scaled] Converted datetime objects to strings in column: {col}")
+        
         # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
         plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
         X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
@@ -458,6 +471,18 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         enc_max = int(profiles_cfg.get("tree", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
         logger.info(f"[tree] Encoding plan con max_ohe_cardinality={enc_max}")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
+        
+        # CRITICAL: Convert datetime.date objects to strings before encoding
+        for _df in (X_tr, X_te, X_va):
+            if _df is not None:
+                for col in _df.select_dtypes(include=["object"]).columns:
+                    sample = _df[col].dropna().head(100)
+                    if len(sample) > 0:
+                        sample_types = set(type(x) for x in sample)
+                        if datetime.date in sample_types or datetime.datetime in sample_types:
+                            _df[col] = _df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) else x)
+                            logger.info(f"[tree] Converted datetime objects to strings in column: {col}")
+        
         # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
         plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
         X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
@@ -519,6 +544,21 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     if profiles_cfg.get("catboost", {}).get("enabled", False):
         logger.info("[catboost] Preservazione categoriche; niente OHE")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
+        
+        # CRITICAL: Convert datetime.date objects to strings to avoid CatBoost errors
+        # CatBoost cannot handle datetime.date objects in categorical features
+        for _df in (X_tr, X_te, X_va):
+            if _df is not None:
+                for col in _df.select_dtypes(include=["object"]).columns:
+                    # Check if column contains datetime.date objects
+                    sample = _df[col].dropna().head(100)
+                    if len(sample) > 0:
+                        sample_types = set(type(x) for x in sample)
+                        if datetime.date in sample_types or datetime.datetime in sample_types:
+                            # Convert all datetime objects to ISO format strings
+                            _df[col] = _df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) else x)
+                            logger.info(f"[catboost] Converted datetime objects to strings in column: {col}")
+        
         # Coerce numeric-like strings to numeric
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         # Drop non-descriptive
