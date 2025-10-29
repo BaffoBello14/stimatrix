@@ -21,7 +21,7 @@ def parse_args() -> argparse.Namespace:
         "--steps",
         type=str,
         nargs="+",
-        choices=["schema", "dataset", "preprocessing", "training", "evaluation", "all"],
+        choices=["schema", "dataset", "preprocessing", "training", "evaluation", "ml", "all"],
         required=False,
         help="Passi da eseguire (uno o più). Usa 'all' per tutti",
     )
@@ -63,6 +63,8 @@ def main() -> None:
         steps = user_input.split()
     if "all" in steps:
         steps = ["schema", "dataset", "preprocessing", "training", "evaluation"]
+    if "ml" in steps:
+        steps = ["preprocessing", "training", "evaluation"]
 
     for step in steps:
         if step == "schema":
