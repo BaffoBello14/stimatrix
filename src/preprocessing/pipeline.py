@@ -10,9 +10,23 @@ import fnmatch
 
 from utils.logger import get_logger
 from utils.io import save_json
-from preprocessing.feature_extractors import extract_geometry_features, maybe_extract_json_features
+from utils.transforms import apply_target_transform, inverse_transform_target, get_transform_name
+from preprocessing.feature_extractors import (
+    extract_geometry_features, 
+    maybe_extract_json_features,
+    extract_temporal_features,
+    extract_geographic_features,
+    create_interaction_features,
+    create_missing_pattern_flags
+)
 from preprocessing.outliers import OutlierConfig, detect_outliers
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
+from preprocessing.encoders_advanced import (
+    plan_advanced_encodings,
+    fit_apply_advanced_encoders,
+    transform_with_advanced_encoders,
+    handle_booleans
+)
 from preprocessing.imputation import ImputationConfig, impute_missing, fit_imputers, transform_with_imputers
 from preprocessing.transformers import (
     TemporalSplitConfig,
@@ -46,11 +60,33 @@ def choose_target(df: pd.DataFrame, config: Dict[str, Any]) -> str:
 
 
 def apply_log_target_if(config: Dict[str, Any], y: pd.Series) -> Tuple[pd.Series, Dict[str, Any]]:
-    use_log = bool(config.get("target", {}).get("log_transform", False))
-    if not use_log:
-        return y, {"log": False}
-    y_pos = y.clip(lower=1e-6)
-    return np.log1p(y_pos), {"log": True}
+    """
+    Legacy wrapper for backward compatibility.
+    Now delegates to the new apply_target_transform function.
+    """
+    target_cfg = config.get("target", {})
+    
+    # Check for new 'transform' key, fallback to old 'log_transform' for backward compatibility
+    transform_type = target_cfg.get("transform", None)
+    if transform_type is None:
+        # Legacy behavior: use log_transform flag
+        use_log = bool(target_cfg.get("log_transform", False))
+        transform_type = "log" if use_log else "none"
+    
+    # Get additional parameters
+    log10_offset = float(target_cfg.get("log10_offset", 1.0))
+    
+    # Apply transformation
+    y_transformed, metadata = apply_target_transform(
+        y, 
+        transform_type=transform_type,
+        log10_offset=log10_offset
+    )
+    
+    # For backward compatibility, add 'log' key to metadata
+    metadata["log"] = (transform_type != "none")
+    
+    return y_transformed, metadata
 
 
 def run_preprocessing(config: Dict[str, Any]) -> Path:
@@ -134,6 +170,15 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     if "A_AnnoStipula" in df.columns and "A_MeseStipula" in df.columns:
         df["TemporalKey"] = df["A_AnnoStipula"].astype(int) * 100 + df["A_MeseStipula"].astype(int)
         logger.info("Creata colonna TemporalKey (A_AnnoStipula*100 + A_MeseStipula)")
+    
+    # Extract advanced temporal features (quarter, is_summer, cyclic encoding, etc.)
+    df = extract_temporal_features(df, config)
+    
+    # Extract advanced geographic features (spatial clustering, distance to center, density)
+    df = extract_geographic_features(df, config)
+    
+    # Create missing pattern flags (has_CENED, etc.)
+    df = create_missing_pattern_flags(df, config)
 
     # Optionally compute AI_Prezzo_MQ if requested among target candidates
     try:
@@ -241,13 +286,28 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     y_test_orig = y_test.copy()
     y_val_orig = y_val.copy() if y_val is not None else None
 
-    # Optional log-transform of target
-    y_train, log_meta = apply_log_target_if(config, y_train)
-    if log_meta.get("log"):
-        y_test = np.log1p(y_test.clip(lower=1e-6))
+    # Apply target transformation
+    y_train, transform_meta = apply_log_target_if(config, y_train)
+    transform_name = get_transform_name(transform_meta)
+    logger.info(f"Target transformation: {transform_name}")
+    
+    # Apply same transformation to validation and test
+    if transform_meta.get("transform", "none") != "none":
+        target_cfg = config.get("target", {})
+        y_test, _ = apply_target_transform(
+            y_test, 
+            transform_type=transform_meta.get("transform"),
+            log10_offset=transform_meta.get("log10_offset", 1.0)
+        )
         if y_val is not None:
-            y_val = np.log1p(y_val.clip(lower=1e-6))
-        logger.info("Applicata trasformazione log1p al target")
+            y_val, _ = apply_target_transform(
+                y_val,
+                transform_type=transform_meta.get("transform"),
+                log10_offset=transform_meta.get("log10_offset", 1.0)
+            )
+    
+    # Keep log_meta for backward compatibility
+    log_meta = transform_meta
 
     # Fit imputers on train, transform train/test
     imp_cfg_dict = config.get("imputation", {})
@@ -268,6 +328,13 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     artifacts_dir = pre_dir / "artifacts"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     dump(fitted_imputers, artifacts_dir / "imputers.joblib")
+    
+    # Create interaction features AFTER imputation (so no NaNs) but BEFORE encoding
+    # This allows categorical×categorical interactions to be created before encoding
+    X_train = create_interaction_features(X_train, config)
+    X_test = create_interaction_features(X_test, config)
+    if X_val is not None:
+        X_val = create_interaction_features(X_val, config)
 
     # Prepare base copies before per-profile transformations
     base_train = X_train.copy()
@@ -371,20 +438,45 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Profile: scaled
     if profiles_cfg.get("scaled", {}).get("enabled", False):
-        enc_max = int(profiles_cfg.get("scaled", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
-        logger.info(f"[scaled] Encoding plan con max_ohe_cardinality={enc_max}")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
-        # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
-        plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
-        X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
-        # Persist encoders
-        _prof_dir = artifacts_dir / profiles_cfg.get("scaled", {}).get("output_prefix", "scaled")
-        _prof_dir.mkdir(parents=True, exist_ok=True)
-        dump(encoders, _prof_dir / "encoders.joblib")
-        # Transform test and validation using fitted encoders (no leakage)
-        X_te = transform_with_encoders(X_te, encoders)
+        
+        # Handle booleans first
+        X_tr = handle_booleans(X_tr, config)
+        X_te = handle_booleans(X_te, config)
         if X_va is not None:
-            X_va = transform_with_encoders(X_va, encoders)
+            X_va = handle_booleans(X_va, config)
+        
+        # Check if advanced encoding is enabled
+        use_advanced = profiles_cfg.get("scaled", {}).get("apply_advanced_encoding", False)
+        
+        if use_advanced:
+            logger.info(f"[scaled] Using advanced encoding strategy")
+            # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
+            plan_adv = plan_advanced_encodings(X_tr, config)
+            X_tr, encoders = fit_apply_advanced_encoders(X_tr, y_train, plan_adv, config)
+            # Persist encoders
+            _prof_dir = artifacts_dir / profiles_cfg.get("scaled", {}).get("output_prefix", "scaled")
+            _prof_dir.mkdir(parents=True, exist_ok=True)
+            dump(encoders, _prof_dir / "encoders.joblib")
+            # Transform test and validation using fitted encoders (no leakage)
+            X_te = transform_with_advanced_encoders(X_te, encoders)
+            if X_va is not None:
+                X_va = transform_with_advanced_encoders(X_va, encoders)
+        else:
+            # Standard encoding
+            enc_max = int(profiles_cfg.get("scaled", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
+            logger.info(f"[scaled] Encoding plan con max_ohe_cardinality={enc_max}")
+            # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
+            plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
+            X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
+            # Persist encoders
+            _prof_dir = artifacts_dir / profiles_cfg.get("scaled", {}).get("output_prefix", "scaled")
+            _prof_dir.mkdir(parents=True, exist_ok=True)
+            dump(encoders, _prof_dir / "encoders.joblib")
+            # Transform test and validation using fitted encoders (no leakage)
+            X_te = transform_with_encoders(X_te, encoders)
+            if X_va is not None:
+                X_va = transform_with_encoders(X_va, encoders)
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         prev_cols = len(X_tr.columns)
         X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
@@ -455,20 +547,45 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Profile: tree (no scaling/PCA)
     if profiles_cfg.get("tree", {}).get("enabled", False):
-        enc_max = int(profiles_cfg.get("tree", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
-        logger.info(f"[tree] Encoding plan con max_ohe_cardinality={enc_max}")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
-        # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
-        plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
-        X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
-        # Persist encoders
-        _prof_dir = artifacts_dir / profiles_cfg.get("tree", {}).get("output_prefix", "tree")
-        _prof_dir.mkdir(parents=True, exist_ok=True)
-        dump(encoders, _prof_dir / "encoders.joblib")
-        # Transform test and validation using fitted encoders (no leakage)
-        X_te = transform_with_encoders(X_te, encoders)
+        
+        # Handle booleans first
+        X_tr = handle_booleans(X_tr, config)
+        X_te = handle_booleans(X_te, config)
         if X_va is not None:
-            X_va = transform_with_encoders(X_va, encoders)
+            X_va = handle_booleans(X_va, config)
+        
+        # Check if advanced encoding is enabled
+        use_advanced = profiles_cfg.get("tree", {}).get("apply_advanced_encoding", False)
+        
+        if use_advanced:
+            logger.info(f"[tree] Using advanced encoding strategy")
+            # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
+            plan_adv = plan_advanced_encodings(X_tr, config)
+            X_tr, encoders = fit_apply_advanced_encoders(X_tr, y_train, plan_adv, config)
+            # Persist encoders
+            _prof_dir = artifacts_dir / profiles_cfg.get("tree", {}).get("output_prefix", "tree")
+            _prof_dir.mkdir(parents=True, exist_ok=True)
+            dump(encoders, _prof_dir / "encoders.joblib")
+            # Transform test and validation using fitted encoders (no leakage)
+            X_te = transform_with_advanced_encoders(X_te, encoders)
+            if X_va is not None:
+                X_va = transform_with_advanced_encoders(X_va, encoders)
+        else:
+            # Standard encoding
+            enc_max = int(profiles_cfg.get("tree", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
+            logger.info(f"[tree] Encoding plan con max_ohe_cardinality={enc_max}")
+            # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
+            plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
+            X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
+            # Persist encoders
+            _prof_dir = artifacts_dir / profiles_cfg.get("tree", {}).get("output_prefix", "tree")
+            _prof_dir.mkdir(parents=True, exist_ok=True)
+            dump(encoders, _prof_dir / "encoders.joblib")
+            # Transform test and validation using fitted encoders (no leakage)
+            X_te = transform_with_encoders(X_te, encoders)
+            if X_va is not None:
+                X_va = transform_with_encoders(X_va, encoders)
         # Riempie eventuali NaN introdotti dall'encoding ordinale (categorie sconosciute) con sentinel -1
         for _df in (X_tr, X_te, X_va):
             if _df is not None:
@@ -624,7 +741,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     # Save preprocessing info for evaluation
     prep_info: Dict[str, Any] = {
         "target_column": target_col,
-        "log_transformation": {"applied": bool(log_meta.get("log"))},
+        "target_transformation": transform_meta,
         "profiles_saved": saved_profiles,
         "feature_columns_per_profile": feature_columns_per_profile,
     }

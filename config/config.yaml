@@ -57,7 +57,15 @@ database:
 target:
   # Choose among ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
   column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
-  log_transform: true
+  
+  # ✨ NEW: Target transformation (more options than just log)
+  # Options: 'none', 'log', 'log10', 'sqrt', 'boxcox', 'yeojohnson'
+  # Note: 'transform' takes precedence over 'log_transform' (legacy)
+  transform: 'log'  # 'boxcox' often works better for prices!
+  log10_offset: 1.0  # Used only for log10 transform
+  
+  # Legacy (backward compatibility)
+  log_transform: true  # Only used if 'transform' is not set
 
 # Outlier detection
 outliers:
@@ -78,6 +86,28 @@ imputation:
 # Categorical encoding
 encoding: &encoding_defaults
   max_ohe_cardinality: 12
+  
+  # ✨ NEW: Advanced multi-strategy encoding (enabled via profile config)
+  # Automatic strategy selection based on cardinality:
+  # - ≤one_hot_max → One-Hot Encoding
+  # - target_encoding_range → Target Encoding (smoothed)
+  # - frequency_encoding_range → Frequency Encoding
+  # - ordinal_encoding_range → Ordinal Encoding
+  # - >drop_above → DROP
+  one_hot_max: 10
+  target_encoding_range: [11, 30]
+  frequency_encoding_range: [31, 100]
+  ordinal_encoding_range: [101, 200]
+  drop_above: 200
+  
+  # Target encoder settings (category_encoders.TargetEncoder)
+  target_encoder:
+    smoothing: 1.0  # Regularization parameter
+    min_samples_leaf: 1
+  
+  # Boolean handling
+  handle_booleans: true
+  boolean_null_value: -1  # Value for missing booleans
 
 # Temporal split configuration
 temporal_split:
@@ -127,6 +157,60 @@ feature_extraction:
   geometry: true
   json: true
 
+# ✨ NEW: Advanced Features Configuration
+advanced_features:
+  # === TEMPORAL FEATURES ===
+  temporal:
+    enabled: true
+    features:
+      - 'quarter'              # Q1, Q2, Q3, Q4
+      - 'is_summer'            # June-August flag
+      - 'month_sin'            # Cyclic encoding (sin)
+      - 'month_cos'            # Cyclic encoding (cos)
+      - 'months_since_start'   # Progressive time counter
+  
+  # === GEOGRAPHIC FEATURES ===
+  geographic:
+    enabled: true
+    # Spatial clustering (KMeans on lat/lon)
+    spatial_clusters:
+      enabled: true
+      n_clusters: 8
+      feature_name: 'geo_cluster'
+    # Distance from city center (Haversine)
+    distance_to_center:
+      enabled: true
+      center_lat: 45.1564  # Mantova center
+      center_lon: 10.7914
+      feature_name: 'distance_to_center_km'
+    # Property density (neighbors within radius)
+    density:
+      enabled: true
+      radius_km: 0.5  # 500m radius
+      feature_name: 'density_500m'
+  
+  # === INTERACTION FEATURES ===
+  interactions:
+    enabled: true
+    # Categorical × Numeric interactions
+    categorical_numeric:
+      - ['AI_Superficie', 'AI_ZonaOmi']
+      - ['AI_Superficie', 'AI_IdTipologiaEdilizia']
+    # Categorical × Categorical interactions
+    categorical_categorical:
+      - ['AI_IdCategoriaCatastale', 'AI_ZonaOmi']
+    # Polynomial features
+    polynomial:
+      columns: ['AI_Superficie']
+      degree: 2  # superficie²
+  
+  # === MISSING PATTERN FLAGS ===
+  missing_patterns:
+    enabled: true
+    # Create "has_CENED" flags for CENED data availability
+    create_flags_for_prefixes: ['C1_', 'C2_']
+    feature_name_template: 'has_{prefix}'
+
 # Feature pruning
 feature_pruning:
   drop_columns:
@@ -172,17 +256,22 @@ profiles:
     scaling: *scaling_defaults
     pca: *pca_defaults
     correlation: *correlation_defaults
+    # ✨ NEW: Enable advanced encoding for this profile
+    apply_advanced_encoding: false
   tree:
     # Profilo principale per XGBoost, LightGBM, Random Forest, GBR, HGBT
     enabled: true
     output_prefix: 'tree'
     encoding: *encoding_defaults
     correlation: *correlation_defaults
+    # ✨ NEW: Enable advanced encoding for this profile
+    apply_advanced_encoding: true  # Use multi-strategy encoding (Target, Frequency, Ordinal)
   catboost:
     # Profilo specifico per CatBoost (mantiene categoriche native)
     enabled: true
     output_prefix: 'catboost'
     correlation: *correlation_defaults
+    apply_advanced_encoding: false  # CatBoost handles categoricals natively
 
 # Training configuration
 training:
@@ -195,6 +284,14 @@ training:
   timeout: ${TRAIN_TIMEOUT:-null}
   trials_base: &trials_base 50
   trials_advanced: &trials_advanced 100
+  
+  # ✨ NEW: Optuna Pruner for early stopping of unpromising trials
+  pruner:
+    enabled: true
+    type: "median"  # 'median' | 'percentile'
+    n_warmup_steps: 10  # Number of warmup steps before pruning starts
+    # percentile: 25.0  # Only for percentile pruner
+  
   # Cross-validation usata quando non esiste un validation set esterno (valid_fraction=0)
   cv_when_no_val:
     enabled: true
@@ -410,6 +507,42 @@ training:
       # Nota: Ridge può essere usato qui anche se disabled sopra
       final_estimator: "ridge"
       cv_folds: 5
+
+# ✨ NEW: Advanced Diagnostics Configuration
+diagnostics:
+  # Residual analysis by group
+  residual_analysis:
+    enabled: true
+    by_groups:
+      - 'AI_ZonaOmi'
+      - 'AI_IdCategoriaCatastale'
+      - 'AI_IdTipologiaEdilizia'
+      - 'price_quartile'  # Errors higher on expensive properties?
+    save_worst_predictions: true
+    top_n_worst: 50
+    plots:
+      - 'residual_vs_predicted'
+      - 'residual_vs_actual'
+      - 'residual_distribution'
+  
+  # Drift detection (train vs test)
+  drift_detection:
+    enabled: true
+    methods:
+      - 'psi'      # Population Stability Index
+      - 'ks_test'  # Kolmogorov-Smirnov
+    alert_threshold: 0.15  # PSI > 0.15 = significant drift
+    save_report: true
+    output_file: 'models/drift_report.json'
+
+# ✨ NEW: Uncertainty Quantification
+uncertainty:
+  # Prediction intervals (empirical, fast)
+  prediction_intervals:
+    enabled: true
+    method: 'residual_bootstrap'
+    n_bootstraps: 100
+    confidence_levels: [0.8, 0.9]  # 80% and 90% CI
 
 # Evaluation configuration
 evaluation:

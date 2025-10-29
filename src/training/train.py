@@ -232,6 +232,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                 search_space=space,
                 cat_features=cat_features,
                 cv_config=(tr_cfg.get("cv_when_no_val", {}) if X_val is None else None),
+                pruner_config=tr_cfg.get("pruner", None),
                 tuning_split_fraction=tuning_split_fraction,
             )
         except ImportError as e:

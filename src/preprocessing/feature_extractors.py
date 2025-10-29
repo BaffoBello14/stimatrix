@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 
+import numpy as np
 import pandas as pd
 
 from utils.logger import get_logger
@@ -285,3 +286,320 @@ def maybe_extract_json_features(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[st
         cols_to_drop.append(col)
         logger.info(f"Estratti {len(candidate_keys)} campi da JSON nella colonna {col}: {candidate_keys}")
     return df, cols_to_drop
+
+
+def extract_temporal_features(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
+    """
+    Extract advanced temporal features from date columns.
+    
+    Features:
+    - quarter (Q1-Q4)
+    - is_summer (June-August)
+    - month_sin, month_cos (cyclic encoding)
+    - months_since_start (progressive time)
+    
+    Args:
+        df: Input DataFrame (must have year/month columns)
+        config: Configuration dict
+    
+    Returns:
+        DataFrame with temporal features
+    """
+    df = df.copy()
+    
+    temp_cfg = config.get('advanced_features', {}).get('temporal', {})
+    if not temp_cfg.get('enabled', False):
+        logger.info("Advanced temporal features disabled, skipping")
+        return df
+    
+    logger.info("Extracting advanced temporal features")
+    
+    # Get year and month columns
+    temporal_split_cfg = config.get('temporal_split', {})
+    year_col = temporal_split_cfg.get('year_col', 'A_AnnoStipula')
+    month_col = temporal_split_cfg.get('month_col', 'A_MeseStipula')
+    
+    if year_col not in df.columns or month_col not in df.columns:
+        logger.warning(f"Temporal columns not found: {year_col}, {month_col}")
+        return df
+    
+    features_to_create = temp_cfg.get('features', [])
+    
+    # Quarter
+    if 'quarter' in features_to_create:
+        df['quarter'] = ((df[month_col] - 1) // 3 + 1).astype(int)
+        logger.info("  Created: quarter")
+    
+    # Summer flag
+    if 'is_summer' in features_to_create:
+        df['is_summer'] = df[month_col].isin([6, 7, 8]).astype(int)
+        logger.info("  Created: is_summer")
+    
+    # Cyclic month encoding
+    if 'month_sin' in features_to_create:
+        df['month_sin'] = np.sin(2 * np.pi * df[month_col] / 12)
+        logger.info("  Created: month_sin")
+    
+    if 'month_cos' in features_to_create:
+        df['month_cos'] = np.cos(2 * np.pi * df[month_col] / 12)
+        logger.info("  Created: month_cos")
+    
+    # Months since start
+    if 'months_since_start' in features_to_create:
+        if 'TemporalKey' in df.columns:
+            min_key = df['TemporalKey'].min()
+            df['months_since_start'] = (df['TemporalKey'] - min_key) // 100 * 12 + (df['TemporalKey'] % 100) - (min_key % 100)
+        else:
+            # Create from year/month
+            min_year = df[year_col].min()
+            min_month = df[df[year_col] == min_year][month_col].min()
+            df['months_since_start'] = (df[year_col] - min_year) * 12 + (df[month_col] - min_month)
+        logger.info("  Created: months_since_start")
+    
+    return df
+
+
+def extract_geographic_features(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
+    """
+    Extract advanced geographic features.
+    
+    Features:
+    - spatial_clusters (KMeans on lat/lon)
+    - distance_to_center (distance from city center)
+    - density (property count within radius)
+    
+    Args:
+        df: Input DataFrame (must have lat/lon columns)
+        config: Configuration dict
+    
+    Returns:
+        DataFrame with geographic features
+    """
+    df = df.copy()
+    
+    geo_cfg = config.get('advanced_features', {}).get('geographic', {})
+    if not geo_cfg.get('enabled', False):
+        logger.info("Advanced geographic features disabled, skipping")
+        return df
+    
+    logger.info("Extracting advanced geographic features")
+    
+    # Find lat/lon columns
+    lat_col = None
+    lon_col = None
+    for col in df.columns:
+        col_lower = col.lower()
+        if 'lat' in col_lower and '_y' in col_lower:
+            lat_col = col
+        elif 'lon' in col_lower and '_x' in col_lower:
+            lon_col = col
+        elif col_lower.endswith('_y') and 'posizione' in col_lower:
+            lat_col = col
+        elif col_lower.endswith('_x') and 'posizione' in col_lower:
+            lon_col = col
+    
+    if lat_col is None or lon_col is None:
+        logger.warning("Lat/Lon columns not found, skipping geographic features")
+        return df
+    
+    logger.info(f"Using lat/lon columns: {lat_col}, {lon_col}")
+    
+    # Filter valid coordinates
+    valid_coords = df[[lat_col, lon_col]].notna().all(axis=1)
+    coords = df.loc[valid_coords, [lat_col, lon_col]].values
+    
+    if len(coords) == 0:
+        logger.warning("No valid coordinates found")
+        return df
+    
+    # Spatial clusters
+    cluster_cfg = geo_cfg.get('spatial_clusters', {})
+    if cluster_cfg.get('enabled', False):
+        try:
+            from sklearn.cluster import KMeans
+            
+            n_clusters = int(cluster_cfg.get('n_clusters', 8))
+            feature_name = cluster_cfg.get('feature_name', 'geo_cluster')
+            
+            kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+            df[feature_name] = np.nan
+            df.loc[valid_coords, feature_name] = kmeans.fit_predict(coords)
+            
+            logger.info(f"  Created: {feature_name} (n_clusters={n_clusters})")
+        except Exception as e:
+            logger.warning(f"  Failed to create spatial clusters: {e}")
+    
+    # Distance to center
+    dist_cfg = geo_cfg.get('distance_to_center', {})
+    if dist_cfg.get('enabled', False):
+        try:
+            center_lat = float(dist_cfg.get('center_lat', 45.1564))
+            center_lon = float(dist_cfg.get('center_lon', 10.7914))
+            feature_name = dist_cfg.get('feature_name', 'distance_to_center_km')
+            
+            # Haversine distance
+            def haversine(lat1, lon1, lat2, lon2):
+                R = 6371  # Earth radius in km
+                dlat = np.radians(lat2 - lat1)
+                dlon = np.radians(lon2 - lon1)
+                a = np.sin(dlat/2)**2 + np.cos(np.radians(lat1)) * np.cos(np.radians(lat2)) * np.sin(dlon/2)**2
+                c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
+                return R * c
+            
+            df[feature_name] = np.nan
+            df.loc[valid_coords, feature_name] = haversine(
+                df.loc[valid_coords, lat_col].values,
+                df.loc[valid_coords, lon_col].values,
+                center_lat,
+                center_lon
+            )
+            
+            logger.info(f"  Created: {feature_name}")
+        except Exception as e:
+            logger.warning(f"  Failed to create distance_to_center: {e}")
+    
+    # Density (neighbors within radius)
+    dens_cfg = geo_cfg.get('density', {})
+    if dens_cfg.get('enabled', False):
+        try:
+            from sklearn.neighbors import BallTree
+            
+            radius_km = float(dens_cfg.get('radius_km', 0.5))
+            feature_name = dens_cfg.get('feature_name', 'density_500m')
+            
+            # BallTree requires radians
+            coords_rad = np.radians(coords)
+            tree = BallTree(coords_rad, metric='haversine')
+            
+            # Query radius in radians (km / Earth radius)
+            radius_rad = radius_km / 6371
+            counts = tree.query_radius(coords_rad, r=radius_rad, count_only=True)
+            
+            df[feature_name] = np.nan
+            df.loc[valid_coords, feature_name] = counts - 1  # Exclude self
+            
+            logger.info(f"  Created: {feature_name} (radius={radius_km}km)")
+        except Exception as e:
+            logger.warning(f"  Failed to create density: {e}")
+    
+    return df
+
+
+def create_interaction_features(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
+    """
+    Create interaction features.
+    
+    Interactions:
+    - categorical × numeric (e.g., Superficie × ZonaOmi)
+    - categorical × categorical (e.g., Categoria × Zona)
+    - polynomial (e.g., Superficie²)
+    
+    Args:
+        df: Input DataFrame
+        config: Configuration dict
+    
+    Returns:
+        DataFrame with interaction features
+    """
+    df = df.copy()
+    
+    int_cfg = config.get('advanced_features', {}).get('interactions', {})
+    if not int_cfg.get('enabled', False):
+        logger.info("Interaction features disabled, skipping")
+        return df
+    
+    logger.info("Creating interaction features")
+    
+    # Categorical × Numeric
+    cat_num_pairs = int_cfg.get('categorical_numeric', [])
+    for pair in cat_num_pairs:
+        if len(pair) != 2:
+            continue
+        
+        num_col, cat_col = pair
+        
+        if num_col not in df.columns or cat_col not in df.columns:
+            logger.warning(f"  Skipping {num_col} × {cat_col}: columns not found")
+            continue
+        
+        # Group-wise mean encoding
+        feature_name = f'{num_col}_x_{cat_col}'
+        group_means = df.groupby(cat_col)[num_col].transform('mean')
+        df[feature_name] = df[num_col] * (group_means / (group_means.mean() + 1e-10))
+        
+        logger.info(f"  Created: {feature_name}")
+    
+    # Categorical × Categorical
+    cat_cat_pairs = int_cfg.get('categorical_categorical', [])
+    for pair in cat_cat_pairs:
+        if len(pair) != 2:
+            continue
+        
+        cat_col1, cat_col2 = pair
+        
+        if cat_col1 not in df.columns or cat_col2 not in df.columns:
+            logger.warning(f"  Skipping {cat_col1} × {cat_col2}: columns not found")
+            continue
+        
+        # Combine categories
+        feature_name = f'{cat_col1}_x_{cat_col2}'
+        df[feature_name] = df[cat_col1].astype(str) + '_' + df[cat_col2].astype(str)
+        
+        logger.info(f"  Created: {feature_name}")
+    
+    # Polynomial
+    poly_cfg = int_cfg.get('polynomial', {})
+    poly_cols = poly_cfg.get('columns', [])
+    degree = int(poly_cfg.get('degree', 2))
+    
+    for col in poly_cols:
+        if col not in df.columns:
+            continue
+        
+        if df[col].dtype in ['int64', 'float64']:
+            for d in range(2, degree + 1):
+                feature_name = f'{col}_pow{d}'
+                df[feature_name] = df[col] ** d
+                logger.info(f"  Created: {feature_name}")
+    
+    return df
+
+
+def create_missing_pattern_flags(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
+    """
+    Create binary flags for missing data patterns.
+    
+    Args:
+        df: Input DataFrame
+        config: Configuration dict
+    
+    Returns:
+        DataFrame with missing pattern flags
+    """
+    df = df.copy()
+    
+    miss_cfg = config.get('advanced_features', {}).get('missing_patterns', {})
+    if not miss_cfg.get('enabled', False):
+        logger.info("Missing pattern flags disabled, skipping")
+        return df
+    
+    logger.info("Creating missing pattern flags")
+    
+    prefixes = miss_cfg.get('create_flags_for_prefixes', [])
+    template = miss_cfg.get('feature_name_template', 'has_{prefix}')
+    
+    for prefix in prefixes:
+        # Find columns with this prefix
+        cols = [c for c in df.columns if c.startswith(prefix)]
+        
+        if len(cols) == 0:
+            logger.warning(f"  No columns found with prefix '{prefix}'")
+            continue
+        
+        # Create flag: 1 if ANY column with prefix is non-null
+        feature_name = template.format(prefix=prefix.rstrip('_'))
+        df[feature_name] = df[cols].notna().any(axis=1).astype(int)
+        
+        logger.info(f"  Created: {feature_name} (from {len(cols)} columns)")
+    
+    return df
