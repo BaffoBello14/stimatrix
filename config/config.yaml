@@ -207,7 +207,6 @@ training:
   models:
     # ========================================
     # MODELLI LINEARI: DISABILITATI
-    # Troppo semplici per dati immobiliari complessi
     # ========================================
     linear:
       enabled: false
@@ -217,8 +216,6 @@ training:
       fit_params: {}
       search_space: {}
     ridge:
-      # NOTA: Disabilitato per training normale, ma USATO come meta-learner per stacking
-      # Ridge è ideale per stacking: semplice, veloce, previene overfitting
       enabled: false
       profile: scaled
       trials: *trials_base
@@ -258,7 +255,8 @@ training:
         weights: {type: categorical, choices: ["uniform", "distance"]}
         p: {type: int, low: 1, high: 2}
     # ========================================
-    # SVR: DISABILITATO (già era disabilitato)
+    # SVR: DISABILITATO
+    # Lento su dataset grandi, poco performante
     # ========================================
     svr:
       enabled: false
@@ -275,7 +273,6 @@ training:
         coef0: {type: float, low: 0.0, high: 1.0}
     # ========================================
     # DECISION TREE SINGOLO: DISABILITATO
-    # Ridondante quando hai ensemble (RF, GBR, etc.)
     # ========================================
     dt:
       enabled: false
@@ -407,7 +404,6 @@ training:
       enabled: true
       top_n: 5
       # Meta-learner: Ridge è ideale (semplice, previene overfitting, interpretabile)
-      # Nota: Ridge può essere usato qui anche se disabled sopra
       final_estimator: "ridge"
       cv_folds: 5
 
