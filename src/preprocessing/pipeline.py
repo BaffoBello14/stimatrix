@@ -335,14 +335,25 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     feature_columns_per_profile: Dict[str, List[str]] = {}
 
     def save_profile(X_tr: pd.DataFrame, X_te: pd.DataFrame, y_tr: pd.Series, y_te: pd.Series, X_va: pd.DataFrame | None, y_va: pd.Series | None, prefix: str):
+        # Fill all remaining NaN/NaT values before saving
+        # Numeric: fill with -999 (sentinel value)
+        # Object/Category: fill with "MISSING" then convert to string
+        for col in X_tr.select_dtypes(include=[np.number]).columns:
+            X_tr[col] = X_tr[col].fillna(-999)
+        for col in X_te.select_dtypes(include=[np.number]).columns:
+            X_te[col] = X_te[col].fillna(-999)
+        if X_va is not None:
+            for col in X_va.select_dtypes(include=[np.number]).columns:
+                X_va[col] = X_va[col].fillna(-999)
+        
         # Convert object/category columns to string for Parquet compatibility
         for col in X_tr.select_dtypes(include=['object', 'category']).columns:
-            X_tr[col] = X_tr[col].astype(str)
+            X_tr[col] = X_tr[col].fillna("MISSING").astype(str)
         for col in X_te.select_dtypes(include=['object', 'category']).columns:
-            X_te[col] = X_te[col].astype(str)
+            X_te[col] = X_te[col].fillna("MISSING").astype(str)
         if X_va is not None:
             for col in X_va.select_dtypes(include=['object', 'category']).columns:
-                X_va[col] = X_va[col].astype(str)
+                X_va[col] = X_va[col].fillna("MISSING").astype(str)
         
         X_tr.to_parquet(pre_dir / f"X_train_{prefix}.parquet", index=False)
         X_te.to_parquet(pre_dir / f"X_test_{prefix}.parquet", index=False)
