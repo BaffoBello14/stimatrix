@@ -79,16 +79,14 @@ imputation:
   group_by_col: 'AI_IdTipologiaEdilizia'
 
 # Categorical encoding
+# Advanced multi-strategy encoding (enabled via profile config)
+# Automatic strategy selection based on cardinality:
+# - ≤one_hot_max → One-Hot Encoding
+# - target_encoding_range → Target Encoding (smoothed)
+# - frequency_encoding_range → Frequency Encoding
+# - ordinal_encoding_range → Ordinal Encoding
+# - >drop_above → DROP
 encoding: &encoding_defaults
-  max_ohe_cardinality: 12
-  
-  # ✨ NEW: Advanced multi-strategy encoding (enabled via profile config)
-  # Automatic strategy selection based on cardinality:
-  # - ≤one_hot_max → One-Hot Encoding
-  # - target_encoding_range → Target Encoding (smoothed)
-  # - frequency_encoding_range → Frequency Encoding
-  # - ordinal_encoding_range → Ordinal Encoding
-  # - >drop_above → DROP
   one_hot_max: 10
   target_encoding_range: [11, 30]
   frequency_encoding_range: [31, 100]

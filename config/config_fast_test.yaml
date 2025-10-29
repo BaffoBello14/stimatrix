@@ -70,7 +70,6 @@ imputation:
 
 # Categorical encoding
 encoding: &encoding_defaults
-  max_ohe_cardinality: 12
   one_hot_max: 10
   target_encoding_range: [11, 30]
   frequency_encoding_range: [31, 100]

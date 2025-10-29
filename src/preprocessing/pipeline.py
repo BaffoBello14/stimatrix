@@ -439,9 +439,9 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             if X_va is not None:
                 X_va = transform_with_advanced_encoders(X_va, encoders)
         else:
-            # Standard encoding
-            enc_max = int(profiles_cfg.get("scaled", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
-            logger.info(f"[scaled] Encoding plan con max_ohe_cardinality={enc_max}")
+            # Standard encoding (fallback)
+            enc_max = int(profiles_cfg.get("scaled", {}).get("encoding", {}).get("one_hot_max", config.get("encoding", {}).get("one_hot_max", 10)))
+            logger.info(f"[scaled] Standard encoding with one_hot_max={enc_max}")
             # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
             plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
             X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
@@ -548,9 +548,9 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             if X_va is not None:
                 X_va = transform_with_advanced_encoders(X_va, encoders)
         else:
-            # Standard encoding
-            enc_max = int(profiles_cfg.get("tree", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
-            logger.info(f"[tree] Encoding plan con max_ohe_cardinality={enc_max}")
+            # Standard encoding (fallback)
+            enc_max = int(profiles_cfg.get("tree", {}).get("encoding", {}).get("one_hot_max", config.get("encoding", {}).get("one_hot_max", 10)))
+            logger.info(f"[tree] Standard encoding with one_hot_max={enc_max}")
             # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
             plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
             X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
