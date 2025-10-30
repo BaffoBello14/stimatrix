@@ -208,6 +208,41 @@ profiles:
     output_prefix: 'catboost'
     correlation: *correlation_defaults
 
+# Diagnostics configuration
+diagnostics:
+  # Residual analysis (per-group error analysis)
+  residual_analysis:
+    enabled: true
+    by_groups:
+      - AI_ZonaOmi
+      - AI_IdCategoriaCatastale
+      - price_quartile  # Automatic quartile grouping
+    save_worst_predictions: true
+    top_n_worst: 50
+    plots:
+      - residual_vs_predicted
+      - residual_vs_actual
+      - residual_distribution
+      - qq_plot
+  
+  # Drift detection (train vs test distribution shift)
+  drift_detection:
+    enabled: true
+    methods:
+      - psi        # Population Stability Index
+      - ks_test    # Kolmogorov-Smirnov test
+    alert_threshold: 0.15  # PSI > 0.15 = significant drift
+    save_report: true
+
+# Uncertainty quantification
+uncertainty:
+  # Prediction intervals (bootstrap-based)
+  prediction_intervals:
+    enabled: true
+    method: 'residual_bootstrap'
+    n_bootstraps: 100
+    confidence_levels: [0.8, 0.9]  # 80% and 90% confidence intervals
+
 # Training configuration
 training:
   # Opzioni globali

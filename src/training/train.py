@@ -15,6 +15,7 @@ from .model_zoo import build_estimator
 from .metrics import regression_metrics, overfit_diagnostics, grouped_regression_metrics, _build_price_bands
 from .ensembles import build_voting, build_stacking
 from .shap_utils import compute_shap, save_shap_plots
+from .diagnostics import residual_analysis, drift_detection, prediction_intervals
 from utils.wandb_utils import WandbTracker
 
 logger = get_logger(__name__)
@@ -134,6 +135,19 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     models_cfg: Dict[str, Any] = tr_cfg.get("models", {})
     selected_models: List[str] = [k for k, v in models_cfg.items() if bool(v.get("enabled", False))]
     logger.info(f"Modelli selezionati: {selected_models}")
+    
+    # Run drift detection once (train vs test)
+    drift_results = {}
+    try:
+        # Use first selected model's profile to load data
+        if selected_models:
+            first_profile = _profile_for(selected_models[0], config)
+            X_train_drift, _, _, _, X_test_drift, _ = _load_xy(pre_dir, first_profile)
+            drift_results = drift_detection(X_train_drift, X_test_drift, config, models_dir)
+        if drift_results.get("alerts"):
+            logger.warning(f"⚠️  Drift detected: {len(drift_results['alerts'])} features with significant distribution shift")
+    except Exception as e:
+        logger.warning(f"Drift detection failed: {e}")
     logger.info(f"SHAP: enabled={bool(shap_cfg.get('enabled', True))} sample_size={int(shap_cfg.get('sample_size', 2000))}")
     # Log basic run configuration
     wb.log({
@@ -360,6 +374,46 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         model_dir = models_dir / model_id
         model_dir.mkdir(parents=True, exist_ok=True)
         dump(estimator, model_dir / "model.pkl")
+        
+        # Advanced diagnostics (residual analysis & prediction intervals)
+        diagnostics_results = {}
+        try:
+            # Residual analysis on test set (original scale if available)
+            if m_test_orig is not None:
+                # Load group columns if available
+                X_test_for_groups = None
+                try:
+                    group_cols_file = pre_dir / (f"group_cols_test_{prefix}.parquet" if prefix else "group_cols_test.parquet")
+                    if group_cols_file.exists():
+                        X_test_for_groups = pd.read_parquet(group_cols_file)
+                except Exception:
+                    pass
+                
+                residual_results = residual_analysis(
+                    model_key,
+                    y_test_true_orig,
+                    y_pred_test_orig,
+                    X_test_for_groups,
+                    config,
+                    model_dir
+                )
+                diagnostics_results["residual_analysis"] = residual_results
+            
+            # Prediction intervals
+            if m_test_orig is not None:
+                interval_results = prediction_intervals(
+                    estimator,
+                    X_tr_final.values,
+                    y_train_true_orig if log_applied_global else y_tr_final.values,
+                    X_test.values,
+                    y_test_true_orig,
+                    config,
+                    model_key,
+                    model_dir
+                )
+                diagnostics_results["prediction_intervals"] = interval_results
+        except Exception as e:
+            logger.warning(f"[{model_key}] Diagnostics failed: {e}")
         # Add MAPE with floor on original scale if available
         try:
             price_cfg: Dict[str, Any] = gm_cfg.get("price_band", {}) if 'gm_cfg' in locals() else {}

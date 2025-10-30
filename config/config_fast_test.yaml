@@ -198,6 +198,29 @@ profiles:
     output_prefix: 'catboost'
     correlation: *correlation_defaults
 
+# Diagnostics configuration (lightweight for fast testing)
+diagnostics:
+  residual_analysis:
+    enabled: true
+    by_groups: [AI_ZonaOmi, price_quartile]
+    save_worst_predictions: true
+    top_n_worst: 20  # Fewer for fast config
+    plots: [residual_distribution]  # Only one plot for speed
+  
+  drift_detection:
+    enabled: false  # Disabled in fast config for speed
+    methods: [psi]
+    alert_threshold: 0.15
+    save_report: false
+
+# Uncertainty quantification (lightweight)
+uncertainty:
+  prediction_intervals:
+    enabled: false  # Disabled in fast config (slow with 100 bootstraps)
+    method: 'residual_bootstrap'
+    n_bootstraps: 50  # Reduced for fast config if enabled
+    confidence_levels: [0.9]
+
 # Training configuration - FAST TEST VERSION
 training:
   # Opzioni globali
