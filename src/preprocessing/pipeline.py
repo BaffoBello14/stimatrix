@@ -11,10 +11,11 @@ import fnmatch
 
 from utils.logger import get_logger
 from utils.io import save_json
-from preprocessing.feature_extractors import extract_geometry_features, maybe_extract_json_features
+from preprocessing.feature_extractors import extract_geometry_features, maybe_extract_json_features, create_missing_pattern_flags
 from preprocessing.outliers import OutlierConfig, detect_outliers
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
 from preprocessing.imputation import ImputationConfig, impute_missing, fit_imputers, transform_with_imputers
+from preprocessing.target_transforms import apply_target_transform, inverse_target_transform, get_transform_name, validate_transform_compatibility
 from preprocessing.transformers import (
     TemporalSplitConfig,
     ScalingConfig,
@@ -46,12 +47,27 @@ def choose_target(df: pd.DataFrame, config: Dict[str, Any]) -> str:
     raise ValueError(f"Nessuna colonna target trovata tra {preferred}. Disponibili simili: {available[:10]}")
 
 
-def apply_log_target_if(config: Dict[str, Any], y: pd.Series) -> Tuple[pd.Series, Dict[str, Any]]:
-    use_log = bool(config.get("target", {}).get("log_transform", False))
-    if not use_log:
-        return y, {"log": False}
-    y_pos = y.clip(lower=1e-6)
-    return np.log1p(y_pos), {"log": True}
+def apply_target_transform_from_config(config: Dict[str, Any], y: pd.Series) -> Tuple[pd.Series, Dict[str, Any]]:
+    """Apply target transformation based on config settings."""
+    target_cfg = config.get("target", {})
+    
+    # Get transform type (new config format)
+    transform_type = target_cfg.get("transform", "none")
+    
+    # Backward compatibility: check old log_transform flag
+    if transform_type == "none" and target_cfg.get("log_transform", False):
+        transform_type = "log"
+        logger.warning("⚠️  Using legacy 'log_transform: true'. Consider updating to 'transform: log'")
+    
+    # Validate compatibility
+    validate_transform_compatibility(y, transform_type)
+    
+    # Apply transformation
+    kwargs = {}
+    if transform_type == "log10":
+        kwargs["log10_offset"] = target_cfg.get("log10_offset", 1.0)
+    
+    return apply_target_transform(y, transform_type=transform_type, **kwargs)
 
 
 def run_preprocessing(config: Dict[str, Any]) -> Path:
@@ -111,6 +127,9 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     if cols_to_drop_now:
         df = df.drop(columns=cols_to_drop_now, errors="ignore")
     logger.info(f"Estrazione feature: aggiunte/derivate, dropped_raw={len(cols_to_drop_now)} -> cols={len(df.columns)}")
+    
+    # Create missing pattern flags (e.g., has_CENED for energy certificates)
+    df = create_missing_pattern_flags(df, config)
 
     # Feature pruning (generic): drop configured columns
     prune_cfg = config.get("feature_pruning", {})
@@ -258,13 +277,42 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     y_test_orig = y_test.copy()
     y_val_orig = y_val.copy() if y_val is not None else None
 
-    # Optional log-transform of target
-    y_train, log_meta = apply_log_target_if(config, y_train)
-    if log_meta.get("log"):
-        y_test = np.log1p(y_test.clip(lower=1e-6))
+    # Apply target transformation (fit on train, transform test/val with same params)
+    y_train, transform_metadata = apply_target_transform_from_config(config, y_train)
+    logger.info(f"Target transformation: {get_transform_name(transform_metadata)}")
+    
+    # For Box-Cox/Yeo-Johnson: use lambda fitted on train for test/val
+    # For other transforms: apply same transformation directly
+    transform_type = transform_metadata.get("transform")
+    if transform_type in ["boxcox", "yeojohnson"]:
+        # Use lambda from train
+        from scipy import stats
+        if transform_type == "boxcox":
+            lambda_val = transform_metadata["boxcox_lambda"]
+            shift = transform_metadata.get("boxcox_shift", 0.0)
+            y_test_shifted = y_test + shift if shift > 0 else y_test
+            y_test = stats.boxcox(y_test_shifted, lmbda=lambda_val)
+            if y_val is not None:
+                y_val_shifted = y_val + shift if shift > 0 else y_val
+                y_val = stats.boxcox(y_val_shifted, lmbda=lambda_val)
+        else:  # yeojohnson
+            lambda_val = transform_metadata["yeojohnson_lambda"]
+            y_test = stats.yeojohnson(y_test, lmbda=lambda_val)
+            if y_val is not None:
+                y_val = stats.yeojohnson(y_val, lmbda=lambda_val)
+    elif transform_type != "none":
+        # For log, log10, sqrt: apply directly (no fitting needed)
+        y_test, _ = apply_target_transform(
+            y_test, 
+            transform_type=transform_type,
+            **{k: v for k, v in transform_metadata.items() if k != "transform"}
+        )
         if y_val is not None:
-            y_val = np.log1p(y_val.clip(lower=1e-6))
-        logger.info("Applicata trasformazione log1p al target")
+            y_val, _ = apply_target_transform(
+                y_val,
+                transform_type=transform_type,
+                **{k: v for k, v in transform_metadata.items() if k != "transform"}
+            )
 
     # Fit imputers on train, transform train/test
     imp_cfg_dict = config.get("imputation", {})
@@ -406,8 +454,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Profile: scaled
     if profiles_cfg.get("scaled", {}).get("enabled", False):
-        enc_max = int(profiles_cfg.get("scaled", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
-        logger.info(f"[scaled] Encoding plan con max_ohe_cardinality={enc_max}")
+        logger.info(f"[scaled] Starting multi-strategy encoding")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
         
         # CRITICAL: Convert datetime.date objects to strings before encoding
@@ -422,8 +469,14 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                             logger.info(f"[scaled] Converted datetime objects to strings in column: {col}")
         
         # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
-        plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
-        X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
+        # Create profile-specific config with encoding overrides
+        profile_config = config.copy()
+        profile_encoding = profiles_cfg.get("scaled", {}).get("encoding", {})
+        if profile_encoding:
+            profile_config["encoding"] = {**config.get("encoding", {}), **profile_encoding}
+        
+        plan = plan_encodings(X_tr, profile_config)
+        X_tr, encoders = fit_apply_encoders(X_tr, y_train, plan, profile_config)
         # Persist encoders
         _prof_dir = artifacts_dir / profiles_cfg.get("scaled", {}).get("output_prefix", "scaled")
         _prof_dir.mkdir(parents=True, exist_ok=True)
@@ -502,8 +555,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Profile: tree (no scaling/PCA)
     if profiles_cfg.get("tree", {}).get("enabled", False):
-        enc_max = int(profiles_cfg.get("tree", {}).get("encoding", {}).get("max_ohe_cardinality", config.get("encoding", {}).get("max_ohe_cardinality", 12)))
-        logger.info(f"[tree] Encoding plan con max_ohe_cardinality={enc_max}")
+        logger.info(f"[tree] Starting multi-strategy encoding")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
         
         # CRITICAL: Convert datetime.date objects to strings before encoding
@@ -518,8 +570,14 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                             logger.info(f"[tree] Converted datetime objects to strings in column: {col}")
         
         # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
-        plan = plan_encodings(X_tr, max_ohe_cardinality=enc_max)
-        X_tr, encoders, _ = fit_apply_encoders(X_tr, plan)
+        # Create profile-specific config with encoding overrides
+        profile_config = config.copy()
+        profile_encoding = profiles_cfg.get("tree", {}).get("encoding", {})
+        if profile_encoding:
+            profile_config["encoding"] = {**config.get("encoding", {}), **profile_encoding}
+        
+        plan = plan_encodings(X_tr, profile_config)
+        X_tr, encoders = fit_apply_encoders(X_tr, y_train, plan, profile_config)
         # Persist encoders
         _prof_dir = artifacts_dir / profiles_cfg.get("tree", {}).get("output_prefix", "tree")
         _prof_dir.mkdir(parents=True, exist_ok=True)
@@ -731,7 +789,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     # Save preprocessing info for evaluation
     prep_info: Dict[str, Any] = {
         "target_column": target_col,
-        "log_transformation": {"applied": bool(log_meta.get("log"))},
+        "target_transformation": transform_metadata,  # Contains transform type + parameters (lambda, offset, etc.)
         "profiles_saved": saved_profiles,
         "feature_columns_per_profile": feature_columns_per_profile,
     }

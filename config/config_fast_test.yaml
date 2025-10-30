@@ -55,7 +55,13 @@ database:
 target:
   # Choose among ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
   column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
-  log_transform: true
+  
+  # Target transformation (applied to reduce skewness and improve model performance)
+  # Options: 'none', 'log', 'log10', 'sqrt', 'boxcox', 'yeojohnson'
+  transform: 'boxcox'  # Fast config: same as normal for consistency
+  
+  # Optional: offset for log10 transform
+  log10_offset: 1.0
 
 # Outlier detection
 outliers:
@@ -73,9 +79,19 @@ imputation:
   categorical_strategy: 'most_frequent'
   group_by_col: 'AI_IdTipologiaEdilizia'
 
-# Categorical encoding
+# Categorical encoding - Multi-strategy based on cardinality
 encoding: &encoding_defaults
-  max_ohe_cardinality: 12
+  # Strategy selection by number of unique values:
+  one_hot_max: 10                     # ≤10 unique → One-Hot Encoding
+  target_encoding_range: [11, 30]     # 11-30 → Target Encoding (with smoothing)
+  frequency_encoding_range: [31, 100] # 31-100 → Frequency Encoding
+  ordinal_encoding_range: [101, 200]  # 101-200 → Ordinal Encoding
+  drop_above: 200                     # >200 unique → DROP (too high cardinality)
+  
+  # Target encoding configuration (requires y_train)
+  target_encoder:
+    smoothing: 1.0              # Bayesian smoothing for rare categories
+    min_samples_leaf: 1         # Minimum samples per leaf for target encoding
 
 # Temporal split configuration
 temporal_split:
@@ -181,6 +197,29 @@ profiles:
     enabled: true
     output_prefix: 'catboost'
     correlation: *correlation_defaults
+
+# Diagnostics configuration (lightweight for fast testing)
+diagnostics:
+  residual_analysis:
+    enabled: true
+    by_groups: [AI_ZonaOmi, price_quartile]
+    save_worst_predictions: true
+    top_n_worst: 20  # Fewer for fast config
+    plots: [residual_distribution]  # Only one plot for speed
+  
+  drift_detection:
+    enabled: false  # Disabled in fast config for speed
+    methods: [psi]
+    alert_threshold: 0.15
+    save_report: false
+
+# Uncertainty quantification (lightweight)
+uncertainty:
+  prediction_intervals:
+    enabled: false  # Disabled in fast config (slow with 100 bootstraps)
+    method: 'residual_bootstrap'
+    n_bootstraps: 50  # Reduced for fast config if enabled
+    confidence_levels: [0.9]
 
 # Training configuration - FAST TEST VERSION
 training:
@@ -372,10 +411,12 @@ training:
       enabled: true
       profile: catboost
       trials: *trials_advanced
-      base_params: {}
+      base_params:
+        allow_writing_files: false  # Disabilita creazione cartella catboost_info
       fit_params:
         cat_features: __categorical_indices__
       search_space:
+        iterations: {type: int, low: 50, high: 100}  # Fast: poche iterazioni per test rapidi
         depth: {type: int, low: 4, high: 10}
         learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
         l2_leaf_reg: {type: float, low: 1.0, high: 15.0}

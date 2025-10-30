@@ -1,4 +1,4 @@
-"""Tests to verify encoding does not cause data leakage."""
+"""Tests to verify encoding does not cause data leakage with new multi-strategy encoding."""
 
 import pytest
 import pandas as pd
@@ -12,6 +12,22 @@ sys.path.append(str(Path(__file__).parent.parent / "src"))
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
 
 
+# Default test config
+TEST_CONFIG = {
+    "encoding": {
+        "one_hot_max": 10,
+        "target_encoding_range": [11, 30],
+        "frequency_encoding_range": [31, 100],
+        "ordinal_encoding_range": [101, 200],
+        "drop_above": 200,
+        "target_encoder": {
+            "smoothing": 1.0,
+            "min_samples_leaf": 1
+        }
+    }
+}
+
+
 class TestEncodingNoLeakage:
     """Test che l'encoding non causi data leakage."""
     
@@ -23,6 +39,7 @@ class TestEncodingNoLeakage:
             "cat2": ["X", "Y", "X", "Y", "X"] * 10,
             "num": range(50)
         })
+        y_train = pd.Series(np.random.random(50))
         
         # Crea validation set con categoria nuova "D"
         val_data = pd.DataFrame({
@@ -32,8 +49,8 @@ class TestEncodingNoLeakage:
         })
         
         # Test del flusso corretto: fit solo su train
-        plan = plan_encodings(train_data, max_ohe_cardinality=10)
-        train_encoded, fitted_encoders, dropped_cols = fit_apply_encoders(train_data, plan)
+        plan = plan_encodings(train_data, TEST_CONFIG)
+        train_encoded, fitted_encoders = fit_apply_encoders(train_data, y_train, plan, TEST_CONFIG)
         
         # Verifica che il fit abbia imparato solo le categorie del train
         assert fitted_encoders.one_hot is not None
@@ -62,38 +79,107 @@ class TestEncodingNoLeakage:
         val_ohe_cols = [c for c in val_encoded.columns if any(cat in c for cat in ["cat1_", "cat2_"])]
         assert set(train_ohe_cols) == set(val_ohe_cols), "Colonne OHE dovrebbero essere identiche"
     
-    def test_ordinal_encoding_handles_unseen(self):
-        """Test che ordinal encoding gestisca categorie unseen."""
-        # Train con cardinalità alta per forzare ordinal encoding
-        categories = [f"cat_{i}" for i in range(20)]
+    def test_target_encoding_no_leakage(self):
+        """Test che target encoding non causi leakage."""
+        # Crea train con cardinalità media (11-30) per forzare target encoding
+        categories = [f"cat_{i}" for i in range(15)]
         train_data = pd.DataFrame({
-            "high_card": np.random.choice(categories, 100),
+            "medium_card": np.random.choice(categories, 100),
             "num": range(100)
         })
+        # Target correlato con categoria per verificare che l'encoding impari la relazione
+        y_train = pd.Series([float(hash(cat) % 100) for cat in train_data["medium_card"]])
+        
+        # Validation con alcune categorie nuove
+        val_categories = categories[:10] + ["UNSEEN_1", "UNSEEN_2"]
+        val_data = pd.DataFrame({
+            "medium_card": np.random.choice(val_categories, 30),
+            "num": range(200, 230)
+        })
+        
+        plan = plan_encodings(train_data, TEST_CONFIG)
+        
+        # Verifica che sia stato pianificato target encoding
+        assert len(plan.target_cols) > 0, "Dovrebbe usare target encoding per cardinalità media"
+        assert "medium_card" in plan.target_cols
+        
+        train_encoded, fitted_encoders = fit_apply_encoders(train_data, y_train, plan, TEST_CONFIG)
+        
+        # Verifica che target encoding sia stato applicato
+        assert "medium_card__target" in train_encoded.columns
+        assert "medium_card" not in train_encoded.columns, "Colonna originale dovrebbe essere rimossa"
+        
+        # Transform su validation
+        val_encoded = transform_with_encoders(val_data, fitted_encoders)
+        
+        # Verifica gestione categorie unseen (dovrebbero avere valore neutro/globale)
+        assert "medium_card__target" in val_encoded.columns
+        assert len(val_encoded) == len(val_data), "Non dovrebbe perdere righe"
+        # Categorie unseen dovrebbero avere valori (anche se neutri)
+        assert not val_encoded["medium_card__target"].isnull().all()
+    
+    def test_frequency_encoding(self):
+        """Test frequency encoding per cardinalità alta (31-100)."""
+        # Crea categorie in range frequency encoding
+        categories = [f"cat_{i}" for i in range(50)]
+        train_data = pd.DataFrame({
+            "high_card": np.random.choice(categories, 200),
+        })
+        y_train = pd.Series(np.random.random(200))
+        
+        plan = plan_encodings(train_data, TEST_CONFIG)
+        
+        # Verifica che sia stato pianificato frequency encoding
+        assert len(plan.frequency_cols) > 0
+        assert "high_card" in plan.frequency_cols
+        
+        train_encoded, fitted_encoders = fit_apply_encoders(train_data, y_train, plan, TEST_CONFIG)
+        
+        # Verifica frequency encoding applicato
+        assert "high_card__freq" in train_encoded.columns
+        assert "high_card" not in train_encoded.columns
+        
+        # Frequenze dovrebbero essere tra 0 e 1
+        freq_values = train_encoded["high_card__freq"]
+        assert (freq_values >= 0).all() and (freq_values <= 1).all()
+    
+    def test_ordinal_encoding_handles_unseen(self):
+        """Test che ordinal encoding gestisca categorie unseen (101-200 unique)."""
+        # Train con cardinalità molto alta per forzare ordinal encoding
+        categories = [f"cat_{i}" for i in range(150)]
+        train_data = pd.DataFrame({
+            "very_high_card": np.random.choice(categories, 300),
+            "num": range(300)
+        })
+        y_train = pd.Series(np.random.random(300))
         
         # Validation con categoria nuova
         val_data = pd.DataFrame({
-            "high_card": ["cat_0", "cat_1", "UNSEEN_CATEGORY", "cat_2", "ANOTHER_UNSEEN"],
+            "very_high_card": ["cat_0", "cat_1", "UNSEEN_CATEGORY", "cat_2", "ANOTHER_UNSEEN"],
             "num": [200, 201, 202, 203, 204]
         })
         
-        # Encoding con low cardinality threshold per forzare ordinal
-        plan = plan_encodings(train_data, max_ohe_cardinality=5)
-        train_encoded, fitted_encoders, _ = fit_apply_encoders(train_data, plan)
+        plan = plan_encodings(train_data, TEST_CONFIG)
+        
+        # Verifica che sia pianificato ordinal encoding
+        assert len(plan.ordinal_cols) > 0
+        assert "very_high_card" in plan.ordinal_cols
+        
+        train_encoded, fitted_encoders = fit_apply_encoders(train_data, y_train, plan, TEST_CONFIG)
         
         # Verifica che sia stato usato ordinal encoding
         assert len(fitted_encoders.ordinal) > 0, "Dovrebbe usare ordinal encoding"
-        assert "high_card" in fitted_encoders.ordinal, "high_card dovrebbe essere ordinale"
+        assert "very_high_card" in fitted_encoders.ordinal, "very_high_card dovrebbe essere ordinale"
         
         # Transform su validation
         val_encoded = transform_with_encoders(val_data, fitted_encoders)
         
         # Verifica gestione categorie unseen
-        ordinal_col = "high_card__ord"
+        ordinal_col = "very_high_card__ord"
         assert ordinal_col in val_encoded.columns, "Colonna ordinale dovrebbe esistere"
         
-        # Categorie unseen dovrebbero essere gestite (tipicamente con NaN o valore speciale)
-        unseen_mask = val_data["high_card"].isin(["UNSEEN_CATEGORY", "ANOTHER_UNSEEN"])
+        # Categorie unseen dovrebbero essere gestite con valore speciale (-1)
+        unseen_mask = val_data["very_high_card"].isin(["UNSEEN_CATEGORY", "ANOTHER_UNSEEN"])
         known_mask = ~unseen_mask
         
         # Categorie conosciute dovrebbero avere valori ordinali validi
@@ -103,19 +189,45 @@ class TestEncodingNoLeakage:
         # Test che il comportamento sia consistente
         assert len(val_encoded) == len(val_data), "Non dovrebbe perdere righe"
     
+    def test_drop_very_high_cardinality(self):
+        """Test che colonne con cardinalità >200 siano droppate."""
+        # Crea colonna con cardinalità troppo alta
+        categories = [f"cat_{i}" for i in range(250)]
+        train_data = pd.DataFrame({
+            "extreme_card": np.random.choice(categories, 500, replace=True),
+            "normal": ["A", "B", "C"] * 167  # Padding to 501, then we'll truncate
+        })
+        train_data = train_data.iloc[:500]  # Ensure exactly 500 rows
+        y_train = pd.Series(np.random.random(500))
+        
+        plan = plan_encodings(train_data, TEST_CONFIG)
+        
+        # Verifica che sia stata pianificata per drop
+        assert "extreme_card" in plan.drop_cols
+        assert "extreme_card" not in plan.one_hot_cols
+        assert "extreme_card" not in plan.target_cols
+        assert "extreme_card" not in plan.frequency_cols
+        assert "extreme_card" not in plan.ordinal_cols
+        
+        train_encoded, fitted_encoders = fit_apply_encoders(train_data, y_train, plan, TEST_CONFIG)
+        
+        # Colonna dovrebbe essere stata droppata
+        assert "extreme_card" not in train_encoded.columns
+    
     def test_encoding_reproducibility(self):
         """Test che l'encoding sia riproducibile."""
         data = pd.DataFrame({
             "cat": ["A", "B", "C"] * 20,
             "num": range(60)
         })
+        y = pd.Series(np.random.random(60))
         
         # Due esecuzioni identiche dovrebbero dare stesso risultato
-        plan1 = plan_encodings(data, max_ohe_cardinality=10)
-        data1, enc1, _ = fit_apply_encoders(data.copy(), plan1)
+        plan1 = plan_encodings(data, TEST_CONFIG)
+        data1, enc1 = fit_apply_encoders(data.copy(), y, plan1, TEST_CONFIG)
         
-        plan2 = plan_encodings(data, max_ohe_cardinality=10)
-        data2, enc2, _ = fit_apply_encoders(data.copy(), plan2)
+        plan2 = plan_encodings(data, TEST_CONFIG)
+        data2, enc2 = fit_apply_encoders(data.copy(), y, plan2, TEST_CONFIG)
         
         # Risultati dovrebbero essere identici
         assert data1.equals(data2), "Encoding dovrebbe essere riproducibile"
@@ -129,18 +241,17 @@ class TestEncodingNoLeakage:
         
         train_data = pd.DataFrame({
             "cat": np.random.choice(train_categories, 100),
-            "target": np.random.random(100)
         })
+        y_train = pd.Series(np.random.random(100))
         
         test_data = pd.DataFrame({
-            "cat": np.random.choice(test_categories, 50), 
-            "target": np.random.random(50)
+            "cat": np.random.choice(test_categories, 50),
         })
         
         # Encoding fit solo su train
-        plan = plan_encodings(train_data.drop("target", axis=1), max_ohe_cardinality=10)
-        train_encoded, encoders, _ = fit_apply_encoders(train_data.drop("target", axis=1), plan)
-        test_encoded = transform_with_encoders(test_data.drop("target", axis=1), encoders)
+        plan = plan_encodings(train_data, TEST_CONFIG)
+        train_encoded, encoders = fit_apply_encoders(train_data, y_train, plan, TEST_CONFIG)
+        test_encoded = transform_with_encoders(test_data, encoders)
         
         # Verifica che l'encoder non abbia "visto" le categorie del test
         if encoders.one_hot is not None:
@@ -156,4 +267,4 @@ class TestEncodingNoLeakage:
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    pytest.main([__file__, "-v"])

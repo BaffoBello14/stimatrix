@@ -9,14 +9,37 @@ import pandas as pd
 from joblib import dump
 
 from utils.logger import get_logger
+from preprocessing.target_transforms import inverse_target_transform
 from .tuner import tune_model
 from .model_zoo import build_estimator
 from .metrics import regression_metrics, overfit_diagnostics, grouped_regression_metrics, _build_price_bands
 from .ensembles import build_voting, build_stacking
 from .shap_utils import compute_shap, save_shap_plots
+from .diagnostics import residual_analysis, drift_detection, prediction_intervals
 from utils.wandb_utils import WandbTracker
 
 logger = get_logger(__name__)
+
+
+def _inverse_transform_predictions(
+    y_pred: np.ndarray,
+    transform_metadata: Dict[str, Any],
+    smearing_factor: Optional[float] = None
+) -> np.ndarray:
+    """
+    Apply inverse transformation to predictions.
+    
+    For log transform: applies Duan smearing if smearing_factor provided.
+    For other transforms: applies inverse directly (no smearing).
+    """
+    # Apply inverse transformation
+    y_pred_orig = inverse_target_transform(y_pred, transform_metadata)
+    
+    # Apply Duan smearing for log transform if provided
+    if transform_metadata.get("transform") == "log" and smearing_factor is not None:
+        y_pred_orig = y_pred_orig * smearing_factor
+    
+    return y_pred_orig
 
 
 def _load_xy(pre_dir: Path, prefix: Optional[str]) -> Tuple[pd.DataFrame, pd.Series, Optional[pd.DataFrame], Optional[pd.Series], pd.DataFrame, pd.Series]:
@@ -88,20 +111,43 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     gm_log_wandb: bool = bool(gm_cfg.get("log_wandb", True))
     price_cfg: Dict[str, Any] = gm_cfg.get("price_band", {}) or {}
 
-    # Read preprocessing info to know if log-transform was applied
+    # Read preprocessing info for target transformation metadata
     prep_info_path = pre_dir / "preprocessing_info.json"
-    log_applied_global: bool = False
+    transform_metadata: Dict[str, Any] = {"transform": "none"}
     if prep_info_path.exists():
         try:
             prep_info = json.loads(prep_info_path.read_text(encoding="utf-8"))
-            log_applied_global = bool(((prep_info or {}).get("log_transformation", {}) or {}).get("applied", False))
-        except Exception:
-            log_applied_global = False
+            transform_metadata = prep_info.get("target_transformation", {"transform": "none"})
+            # Backward compatibility with old log_transformation format
+            if transform_metadata.get("transform") == "none":
+                old_log_flag = ((prep_info.get("log_transformation", {}) or {}).get("applied", False))
+                if old_log_flag:
+                    transform_metadata = {"transform": "log"}
+                    logger.warning("⚠️  Using legacy log_transformation format from preprocessing_info.json")
+        except Exception as e:
+            logger.warning(f"Could not load preprocessing_info.json: {e}")
+            transform_metadata = {"transform": "none"}
+    
+    # Helper flag for backward compatibility
+    log_applied_global = transform_metadata.get("transform") != "none"
 
     # Raccogli definizioni per-modello
     models_cfg: Dict[str, Any] = tr_cfg.get("models", {})
     selected_models: List[str] = [k for k, v in models_cfg.items() if bool(v.get("enabled", False))]
     logger.info(f"Modelli selezionati: {selected_models}")
+    
+    # Run drift detection once (train vs test)
+    drift_results = {}
+    try:
+        # Use first selected model's profile to load data
+        if selected_models:
+            first_profile = _profile_for(selected_models[0], config)
+            X_train_drift, _, _, _, X_test_drift, _ = _load_xy(pre_dir, first_profile)
+            drift_results = drift_detection(X_train_drift, X_test_drift, config, models_dir)
+        if drift_results.get("alerts"):
+            logger.warning(f"⚠️  Drift detected: {len(drift_results['alerts'])} features with significant distribution shift")
+    except Exception as e:
+        logger.warning(f"Drift detection failed: {e}")
     logger.info(f"SHAP: enabled={bool(shap_cfg.get('enabled', True))} sample_size={int(shap_cfg.get('sample_size', 2000))}")
     # Log basic run configuration
     wb.log({
@@ -288,21 +334,29 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     if y_test_orig_path.exists():
                         y_test_true_orig = pd.read_parquet(y_test_orig_path).iloc[:, 0].values
                     else:
-                        y_test_true_orig = np.expm1(y_test.values)
+                        y_test_true_orig = inverse_target_transform(y_test.values, transform_metadata)
                 except Exception:
-                    y_test_true_orig = np.expm1(y_test.values)
-                # Duan's smearing factor from training residuals in log-space
-                try:
-                    residuals_log = (y_tr_final.values - np.asarray(y_pred_train))
-                    smearing_factor = float(np.mean(np.exp(residuals_log)))
-                except Exception:
-                    smearing_factor = 1.0
-                y_pred_test_orig = np.expm1(np.asarray(y_pred_test)) * (smearing_factor if smearing_factor is not None else 1.0)
+                    y_test_true_orig = inverse_target_transform(y_test.values, transform_metadata)
+                
+                # Duan's smearing factor (only for log transform)
+                smearing_factor = None
+                if transform_metadata.get("transform") == "log":
+                    try:
+                        residuals_log = (y_tr_final.values - np.asarray(y_pred_train))
+                        smearing_factor = float(np.mean(np.exp(residuals_log)))
+                    except Exception:
+                        smearing_factor = 1.0
+                
+                y_pred_test_orig = _inverse_transform_predictions(
+                    np.asarray(y_pred_test), transform_metadata, smearing_factor
+                )
                 m_test_orig = regression_metrics(y_test_true_orig, y_pred_test_orig)
 
                 # Train original scale
-                y_train_true_orig = np.expm1(y_tr_final.values)
-                y_pred_train_orig = np.expm1(np.asarray(y_pred_train)) * (smearing_factor if smearing_factor is not None else 1.0)
+                y_train_true_orig = inverse_target_transform(y_tr_final.values, transform_metadata)
+                y_pred_train_orig = _inverse_transform_predictions(
+                    np.asarray(y_pred_train), transform_metadata, smearing_factor
+                )
                 m_train_orig = regression_metrics(y_train_true_orig, y_pred_train_orig)
             else:
                 # If no log transform, original-scale == current metrics
@@ -320,6 +374,46 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         model_dir = models_dir / model_id
         model_dir.mkdir(parents=True, exist_ok=True)
         dump(estimator, model_dir / "model.pkl")
+        
+        # Advanced diagnostics (residual analysis & prediction intervals)
+        diagnostics_results = {}
+        try:
+            # Residual analysis on test set (original scale if available)
+            if m_test_orig is not None:
+                # Load group columns if available
+                X_test_for_groups = None
+                try:
+                    group_cols_file = pre_dir / (f"group_cols_test_{prefix}.parquet" if prefix else "group_cols_test.parquet")
+                    if group_cols_file.exists():
+                        X_test_for_groups = pd.read_parquet(group_cols_file)
+                except Exception:
+                    pass
+                
+                residual_results = residual_analysis(
+                    model_key,
+                    y_test_true_orig,
+                    y_pred_test_orig,
+                    X_test_for_groups,
+                    config,
+                    model_dir
+                )
+                diagnostics_results["residual_analysis"] = residual_results
+            
+            # Prediction intervals
+            if m_test_orig is not None:
+                interval_results = prediction_intervals(
+                    estimator,
+                    X_tr_final.values,
+                    y_train_true_orig if log_applied_global else y_tr_final.values,
+                    X_test.values,
+                    y_test_true_orig,
+                    config,
+                    model_key,
+                    model_dir
+                )
+                diagnostics_results["prediction_intervals"] = interval_results
+        except Exception as e:
+            logger.warning(f"[{model_key}] Diagnostics failed: {e}")
         # Add MAPE with floor on original scale if available
         try:
             price_cfg: Dict[str, Any] = gm_cfg.get("price_band", {}) if 'gm_cfg' in locals() else {}
@@ -362,14 +456,14 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     if y_test_orig_path.exists():
                         y_true_series = pd.read_parquet(y_test_orig_path).iloc[:, 0]
                     else:
-                        # Fallback: invert from log if applied, else use y_test
+                        # Fallback: invert transformation if applied, else use y_test
                         if log_applied_global:
-                            y_true_series = pd.Series(np.expm1(y_test.values))
+                            y_true_series = pd.Series(inverse_target_transform(y_test.values, transform_metadata))
                         else:
                             y_true_series = y_test
                     # Predictions to original scale
                     if log_applied_global:
-                        y_pred_series = pd.Series(np.expm1(y_pred_test))
+                        y_pred_series = pd.Series(inverse_target_transform(y_pred_test, transform_metadata))
                     else:
                         y_pred_series = pd.Series(y_pred_test)
                 else:
@@ -532,12 +626,17 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             if log_applied_global:
                 y_test_true_orig = (pd.read_parquet(pre_dir / (f"y_test_orig_{prefix}.parquet" if prefix else "y_test_orig.parquet")).iloc[:, 0].values
                                     if (pre_dir / (f"y_test_orig_{prefix}.parquet" if prefix else "y_test_orig.parquet")).exists()
-                                    else np.expm1(y_test.values))
-                residuals_log = y_tr_final.values - y_pred_train
-                smear_v = float(np.mean(np.exp(residuals_log)))
-                y_pred_test_orig = np.expm1(y_pred_test) * smear_v
-                y_train_true_orig = np.expm1(y_tr_final.values)
-                y_pred_train_orig = np.expm1(y_pred_train) * smear_v
+                                    else inverse_target_transform(y_test.values, transform_metadata))
+                
+                # Duan's smearing (only for log)
+                smear_v = None
+                if transform_metadata.get("transform") == "log":
+                    residuals_log = y_tr_final.values - y_pred_train
+                    smear_v = float(np.mean(np.exp(residuals_log)))
+                
+                y_pred_test_orig = _inverse_transform_predictions(y_pred_test, transform_metadata, smear_v)
+                y_train_true_orig = inverse_target_transform(y_tr_final.values, transform_metadata)
+                y_pred_train_orig = _inverse_transform_predictions(y_pred_train, transform_metadata, smear_v)
                 m_test_orig = regression_metrics(y_test_true_orig, y_pred_test_orig)
                 m_train_orig = regression_metrics(y_train_true_orig, y_pred_train_orig)
                 # mape floor
@@ -631,12 +730,17 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             if log_applied_global:
                 y_test_true_orig = (pd.read_parquet(pre_dir / (f"y_test_orig_{prefix}.parquet" if prefix else "y_test_orig.parquet")).iloc[:, 0].values
                                     if (pre_dir / (f"y_test_orig_{prefix}.parquet" if prefix else "y_test_orig.parquet")).exists()
-                                    else np.expm1(y_test.values))
-                residuals_log = y_tr_final.values - y_pred_train
-                smear_s = float(np.mean(np.exp(residuals_log)))
-                y_pred_test_orig = np.expm1(y_pred_test) * smear_s
-                y_train_true_orig = np.expm1(y_tr_final.values)
-                y_pred_train_orig = np.expm1(y_pred_train) * smear_s
+                                    else inverse_target_transform(y_test.values, transform_metadata))
+                
+                # Duan's smearing (only for log)
+                smear_s = None
+                if transform_metadata.get("transform") == "log":
+                    residuals_log = y_tr_final.values - y_pred_train
+                    smear_s = float(np.mean(np.exp(residuals_log)))
+                
+                y_pred_test_orig = _inverse_transform_predictions(y_pred_test, transform_metadata, smear_s)
+                y_train_true_orig = inverse_target_transform(y_tr_final.values, transform_metadata)
+                y_pred_train_orig = _inverse_transform_predictions(y_pred_train, transform_metadata, smear_s)
                 m_test_orig = regression_metrics(y_test_true_orig, y_pred_test_orig)
                 m_train_orig = regression_metrics(y_train_true_orig, y_pred_train_orig)
                 # mape floor

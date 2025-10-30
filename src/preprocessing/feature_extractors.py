@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 
 import pandas as pd
 
@@ -285,3 +285,49 @@ def maybe_extract_json_features(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[st
         cols_to_drop.append(col)
         logger.info(f"Estratti {len(candidate_keys)} campi da JSON nella colonna {col}: {candidate_keys}")
     return df, cols_to_drop
+
+
+def create_missing_pattern_flags(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
+    """
+    Create binary flags for missing data patterns.
+    
+    Useful for domain-specific missing patterns (e.g., has_CENED for energy certificates).
+    Creates flags like: has_C1, has_C2, has_CENED that indicate presence of data
+    in specific column groups.
+    
+    Args:
+        df: Input DataFrame
+        config: Configuration dict with feature_extraction.missing_patterns settings
+    
+    Returns:
+        DataFrame with added missing pattern flags
+    """
+    missing_cfg = config.get("feature_extraction", {}).get("missing_patterns", {})
+    if not missing_cfg.get("enabled", False):
+        return df
+    
+    logger.info("Creating missing pattern flags")
+    
+    df = df.copy()
+    prefixes = missing_cfg.get("create_flags_for_prefixes", [])
+    template = missing_cfg.get("feature_name_template", "has_{prefix}")
+    
+    for prefix in prefixes:
+        # Find columns with this prefix
+        cols = [c for c in df.columns if c.startswith(prefix)]
+        
+        if len(cols) == 0:
+            logger.warning(f"  No columns found with prefix '{prefix}'")
+            continue
+        
+        # Create flag: 1 if ANY column with prefix is non-null
+        feature_name = template.format(prefix=prefix.rstrip('_'))
+        df[feature_name] = df[cols].notna().any(axis=1).astype(int)
+        
+        # Additional stats
+        non_null_count = df[feature_name].sum()
+        pct = 100 * non_null_count / len(df)
+        
+        logger.info(f"  Created: {feature_name} (from {len(cols)} columns, {pct:.1f}% have data)")
+    
+    return df

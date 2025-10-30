@@ -57,7 +57,21 @@ database:
 target:
   # Choose among ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
   column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
-  log_transform: true
+  
+  # Target transformation (applied to reduce skewness and improve model performance)
+  # Options: 'none', 'log', 'log10', 'sqrt', 'boxcox', 'yeojohnson'
+  transform: 'boxcox'  # Recommended: boxcox or yeojohnson for price data
+  
+  # Optional: offset for log10 transform (y -> log10(y + offset))
+  log10_offset: 1.0
+  
+  # Transformation guide:
+  # - 'none': No transformation
+  # - 'log': log(1+y) - handles zeros, best for right-skewed data
+  # - 'log10': log10(y + offset) - similar to log but different scale
+  # - 'sqrt': sqrt(y) - milder than log, requires y >= 0
+  # - 'boxcox': Automatically finds optimal lambda, requires y > 0 (auto-shifts if needed)
+  # - 'yeojohnson': Like Box-Cox but works with any y (recommended for flexibility)
 
 # Outlier detection
 outliers:
@@ -75,9 +89,19 @@ imputation:
   categorical_strategy: 'most_frequent'
   group_by_col: 'AI_IdTipologiaEdilizia'
 
-# Categorical encoding
+# Categorical encoding - Multi-strategy based on cardinality
 encoding: &encoding_defaults
-  max_ohe_cardinality: 12
+  # Strategy selection by number of unique values:
+  one_hot_max: 10                     # ≤10 unique → One-Hot Encoding
+  target_encoding_range: [11, 30]     # 11-30 → Target Encoding (with smoothing)
+  frequency_encoding_range: [31, 100] # 31-100 → Frequency Encoding
+  ordinal_encoding_range: [101, 200]  # 101-200 → Ordinal Encoding
+  drop_above: 200                     # >200 unique → DROP (too high cardinality)
+  
+  # Target encoding configuration (requires y_train)
+  target_encoder:
+    smoothing: 1.0              # Bayesian smoothing for rare categories
+    min_samples_leaf: 1         # Minimum samples per leaf for target encoding
 
 # Temporal split configuration
 temporal_split:
@@ -112,13 +136,11 @@ pca: &pca_defaults
   random_state: 42
 
 # Correlation pruning
-# NOTA: Threshold aumentato a 0.95 per evitare rimozione eccessiva di feature utili
 # La correlazione viene calcolata solo sulle colonne numeriche, non sulle OHE
 correlation: &correlation_defaults
   numeric_threshold: 0.95
 
 # Non-descriptive columns pruning
-# Threshold aumentato a 0.80 per essere meno aggressivi
 drop_non_descriptive:
   na_threshold: 0.80
 
@@ -183,6 +205,41 @@ profiles:
     enabled: true
     output_prefix: 'catboost'
     correlation: *correlation_defaults
+
+# Diagnostics configuration
+diagnostics:
+  # Residual analysis (per-group error analysis)
+  residual_analysis:
+    enabled: true
+    by_groups:
+      - AI_ZonaOmi
+      - AI_IdCategoriaCatastale
+      - price_quartile  # Automatic quartile grouping
+    save_worst_predictions: true
+    top_n_worst: 50
+    plots:
+      - residual_vs_predicted
+      - residual_vs_actual
+      - residual_distribution
+      - qq_plot
+  
+  # Drift detection (train vs test distribution shift)
+  drift_detection:
+    enabled: true
+    methods:
+      - psi        # Population Stability Index
+      - ks_test    # Kolmogorov-Smirnov test
+    alert_threshold: 0.15  # PSI > 0.15 = significant drift
+    save_report: true
+
+# Uncertainty quantification
+uncertainty:
+  # Prediction intervals (bootstrap-based)
+  prediction_intervals:
+    enabled: true
+    method: 'residual_bootstrap'
+    n_bootstraps: 100
+    confidence_levels: [0.8, 0.9]  # 80% and 90% confidence intervals
 
 # Training configuration
 training:
@@ -374,7 +431,8 @@ training:
       enabled: true
       profile: catboost
       trials: *trials_advanced
-      base_params: {}
+      base_params:
+        allow_writing_files: false  # Disabilita creazione cartella catboost_info
       fit_params:
         cat_features: __categorical_indices__
       search_space:
