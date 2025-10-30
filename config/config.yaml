@@ -136,13 +136,11 @@ pca: &pca_defaults
   random_state: 42
 
 # Correlation pruning
-# NOTA: Threshold aumentato a 0.95 per evitare rimozione eccessiva di feature utili
 # La correlazione viene calcolata solo sulle colonne numeriche, non sulle OHE
 correlation: &correlation_defaults
   numeric_threshold: 0.95
 
 # Non-descriptive columns pruning
-# Threshold aumentato a 0.80 per essere meno aggressivi
 drop_non_descriptive:
   na_threshold: 0.80
 
