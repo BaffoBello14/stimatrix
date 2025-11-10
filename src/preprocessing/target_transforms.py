@@ -15,11 +15,37 @@ from typing import Dict, Any, Tuple
 import numpy as np
 import pandas as pd
 from scipy import stats
-from scipy.special import inv_boxcox
 
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def boxcox_transform(values: np.ndarray, lmbda: float, shift: float = 0.0) -> np.ndarray:
+    """Apply Box-Cox transform with explicit lambda and shift."""
+    shifted = values + shift
+    if lmbda == 0:
+        return np.log(shifted)
+    return (np.power(shifted, lmbda) - 1) / lmbda
+
+
+def yeojohnson_transform(values: np.ndarray, lmbda: float) -> np.ndarray:
+    """Apply Yeo-Johnson transform with explicit lambda."""
+    mask_pos = values >= 0
+    out = np.zeros_like(values, dtype=float)
+    if mask_pos.any():
+        pos = values[mask_pos]
+        if lmbda == 0:
+            out[mask_pos] = np.log(pos + 1)
+        else:
+            out[mask_pos] = ((pos + 1) ** lmbda - 1) / lmbda
+    if (~mask_pos).any():
+        neg = values[~mask_pos]
+        if lmbda == 2:
+            out[~mask_pos] = -np.log(1 - neg)
+        else:
+            out[~mask_pos] = -(((1 - neg) ** (2 - lmbda)) - 1) / (2 - lmbda)
+    return out
 
 
 def apply_target_transform(
@@ -48,7 +74,7 @@ def apply_target_transform(
     y_values = y.values if is_series else np.asarray(y)
     index = y.index if is_series else None
     
-    metadata = {"transform": transform_type}
+    metadata: Dict[str, Any] = {"transform": transform_type}
     
     if transform_type == "none":
         y_transformed = y_values
@@ -73,26 +99,33 @@ def apply_target_transform(
         logger.info("✨ Target: sqrt transformation applied")
     
     elif transform_type == "boxcox":
-        # Box-Cox requires strictly positive values
-        if np.any(y_values <= 0):
-            min_val = y_values.min()
+        original = y_values.copy()
+        shift = 0.0
+        if np.any(original <= 0):
+            min_val = original.min()
             shift = abs(min_val) + 1.0
             logger.warning(f"⚠️  Box-Cox requires y > 0. Shifting by {shift:.2f}")
-            y_values = y_values + shift
-            metadata["boxcox_shift"] = shift
-        else:
-            metadata["boxcox_shift"] = 0.0
-        
-        # Estimate optimal lambda
-        y_transformed, lambda_fitted = stats.boxcox(y_values)
-        metadata["boxcox_lambda"] = float(lambda_fitted)
-        logger.info(f"✨ Target: Box-Cox transformation applied (λ={lambda_fitted:.4f})")
-    
+        shifted = original + shift
+        _, lambda_fitted = stats.boxcox(shifted)
+        metadata["lambda"] = float(lambda_fitted)
+        metadata["shift"] = float(shift)
+        metadata["boxcox_lambda"] = metadata["lambda"]  # backward compatibility
+        metadata["boxcox_shift"] = metadata["shift"]
+        y_transformed = boxcox_transform(original, lambda_fitted, shift)
+        logger.info(
+            "✨ Target: Box-Cox transformation applied (λ=%.4f, shift=%.4f)",
+            lambda_fitted,
+            shift,
+        )
+
     elif transform_type == "yeojohnson":
-        # Yeo-Johnson works with any values (including zero and negative)
-        y_transformed, lambda_fitted = stats.yeojohnson(y_values)
-        metadata["yeojohnson_lambda"] = float(lambda_fitted)
-        logger.info(f"✨ Target: Yeo-Johnson transformation applied (λ={lambda_fitted:.4f})")
+        original = y_values.copy()
+        _, lambda_fitted = stats.yeojohnson(original)
+        metadata["lambda"] = float(lambda_fitted)
+        metadata["shift"] = 0.0
+        metadata["yeojohnson_lambda"] = metadata["lambda"]  # backward compatibility
+        y_transformed = yeojohnson_transform(original, lambda_fitted)
+        logger.info("✨ Target: Yeo-Johnson transformation applied (λ=%.4f)", lambda_fitted)
     
     else:
         raise ValueError(
@@ -143,23 +176,20 @@ def inverse_target_transform(
         y_original = np.square(y_values)
     
     elif transform_type == "boxcox":
-        lambda_val = metadata.get("boxcox_lambda")
+        lambda_val = metadata.get("lambda", metadata.get("boxcox_lambda"))
         if lambda_val is None:
             raise ValueError("Box-Cox lambda not found in metadata")
-        
-        # Inverse Box-Cox
-        y_original = inv_boxcox(y_values, lambda_val)
-        
-        # Undo shift if it was applied
-        shift = metadata.get("boxcox_shift", 0.0)
-        if shift > 0:
-            y_original = y_original - shift
-    
+        shift = metadata.get("shift", metadata.get("boxcox_shift", 0.0))
+        if lambda_val == 0:
+            y_original = np.exp(y_values) - shift
+        else:
+            y_original = np.power(lambda_val * y_values + 1.0, 1.0 / lambda_val) - shift
+
     elif transform_type == "yeojohnson":
-        lambda_val = metadata.get("yeojohnson_lambda")
+        lambda_val = metadata.get("lambda", metadata.get("yeojohnson_lambda"))
         if lambda_val is None:
             raise ValueError("Yeo-Johnson lambda not found in metadata")
-        
+
         y_original = _inverse_yeojohnson(y_values, lambda_val)
     
     else:

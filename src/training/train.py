@@ -17,6 +17,21 @@ from .ensembles import build_voting, build_stacking
 from .shap_utils import compute_shap, save_shap_plots
 from .diagnostics import residual_analysis, drift_detection, prediction_intervals
 from utils.wandb_utils import WandbTracker
+from .constants import (
+    CATBOOST_KEY,
+    XGBOOST_KEY,
+    LIGHTGBM_KEY,
+    RANDOM_FOREST_KEY,
+    GRADIENT_BOOSTING_KEY,
+    HIST_GRADIENT_BOOSTING_KEY,
+    SVR_KEY,
+    LINEAR_KEY,
+    RIDGE_KEY,
+    LASSO_KEY,
+    ELASTICNET_KEY,
+    KNN_KEY,
+    DECISION_TREE_KEY,
+)
 
 logger = get_logger(__name__)
 
@@ -171,11 +186,12 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             continue
 
         # Determina se richiede solo numeriche
-        default_numeric_only = model_key.lower() not in ["catboost"]
+        mk_lower = model_key.lower()
+        default_numeric_only = mk_lower not in [CATBOOST_KEY]
         requires_numeric_only = bool(model_entry.get("requires_numeric_only", default_numeric_only))
 
         cat_features: Optional[List[int]] = None
-        if model_key.lower() == "catboost":
+        if mk_lower == CATBOOST_KEY:
             if prefix is None:
                 logger.warning("CatBoost richiede il profilo 'catboost'. Provo inferenza colonne categoriche.")
                 cat_features = [i for i, dt in enumerate(X_train.dtypes) if str(dt) in ("object", "category")]
@@ -192,7 +208,20 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     X_val = X_val.reindex(columns=numeric_cols, fill_value=0)
 
         # Safety check NaN
-        if model_key.lower() in ['gbr', 'hgbt', 'svr', 'linear', 'ridge', 'lasso', 'elasticnet', 'knn', 'dt', 'rf', 'lightgbm', 'xgboost']:
+        if model_key.lower() in [
+            GRADIENT_BOOSTING_KEY,
+            HIST_GRADIENT_BOOSTING_KEY,
+            SVR_KEY,
+            LINEAR_KEY,
+            RIDGE_KEY,
+            LASSO_KEY,
+            ELASTICNET_KEY,
+            KNN_KEY,
+            DECISION_TREE_KEY,
+            RANDOM_FOREST_KEY,
+            LIGHTGBM_KEY,
+            XGBOOST_KEY,
+        ]:
             if X_train.isnull().any().any():
                 logger.warning(f"Found NaN values in training data for {model_key}, filling with 0")
                 X_train = X_train.fillna(0)
@@ -209,41 +238,41 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         base.update(model_entry.get("base_params", {}) or {})
         n_jobs_default = int(tr_cfg.get("n_jobs_default", -1))
         mk_lower = model_key.lower()
-        if mk_lower in {"rf", "knn", "xgboost", "lightgbm"} and "n_jobs" not in base:
+        if mk_lower in {RANDOM_FOREST_KEY, KNN_KEY, XGBOOST_KEY, LIGHTGBM_KEY} and "n_jobs" not in base:
             base["n_jobs"] = n_jobs_default
-        if mk_lower == "catboost" and "thread_count" not in base:
+        if mk_lower == CATBOOST_KEY and "thread_count" not in base:
             base["thread_count"] = n_jobs_default
         # seeds
-        if mk_lower in {"dt", "rf", "gbr", "hgbt"} and "random_state" not in base:
+        if mk_lower in {DECISION_TREE_KEY, RANDOM_FOREST_KEY, GRADIENT_BOOSTING_KEY, HIST_GRADIENT_BOOSTING_KEY} and "random_state" not in base:
             base["random_state"] = seed
-        if mk_lower in {"xgboost", "lightgbm"} and "random_state" not in base:
+        if mk_lower in {XGBOOST_KEY, LIGHTGBM_KEY} and "random_state" not in base:
             base["random_state"] = seed
-        if mk_lower == "catboost" and "random_seed" not in base:
+        if mk_lower == CATBOOST_KEY and "random_seed" not in base:
             base["random_seed"] = seed
-        if mk_lower == "catboost" and "iterations" not in base:
+        if mk_lower == CATBOOST_KEY and "iterations" not in base:
             baseline_iters = model_entry.get("baseline_iterations")
             if baseline_iters is not None:
                 base["iterations"] = int(baseline_iters)
         # Improve convergence for coordinate-descent models
-        if mk_lower in {"lasso", "elasticnet"} and "max_iter" not in base:
+        if mk_lower in {LASSO_KEY, ELASTICNET_KEY} and "max_iter" not in base:
             base["max_iter"] = 10000
         n_trials = int(model_entry.get("trials", 50))
         timeout = tr_cfg.get("timeout", None)
-        use_values_for_tuning = requires_numeric_only or mk_lower == "lightgbm"
+        use_values_for_tuning = requires_numeric_only or mk_lower == LIGHTGBM_KEY
 
         # BASELINE evaluation (no tuning)
         try:
             baseline_est = build_estimator(model_key, base)
-            if mk_lower == "catboost":
+            if mk_lower == CATBOOST_KEY:
                 # Ensure CatBoost receives categorical feature indices to avoid coercion errors
                 if cat_features is None:
-                    cat_features = _catboost_cat_features(pre_dir, prefix or "catboost", X_train)
+                    cat_features = _catboost_cat_features(pre_dir, prefix or CATBOOST_KEY, X_train)
                 if X_val is None or y_val is None:
                     baseline_est.fit(X_train, y_train, cat_features=cat_features)
                 else:
                     baseline_est.fit(X_train, y_train, cat_features=cat_features)
                 y_pred_test_base = baseline_est.predict(X_test)
-            elif requires_numeric_only or mk_lower == "lightgbm":
+            elif requires_numeric_only or mk_lower == LIGHTGBM_KEY:
                 baseline_est.fit(X_train.values if X_val is None else pd.concat([X_train, X_val]).values,
                                  y_train.values if y_val is None else pd.concat([y_train, y_val]).values)
                 y_pred_test_base = baseline_est.predict(X_test.values)
@@ -305,7 +334,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         fit_params = model_entry.get("fit_params", {}) or {}
         if "__categorical_indices__" in str(fit_params):
             if cat_features is None:
-                cat_features = _catboost_cat_features(pre_dir, prefix or "catboost", X_tr_final)
+                cat_features = _catboost_cat_features(pre_dir, prefix or CATBOOST_KEY, X_tr_final)
             fit_params = json.loads(json.dumps(fit_params).replace("__categorical_indices__", json.dumps(cat_features)))
         if isinstance(fit_params, dict):
             for k, v in list(fit_params.items()):
@@ -315,7 +344,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                     except Exception:
                         pass
 
-        use_values_for_final = requires_numeric_only or mk_lower == "lightgbm"
+        use_values_for_final = requires_numeric_only or mk_lower == LIGHTGBM_KEY
         if use_values_for_final:
             estimator.fit(X_tr_final.values, y_tr_final.values, **fit_params)
         else:

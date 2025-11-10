@@ -15,7 +15,14 @@ from preprocessing.feature_extractors import extract_geometry_features, maybe_ex
 from preprocessing.outliers import OutlierConfig, detect_outliers
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
 from preprocessing.imputation import ImputationConfig, impute_missing, fit_imputers, transform_with_imputers
-from preprocessing.target_transforms import apply_target_transform, inverse_target_transform, get_transform_name, validate_transform_compatibility
+from preprocessing.target_transforms import (
+    apply_target_transform,
+    inverse_target_transform,
+    get_transform_name,
+    validate_transform_compatibility,
+    boxcox_transform,
+    yeojohnson_transform,
+)
 from preprocessing.transformers import (
     TemporalSplitConfig,
     ScalingConfig,
@@ -31,13 +38,15 @@ from preprocessing.transformers import (
 from preprocessing.report import dataframe_profile, save_report
 from joblib import dump
 
-from preprocessing.constants import MISSING_CATEGORY_SENTINEL
+from preprocessing.constants import (
+    MISSING_CATEGORY_SENTINEL,
+    DATETIME_SAMPLE_SIZE,
+    DATETIME_ISO_FORMAT,
+    DEFAULT_TEMPORAL_TRAIN_FRACTION,
+    DEFAULT_TEMPORAL_VALID_FRACTION,
+)
 
 logger = get_logger(__name__)
-
-_DATETIME_SAMPLE_SIZE = 100
-_DATETIME_ISO_FORMAT = "%Y-%m-%dT%H:%M:%S"
-
 
 def convert_datetime_columns_to_strings(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -57,12 +66,12 @@ def convert_datetime_columns_to_strings(df: pd.DataFrame) -> pd.DataFrame:
     datetime_cols = [col for col in result.columns if pd.api.types.is_datetime64_any_dtype(result[col])]
     for col in datetime_cols:
         series = result[col]
-        result[col] = series.dt.strftime(_DATETIME_ISO_FORMAT)
+        result[col] = series.dt.strftime(DATETIME_ISO_FORMAT)
         result.loc[series.isna(), col] = None
         converted_cols.append(col)
 
     for col in result.select_dtypes(include=["object"]).columns:
-        sample = result[col].dropna().head(_DATETIME_SAMPLE_SIZE)
+        sample = result[col].dropna().head(DATETIME_SAMPLE_SIZE)
         if sample.empty:
             continue
         if any(isinstance(value, (datetime.date, datetime.datetime)) for value in sample):
@@ -262,8 +271,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         mode=mode,
         test_start_year=int(date.get("test_start_year", split_cfg_dict.get("test_start_year", 2023))),
         test_start_month=int(date.get("test_start_month", split_cfg_dict.get("test_start_month", 1))),
-        train_fraction=float(frac.get("train", split_cfg_dict.get("train_fraction", 0.8))),
-        valid_fraction=float(frac.get("valid", split_cfg_dict.get("valid_fraction", 0.0))),
+        train_fraction=float(frac.get("train", split_cfg_dict.get("train_fraction", DEFAULT_TEMPORAL_TRAIN_FRACTION))),
+        valid_fraction=float(frac.get("valid", split_cfg_dict.get("valid_fraction", DEFAULT_TEMPORAL_VALID_FRACTION))),
     )
     train_df, val_df, test_df = temporal_split_3way(Xy_full, split_cfg)
     logger.info(
@@ -323,22 +332,33 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     # For Box-Cox/Yeo-Johnson: use lambda fitted on train for test/val
     # For other transforms: apply same transformation directly
     transform_type = transform_metadata.get("transform")
-    if transform_type in ["boxcox", "yeojohnson"]:
-        # Use lambda from train
-        from scipy import stats
-        if transform_type == "boxcox":
-            lambda_val = transform_metadata["boxcox_lambda"]
-            shift = transform_metadata.get("boxcox_shift", 0.0)
-            y_test_shifted = y_test + shift if shift > 0 else y_test
-            y_test = stats.boxcox(y_test_shifted, lmbda=lambda_val)
-            if y_val is not None:
-                y_val_shifted = y_val + shift if shift > 0 else y_val
-                y_val = stats.boxcox(y_val_shifted, lmbda=lambda_val)
-        else:  # yeojohnson
-            lambda_val = transform_metadata["yeojohnson_lambda"]
-            y_test = stats.yeojohnson(y_test, lmbda=lambda_val)
-            if y_val is not None:
-                y_val = stats.yeojohnson(y_val, lmbda=lambda_val)
+    if transform_type == "boxcox":
+        lambda_val = float(transform_metadata.get("lambda", transform_metadata.get("boxcox_lambda")))
+        shift = float(transform_metadata.get("shift", transform_metadata.get("boxcox_shift", 0.0)))
+        y_test = pd.Series(
+            boxcox_transform(y_test.to_numpy(), lambda_val, shift),
+            index=y_test.index,
+            name=y_test.name,
+        )
+        if y_val is not None:
+            y_val = pd.Series(
+                boxcox_transform(y_val.to_numpy(), lambda_val, shift),
+                index=y_val.index,
+                name=y_val.name,
+            )
+    elif transform_type == "yeojohnson":
+        lambda_val = float(transform_metadata.get("lambda", transform_metadata.get("yeojohnson_lambda")))
+        y_test = pd.Series(
+            yeojohnson_transform(y_test.to_numpy(), lambda_val),
+            index=y_test.index,
+            name=y_test.name,
+        )
+        if y_val is not None:
+            y_val = pd.Series(
+                yeojohnson_transform(y_val.to_numpy(), lambda_val),
+                index=y_val.index,
+                name=y_val.name,
+            )
     elif transform_type != "none":
         # For log, log10, sqrt: apply directly (no fitting needed)
         y_test, _ = apply_target_transform(
@@ -374,9 +394,9 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     dump(fitted_imputers, artifacts_dir / "imputers.joblib")
 
     # Prepare base copies before per-profile transformations
-    base_train = X_train.copy()
-    base_test = X_test.copy()
-    base_val = X_val.copy() if X_val is not None else None
+    base_train = X_train.copy(deep=False)
+    base_test = X_test.copy(deep=False)
+    base_val = X_val.copy(deep=False) if X_val is not None else None
 
     # Optional profile-level thresholds
     profiles_cfg = config.get("profiles", {})
