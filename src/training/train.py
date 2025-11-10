@@ -220,6 +220,10 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             base["random_state"] = seed
         if mk_lower == "catboost" and "random_seed" not in base:
             base["random_seed"] = seed
+        if mk_lower == "catboost" and "iterations" not in base:
+            baseline_iters = model_entry.get("baseline_iterations")
+            if baseline_iters is not None:
+                base["iterations"] = int(baseline_iters)
         # Improve convergence for coordinate-descent models
         if mk_lower in {"lasso", "elasticnet"} and "max_iter" not in base:
             base["max_iter"] = 10000
