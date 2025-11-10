@@ -14,7 +14,7 @@ sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from preprocessing.pipeline import (
     choose_target,
-    apply_log_target_if,
+    apply_target_transform_from_config,
     run_preprocessing
 )
 from preprocessing.transformers import temporal_split, temporal_key
@@ -68,40 +68,40 @@ class TestTargetSelection:
 class TestTargetTransformation:
     """Test target variable transformations."""
     
-    def test_apply_log_transform_enabled(self):
-        """Test log transformation when enabled."""
-        config = {"target": {"log_transform": True}}
-        y = pd.Series([100, 200, 300, 400])
+    def test_apply_log_transform(self):
+        """Test log transformation using the new config schema."""
+        config = {"target": {"transform": "log"}}
+        y = pd.Series([100.0, 200.0, 300.0, 400.0])
         
-        y_transformed, transform_info = apply_log_target_if(config, y)
+        y_transformed, metadata = apply_target_transform_from_config(config, y)
         
-        assert transform_info["log"] is True
+        assert metadata["transform"] == "log"
         assert len(y_transformed) == len(y)
-        # Check that transformation was applied
         assert not y_transformed.equals(y)
         # Log transformation should be monotonic
         assert y_transformed.is_monotonic_increasing
     
-    def test_apply_log_transform_disabled(self):
-        """Test no transformation when disabled."""
-        config = {"target": {"log_transform": False}}
-        y = pd.Series([100, 200, 300, 400])
+    def test_apply_no_transform(self):
+        """Test behaviour when no transformation is requested."""
+        config = {"target": {"transform": "none"}}
+        y = pd.Series([100.0, 200.0, 300.0, 400.0])
         
-        y_transformed, transform_info = apply_log_target_if(config, y)
+        y_transformed, metadata = apply_target_transform_from_config(config, y)
         
-        assert transform_info["log"] is False
-        assert y_transformed.equals(y)
+        assert metadata["transform"] == "none"
+        pd.testing.assert_series_equal(y_transformed, y)
     
-    def test_apply_log_transform_negative_values(self):
-        """Test log transformation with negative values."""
-        config = {"target": {"log_transform": True}}
-        y = pd.Series([-10, 0, 10, 100])
+    def test_apply_log10_with_offset(self):
+        """Test log10 transformation with a custom offset."""
+        config = {"target": {"transform": "log10", "log10_offset": 2.0}}
+        y = pd.Series([0.0, 10.0, 100.0])
         
-        y_transformed, transform_info = apply_log_target_if(config, y)
+        y_transformed, metadata = apply_target_transform_from_config(config, y)
         
-        assert transform_info["log"] is True
-        # Should handle negative values by clipping to small positive value
-        assert (y_transformed >= 0).all()
+        assert metadata["transform"] == "log10"
+        assert metadata["log10_offset"] == 2.0
+        expected = pd.Series(np.log10(y + 2.0), index=y.index)
+        pd.testing.assert_series_equal(y_transformed, expected)
 
 
 class TestTemporalSplit:

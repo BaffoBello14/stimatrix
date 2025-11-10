@@ -25,13 +25,15 @@ class InputValidator:
     
     # SQL injection patterns
     SQL_INJECTION_PATTERNS = [
-        r"(\s|^)(union|select|insert|update|delete|drop|create|alter|exec|execute)\s",
-        r"(\s|^)(script|javascript|vbscript|onload|onerror)\s",
-        r"['\";]",
-        r"--",
+        r"(?i)\bUNION\b\s+SELECT\b",
+        r"(?i)\bOR\b\s+1\s*=\s*1\b",
+        r"(?i)\bDROP\s+(TABLE|DATABASE)\b",
+        r"(?i)\bTRUNCATE\s+TABLE\b",
+        r"(?i)\bWAITFOR\s+DELAY\b",
+        r";--",
         r"/\*.*?\*/",
-        r"xp_cmdshell",
-        r"sp_executesql"
+        r"(?i)xp_cmdshell",
+        r"(?i)sp_executesql",
     ]
     
     # XSS patterns
