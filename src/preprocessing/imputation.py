@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from utils.logger import get_logger
+from preprocessing.constants import MISSING_CATEGORY_SENTINEL
 
 logger = get_logger(__name__)
 
@@ -59,16 +60,20 @@ def _fit_fill_values(df: pd.DataFrame, cfg: ImputationConfig) -> FittedImputers:
             vals = vals.fillna(global_fallback)
             numeric_fill[col] = vals  # pandas Series indexed by group
         for col in df.select_dtypes(include=["object", "category"]).columns:
-            modes = grouped[col].agg(lambda s: s.mode().iloc[0] if not s.mode().empty else (s.dropna().iloc[0] if not s.dropna().empty else "UNKNOWN"))
-            # Fallback to global mode/UNKNOWN for groups entirely NaN
-            global_mode = (df[col].mode().iloc[0] if not df[col].mode().empty else "UNKNOWN")
+            modes = grouped[col].agg(
+                lambda s: s.mode().iloc[0]
+                if not s.mode().empty
+                else (s.dropna().iloc[0] if not s.dropna().empty else MISSING_CATEGORY_SENTINEL)
+            )
+            # Fallback to global mode/sentinel per gruppi completamente NaN
+            global_mode = (df[col].mode().iloc[0] if not df[col].mode().empty else MISSING_CATEGORY_SENTINEL)
             modes = modes.fillna(global_mode)
             categorical_fill[col] = modes
     else:
         for col in df.select_dtypes(include=[np.number]).columns:
             numeric_fill[col] = (df[col].mean() if cfg.numeric_strategy == "mean" else df[col].median())
         for col in df.select_dtypes(include=["object", "category"]).columns:
-            mode_val = df[col].mode().iloc[0] if not df[col].mode().empty else "UNKNOWN"
+            mode_val = df[col].mode().iloc[0] if not df[col].mode().empty else MISSING_CATEGORY_SENTINEL
             categorical_fill[col] = mode_val
 
     return FittedImputers(
@@ -104,17 +109,23 @@ def _apply_fill_values(df: pd.DataFrame, fitted: FittedImputers) -> pd.DataFrame
         # Categorical
         for col, series_vals in fitted.categorical_fill_values.items():
             try:
-                result[col] = grouped[col].transform(lambda s: s.fillna(series_vals.get(s.name, "UNKNOWN")).infer_objects(copy=False))
+                result[col] = grouped[col].transform(
+                    lambda s: s.fillna(series_vals.get(s.name, MISSING_CATEGORY_SENTINEL)).infer_objects(copy=False)
+                )
             except Exception:
-                fallback = series_vals.mode().iloc[0] if isinstance(series_vals, pd.Series) and not series_vals.mode().empty else "UNKNOWN"
+                fallback = (
+                    series_vals.mode().iloc[0]
+                    if isinstance(series_vals, pd.Series) and not series_vals.mode().empty
+                    else MISSING_CATEGORY_SENTINEL
+                )
                 if fallback is None:
-                    fallback = "UNKNOWN"
+                    fallback = MISSING_CATEGORY_SENTINEL
                 result[col] = result[col].fillna(fallback).infer_objects(copy=False)
     else:
         for col, val in fitted.numeric_fill_values.items():
             result[col] = result[col].fillna(val)
         for col, val in fitted.categorical_fill_values.items():
-            fill_val = val if val is not None else "UNKNOWN"
+            fill_val = val if val is not None else MISSING_CATEGORY_SENTINEL
             result[col] = result[col].fillna(fill_val).infer_objects(copy=False)
     return result
 

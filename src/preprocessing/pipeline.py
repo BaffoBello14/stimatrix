@@ -31,7 +31,59 @@ from preprocessing.transformers import (
 from preprocessing.report import dataframe_profile, save_report
 from joblib import dump
 
+from preprocessing.constants import MISSING_CATEGORY_SENTINEL
+
 logger = get_logger(__name__)
+
+_DATETIME_SAMPLE_SIZE = 100
+_DATETIME_ISO_FORMAT = "%Y-%m-%dT%H:%M:%S"
+
+
+def convert_datetime_columns_to_strings(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert all datetime-like columns to ISO formatted strings.
+
+    Handles both native pandas datetime dtypes and object columns containing
+    `datetime.date` / `datetime.datetime` instances.
+    """
+    if df is None:
+        return None  # type: ignore[return-value]
+
+    converted_cols: List[str] = []
+    converted_object_cols: List[str] = []
+
+    result = df.copy()
+
+    datetime_cols = [col for col in result.columns if pd.api.types.is_datetime64_any_dtype(result[col])]
+    for col in datetime_cols:
+        series = result[col]
+        result[col] = series.dt.strftime(_DATETIME_ISO_FORMAT)
+        result.loc[series.isna(), col] = None
+        converted_cols.append(col)
+
+    for col in result.select_dtypes(include=["object"]).columns:
+        sample = result[col].dropna().head(_DATETIME_SAMPLE_SIZE)
+        if sample.empty:
+            continue
+        if any(isinstance(value, (datetime.date, datetime.datetime)) for value in sample):
+            result[col] = result[col].apply(
+                lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime))
+                else (None if pd.isna(x) else x)
+            )
+            converted_object_cols.append(col)
+
+    if converted_cols or converted_object_cols:
+        summary_cols = converted_cols + converted_object_cols
+        preview = ", ".join(summary_cols[:5])
+        suffix = " ..." if len(summary_cols) > 5 else ""
+        logger.debug(
+            "Converted %s datetime-like columns to strings: %s%s",
+            len(summary_cols),
+            preview,
+            suffix,
+        )
+
+    return result
 
 
 def choose_target(df: pd.DataFrame, config: Dict[str, Any]) -> str:
@@ -85,21 +137,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     df = pd.read_parquet(raw_files[0])
     logger.info(f"Caricamento raw completato: rows={len(df)}, cols={len(df.columns)}")
 
-    # CRITICAL: Convert datetime columns to strings to prevent NaT issues
-    # NaT (Not a Time) cannot be handled by CatBoost and causes errors
-    for col in df.columns:
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
-            # Convert datetime to ISO format strings, replacing NaT with None
-            df[col] = df[col].apply(lambda x: x.isoformat() if pd.notna(x) else None)
-            logger.info(f"Converted datetime column to strings: {col}")
-        elif df[col].dtype == 'object':
-            # Check for datetime objects in object columns
-            sample = df[col].dropna().head(100)
-            if len(sample) > 0:
-                sample_types = set(type(x) for x in sample)
-                if datetime.date in sample_types or datetime.datetime in sample_types:
-                    df[col] = df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) and pd.notna(x) else (None if pd.isna(x) else x))
-                    logger.info(f"Converted datetime objects to strings in object column: {col}")
+    # Convert datetime columns to strings once to prevent NaT-related issues downstream
+    df = convert_datetime_columns_to_strings(df)
 
     # Initial cleanup
     prev_cols = len(df.columns)
@@ -452,23 +491,22 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 outs.append(tmp)
         return train, outs
 
+    def _convert_optional(df_opt: pd.DataFrame | None) -> pd.DataFrame | None:
+        return convert_datetime_columns_to_strings(df_opt) if df_opt is not None else None
+
     # Profile: scaled
     if profiles_cfg.get("scaled", {}).get("enabled", False):
         logger.info(f"[scaled] Starting multi-strategy encoding")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
-        
-        # CRITICAL: Convert datetime.date objects to strings before encoding
-        for _df in (X_tr, X_te, X_va):
-            if _df is not None:
-                for col in _df.select_dtypes(include=["object"]).columns:
-                    sample = _df[col].dropna().head(100)
-                    if len(sample) > 0:
-                        sample_types = set(type(x) for x in sample)
-                        if datetime.date in sample_types or datetime.datetime in sample_types:
-                            _df[col] = _df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) else x)
-                            logger.info(f"[scaled] Converted datetime objects to strings in column: {col}")
-        
-        # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
+
+        X_tr = convert_datetime_columns_to_strings(X_tr)
+        X_te = _convert_optional(X_te)
+        X_va = _convert_optional(X_va)
+
+        # Coerce numeric-like strings before planning encoders
+        X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
+
+        # Fit encoders ONLY on training data to prevent data leakage
         # Create profile-specific config with encoding overrides
         profile_config = config.copy()
         profile_encoding = profiles_cfg.get("scaled", {}).get("encoding", {})
@@ -485,7 +523,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_te = transform_with_encoders(X_te, encoders)
         if X_va is not None:
             X_va = transform_with_encoders(X_va, encoders)
-        X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         prev_cols = len(X_tr.columns)
         X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
         logger.info(f"[scaled] Drop non descrittive: {len(removed_nd)}")
@@ -557,19 +594,15 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     if profiles_cfg.get("tree", {}).get("enabled", False):
         logger.info(f"[tree] Starting multi-strategy encoding")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
-        
-        # CRITICAL: Convert datetime.date objects to strings before encoding
-        for _df in (X_tr, X_te, X_va):
-            if _df is not None:
-                for col in _df.select_dtypes(include=["object"]).columns:
-                    sample = _df[col].dropna().head(100)
-                    if len(sample) > 0:
-                        sample_types = set(type(x) for x in sample)
-                        if datetime.date in sample_types or datetime.datetime in sample_types:
-                            _df[col] = _df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) else x)
-                            logger.info(f"[tree] Converted datetime objects to strings in column: {col}")
-        
-        # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
+
+        X_tr = convert_datetime_columns_to_strings(X_tr)
+        X_te = _convert_optional(X_te)
+        X_va = _convert_optional(X_va)
+
+        # Coerce numeric-like strings before planning encoders
+        X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
+
+        # Fit encoders ONLY on training data to prevent data leakage
         # Create profile-specific config with encoding overrides
         profile_config = config.copy()
         profile_encoding = profiles_cfg.get("tree", {}).get("encoding", {})
@@ -592,7 +625,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 _ord_cols = [c for c in _df.columns if c.endswith("__ord")]
                 if _ord_cols:
                     _df[_ord_cols] = _df[_ord_cols].fillna(-1).astype(float)
-        X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
         logger.info(f"[tree] Drop non descrittive: {len(removed_nd)}")
         X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
@@ -606,10 +638,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 numeric_cols = _df.select_dtypes(include=[np.number]).columns
                 if len(numeric_cols) > 0:
                     _df[numeric_cols] = _df[numeric_cols].fillna(0)
-                # Fill categorical NaN values with "UNKNOWN"
+        # Fill categorical NaN values with sentinel
                 cat_cols = _df.select_dtypes(include=["object", "category"]).columns
                 if len(cat_cols) > 0:
-                    _df[cat_cols] = _df[cat_cols].fillna("UNKNOWN")
+                    _df[cat_cols] = _df[cat_cols].fillna(MISSING_CATEGORY_SENTINEL)
         # Audit: log if any NaN remain
         for name, _df in [("X_tr", X_tr), ("X_te", X_te), ("X_va", X_va)]:
             if _df is not None and _df.isnull().any().any():
@@ -636,34 +668,24 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     if profiles_cfg.get("catboost", {}).get("enabled", False):
         logger.info("[catboost] Preservazione categoriche; niente OHE")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
-        
-        # CRITICAL: Convert datetime.date objects to strings to avoid CatBoost errors
-        # CatBoost cannot handle datetime.date objects in categorical features
+
+        X_tr = convert_datetime_columns_to_strings(X_tr)
+        X_te = _convert_optional(X_te)
+        X_va = _convert_optional(X_va)
+
+        # Replace NaT values in all columns (both object and numeric)
+        # NaT cannot be converted to float and causes CatBoost errors
         for _df in (X_tr, X_te, X_va):
             if _df is not None:
-                for col in _df.select_dtypes(include=["object"]).columns:
-                    # Check if column contains datetime.date objects
-                    sample = _df[col].dropna().head(100)
-                    if len(sample) > 0:
-                        sample_types = set(type(x) for x in sample)
-                        if datetime.date in sample_types or datetime.datetime in sample_types:
-                            # Convert all datetime objects to ISO format strings
-                            _df[col] = _df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) else x)
-                            logger.info(f"[catboost] Converted datetime objects to strings in column: {col}")
-                
-                # CRITICAL: Replace NaT values in all columns (both object and numeric)
-                # NaT cannot be converted to float and causes CatBoost errors
                 for col in _df.columns:
                     try:
-                        # Replace NaT with None/NaN depending on dtype
                         if _df[col].dtype == 'object':
                             _df[col] = _df[col].replace({pd.NaT: None})
                         else:
-                            # For numeric columns, replace NaT with NaN
                             _df[col] = _df[col].replace({pd.NaT: np.nan})
                     except (TypeError, ValueError, AttributeError):
                         pass
-        
+
         # Coerce numeric-like strings to numeric
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         # Drop non-descriptive
@@ -680,10 +702,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 numeric_cols = _df.select_dtypes(include=[np.number]).columns
                 if len(numeric_cols) > 0:
                     _df[numeric_cols] = _df[numeric_cols].fillna(0)
-                # Fill categorical NaN values with "UNKNOWN"
+        # Fill categorical NaN values with sentinel
                 cat_cols = _df.select_dtypes(include=["object", "category"]).columns
                 if len(cat_cols) > 0:
-                    _df[cat_cols] = _df[cat_cols].fillna("UNKNOWN")
+                    _df[cat_cols] = _df[cat_cols].fillna(MISSING_CATEGORY_SENTINEL)
         
         # Numeric-only correlation prune
         corr_thr = float(profiles_cfg.get("catboost", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
