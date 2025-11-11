@@ -146,6 +146,33 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     df = pd.read_parquet(raw_files[0])
     logger.info(f"Caricamento raw completato: rows={len(df)}, cols={len(df.columns)}")
 
+    # NUOVO: Apply temporal and zone filtering to reduce drift
+    temporal_cfg = config.get("temporal_filter", {})
+    if temporal_cfg.get("enabled", False):
+        initial_rows = len(df)
+        
+        # Filter by year
+        min_year = temporal_cfg.get("min_year")
+        if min_year and "A_AnnoStipula" in df.columns:
+            df = df[df["A_AnnoStipula"] >= min_year]
+            logger.info(f"Filtro temporale: A_AnnoStipula >= {min_year} → {len(df)} righe ({len(df)/initial_rows*100:.1f}%)")
+        
+        # Optional: filter by month
+        min_month = temporal_cfg.get("min_month")
+        if min_month and "A_MeseStipula" in df.columns:
+            df = df[df["A_MeseStipula"] >= min_month]
+            logger.info(f"Filtro mese: A_MeseStipula >= {min_month} → {len(df)} righe")
+        
+        # Filter out problematic zones
+        exclude_zones = temporal_cfg.get("exclude_zones", [])
+        if exclude_zones and "AI_ZonaOmi" in df.columns:
+            df = df[~df["AI_ZonaOmi"].isin(exclude_zones)]
+            logger.info(f"Filtro zone: escluse {exclude_zones} → {len(df)} righe ({len(df)/initial_rows*100:.1f}%)")
+        
+        removed_rows = initial_rows - len(df)
+        logger.info(f"✅ Temporal filter: rimossi {removed_rows} campioni ({removed_rows/initial_rows*100:.1f}%)")
+        logger.info(f"   Dataset finale: {len(df)} righe su {df['AI_ZonaOmi'].nunique()} zone OMI")
+
     # Convert datetime columns to strings once to prevent NaT-related issues downstream
     df = convert_datetime_columns_to_strings(df)
 

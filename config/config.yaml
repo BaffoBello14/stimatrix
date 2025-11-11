@@ -39,6 +39,17 @@ paths:
   raw_filename: 'raw.parquet'
   preprocessed_filename: 'preprocessed.parquet'
 
+# Temporal and zone filtering (reduce drift and improve model quality)
+temporal_filter:
+  enabled: true
+  min_year: 2022        # Filtra transazioni >= 2022 (elimina drift temporale)
+  min_month: null       # Opzionale: mese minimo (null = tutto l'anno)
+  exclude_zones:        # Zone con troppo pochi campioni post-2022
+    - 'E1'             # 18 campioni
+    - 'E2'             # 29 campioni
+    - 'E3'             # 24 campioni
+    - 'R1'             # 5 campioni
+
 # Database Configuration (for data retrieval)
 database:
   schema_name: null
@@ -60,7 +71,7 @@ target:
   
   # Target transformation (applied to reduce skewness and improve model performance)
   # Options: 'none', 'log', 'log10', 'sqrt', 'boxcox', 'yeojohnson'
-  transform: 'boxcox'  # Recommended: boxcox or yeojohnson for price data
+  transform: 'log'  # CAMBIATO: da boxcox a log (più stabile, meno gap train-test)
   
   # Optional: offset for log10 transform (y -> log10(y + offset))
   log10_offset: 1.0
@@ -77,8 +88,8 @@ target:
 outliers:
   method: 'ensemble'       # 'iqr' | 'zscore' | 'iso_forest' | 'ensemble'
   z_thresh: 3.0
-  iqr_factor: 1.5
-  iso_forest_contamination: 0.02
+  iqr_factor: 1.2          # CAMBIATO: da 1.5 a 1.2 (più aggressivo)
+  iso_forest_contamination: 0.05  # CAMBIATO: da 0.02 a 0.05 (rimuove 5% outlier)
   group_by_col: 'AI_IdTipologiaEdilizia'
   min_group_size: 30       # minimum samples per group to apply group-wise outlier detection
   fallback_strategy: 'global'  # 'skip' keeps all small groups; 'global' applies global detection
