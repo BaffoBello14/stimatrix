@@ -49,6 +49,9 @@ temporal_filter:
     - 'E2'             # 29 campioni
     - 'E3'             # 24 campioni
     - 'R1'             # 5 campioni
+  exclude_tipologie:    # NUOVO: Escludi box/cantine (categorie diverse)
+    - '18'             # Box/garage: €21k medio (933 campioni)
+    - '8'              # Cantine/magazzini: €6k medio (381 campioni)
 
 # Database Configuration (for data retrieval)
 database:
@@ -90,7 +93,7 @@ outliers:
   z_thresh: 3.0
   iqr_factor: 1.2          # CAMBIATO: da 1.5 a 1.2 (più aggressivo)
   iso_forest_contamination: 0.05  # CAMBIATO: da 0.02 a 0.05 (rimuove 5% outlier)
-  group_by_col: 'AI_IdTipologiaEdilizia'
+  group_by_col: 'AI_ZonaOmi'  # CAMBIATO: da TipologiaEdilizia a ZonaOmi (più predittivo)
   min_group_size: 30       # minimum samples per group to apply group-wise outlier detection
   fallback_strategy: 'global'  # 'skip' keeps all small groups; 'global' applies global detection
 
@@ -98,7 +101,7 @@ outliers:
 imputation:
   numeric_strategy: 'median'      # 'median' | 'mean'
   categorical_strategy: 'most_frequent'
-  group_by_col: 'AI_IdTipologiaEdilizia'
+  group_by_col: 'AI_ZonaOmi'  # CAMBIATO: da TipologiaEdilizia a ZonaOmi (più predittivo)
 
 # Categorical encoding - Multi-strategy based on cardinality
 encoding: &encoding_defaults

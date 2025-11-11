@@ -169,9 +169,18 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             df = df[~df["AI_ZonaOmi"].isin(exclude_zones)]
             logger.info(f"Filtro zone: escluse {exclude_zones} → {len(df)} righe ({len(df)/initial_rows*100:.1f}%)")
         
+        # Filter out non-residential (box, cantine, etc.)
+        exclude_tipologie = temporal_cfg.get("exclude_tipologie", [])
+        if exclude_tipologie and "AI_IdTipologiaEdilizia" in df.columns:
+            df = df[~df["AI_IdTipologiaEdilizia"].isin(exclude_tipologie)]
+            logger.info(f"Filtro tipologie: escluse {exclude_tipologie} (box/cantine) → {len(df)} righe ({len(df)/initial_rows*100:.1f}%)")
+        
         removed_rows = initial_rows - len(df)
         logger.info(f"✅ Temporal filter: rimossi {removed_rows} campioni ({removed_rows/initial_rows*100:.1f}%)")
-        logger.info(f"   Dataset finale: {len(df)} righe su {df['AI_ZonaOmi'].nunique()} zone OMI")
+        if "AI_ZonaOmi" in df.columns:
+            logger.info(f"   Dataset finale: {len(df)} righe su {df['AI_ZonaOmi'].nunique()} zone OMI")
+        if "AI_IdTipologiaEdilizia" in df.columns:
+            logger.info(f"   Tipologie residenziali: {sorted(df['AI_IdTipologiaEdilizia'].unique())}")
 
     # Convert datetime columns to strings once to prevent NaT-related issues downstream
     df = convert_datetime_columns_to_strings(df)
