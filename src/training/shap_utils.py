@@ -6,6 +6,10 @@ import numpy as np
 import pandas as pd
 import shap
 
+import matplotlib
+
+matplotlib.use("Agg")  # Use non-interactive backend to avoid Tkinter warnings
+
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, HistGradientBoostingRegressor

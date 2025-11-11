@@ -11,6 +11,7 @@ from sklearn.model_selection import KFold, TimeSeriesSplit
 
 from .model_zoo import build_estimator
 from .metrics import select_primary_value
+from .constants import CATBOOST_KEY, XGBOOST_KEY, LIGHTGBM_KEY, DEFAULT_TUNING_SPLIT_FRACTION
 
 
 @dataclass
@@ -51,7 +52,7 @@ def tune_model(
     search_space: Optional[Dict[str, Any]] = None,
     cat_features: Optional[List[int]] = None,
     cv_config: Optional[Dict[str, Any]] = None,
-    tuning_split_fraction: float = 0.8,  # fraction for temporal split (consistent with preprocessing)
+    tuning_split_fraction: float = DEFAULT_TUNING_SPLIT_FRACTION,  # fraction for temporal split (consistent with preprocessing)
 ) -> TuningResult:
     direction = "maximize"
 
@@ -100,9 +101,9 @@ def tune_model(
                         y_tr, y_va = y_train[tr_idx], y_train[va_idx]
                     mk = model_key.lower()
                     try:
-                        if mk == "xgboost":
+                        if mk == XGBOOST_KEY:
                             est.fit(X_tr, y_tr, eval_set=[(X_va, y_va)], verbose=False, early_stopping_rounds=50)
-                        elif mk == "lightgbm":
+                        elif mk == LIGHTGBM_KEY:
                             metric_map = {
                                 "r2": None,  # not a native built-in; let it default
                                 "neg_mean_squared_error": "l2",
@@ -120,18 +121,18 @@ def tune_model(
                             except Exception:
                                 fit_kwargs["early_stopping_rounds"] = 50
                             est.fit(X_tr.values if hasattr(X_tr, 'values') else X_tr, y_tr.values if hasattr(y_tr, 'values') else y_tr, **fit_kwargs)
-                        elif mk == "catboost":
+                        elif mk == CATBOOST_KEY:
                             if cat_features is not None:
                                 est.fit(X_tr, y_tr, cat_features=cat_features, eval_set=(X_va, y_va), verbose=False, early_stopping_rounds=50)
                             else:
                                 est.fit(X_tr, y_tr, eval_set=(X_va, y_va), verbose=False, early_stopping_rounds=50)
                         else:
-                            if mk == "catboost" and cat_features is not None:
+                            if mk == CATBOOST_KEY and cat_features is not None:
                                 est.fit(X_tr, y_tr, cat_features=cat_features, verbose=False)
                             else:
                                 est.fit(X_tr, y_tr)
                     except Exception:
-                        if mk == "catboost" and cat_features is not None:
+                        if mk == CATBOOST_KEY and cat_features is not None:
                             est.fit(X_tr, y_tr, cat_features=cat_features, verbose=False)
                         else:
                             est.fit(X_tr, y_tr)
@@ -150,7 +151,7 @@ def tune_model(
                 X_tr, X_va = X_train[:split_point], X_train[split_point:]
                 y_tr, y_va = y_train[:split_point], y_train[split_point:]
             # Fit con eventuale early stopping non applicabile senza validation esterna coerente; esegue fit semplice
-            if model_key.lower() == "catboost" and cat_features is not None:
+            if model_key.lower() == CATBOOST_KEY and cat_features is not None:
                 est.fit(X_tr, y_tr, cat_features=cat_features, verbose=False)
             else:
                 est.fit(X_tr, y_tr)
@@ -160,9 +161,9 @@ def tune_model(
             # Con validation esterna: abilita early stopping dove supportato
             mk = model_key.lower()
             try:
-                if mk == "xgboost":
+                if mk == XGBOOST_KEY:
                     est.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False, early_stopping_rounds=50)
-                elif mk == "lightgbm":
+                elif mk == LIGHTGBM_KEY:
                     # Map primary_metric to LGBM-native metric when possible
                     metric_map = {
                         "r2": None,  # not a native built-in; let it default
@@ -182,19 +183,19 @@ def tune_model(
                     except Exception:
                         fit_kwargs["early_stopping_rounds"] = 50
                     est.fit(X_train.values if hasattr(X_train, 'values') else X_train, y_train.values if hasattr(y_train, 'values') else y_train, **fit_kwargs)
-                elif mk == "catboost":
+                elif mk == CATBOOST_KEY:
                     if cat_features is not None:
                         est.fit(X_train, y_train, cat_features=cat_features, eval_set=(X_val, y_val), verbose=False, early_stopping_rounds=50)
                     else:
                         est.fit(X_train, y_train, eval_set=(X_val, y_val), verbose=False, early_stopping_rounds=50)
                 else:
-                    if mk == "catboost" and cat_features is not None:
+                    if mk == CATBOOST_KEY and cat_features is not None:
                         est.fit(X_train, y_train, cat_features=cat_features, verbose=False)
                     else:
                         est.fit(X_train, y_train)
             except Exception:
                 # Fallback robusto
-                if mk == "catboost" and cat_features is not None:
+                if mk == CATBOOST_KEY and cat_features is not None:
                     est.fit(X_train, y_train, cat_features=cat_features, verbose=False)
                 else:
                     est.fit(X_train, y_train)

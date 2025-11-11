@@ -193,11 +193,11 @@ class TestEncodingNoLeakage:
         """Test che colonne con cardinalità >200 siano droppate."""
         # Crea colonna con cardinalità troppo alta
         categories = [f"cat_{i}" for i in range(250)]
+        normal_values = (["A", "B", "C"] * 167)[:500]  # Ensure exactly 500 rows
         train_data = pd.DataFrame({
             "extreme_card": np.random.choice(categories, 500, replace=True),
-            "normal": ["A", "B", "C"] * 167  # Padding to 501, then we'll truncate
+            "normal": normal_values
         })
-        train_data = train_data.iloc[:500]  # Ensure exactly 500 rows
         y_train = pd.Series(np.random.random(500))
         
         plan = plan_encodings(train_data, TEST_CONFIG)

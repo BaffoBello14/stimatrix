@@ -5,6 +5,7 @@ from typing import Dict, Any, List, Tuple
 from sklearn.ensemble import VotingRegressor, StackingRegressor
 
 from .model_zoo import build_estimator
+from .constants import LIGHTGBM_KEY
 
 
 def build_voting(models_best: List[Tuple[str, Dict[str, Any]]], tune_weights: bool = True, n_jobs: int = -1) -> VotingRegressor:
@@ -21,8 +22,8 @@ def build_stacking(models_best: List[Tuple[str, Dict[str, Any]]], final_estimato
     estimators = [(f"{k}", build_estimator(k, p)) for k, p in models_best]
     if final_estimator_key.lower() in {"ridge", "linear", "lasso", "elasticnet"}:
         fe = build_estimator(final_estimator_key, {})
-    elif final_estimator_key.lower() in {"lightgbm", "lgbm"}:
-        fe = build_estimator("lightgbm", {})
+    elif final_estimator_key.lower() in {LIGHTGBM_KEY, "lgbm"}:
+        fe = build_estimator(LIGHTGBM_KEY, {})
     else:
         fe = build_estimator("ridge", {})
     return StackingRegressor(estimators=estimators, final_estimator=fe, cv=cv_folds, n_jobs=n_jobs, passthrough=False)

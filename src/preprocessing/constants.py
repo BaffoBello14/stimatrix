@@ -1,0 +1,10 @@
+"""Shared preprocessing constants."""
+
+from __future__ import annotations
+
+MISSING_CATEGORY_SENTINEL = "__MISSING__"
+DATETIME_SAMPLE_SIZE = 100
+DATETIME_ISO_FORMAT = "%Y-%m-%dT%H:%M:%S"
+DEFAULT_TEMPORAL_TRAIN_FRACTION = 0.8
+DEFAULT_TEMPORAL_VALID_FRACTION = 0.0
+

@@ -10,6 +10,7 @@ from utils.logger import get_logger
 from .metrics import grouped_regression_metrics, _build_price_bands
 from joblib import load as joblib_load
 from utils.io import save_json
+from preprocessing.target_transforms import inverse_target_transform
 
 logger = get_logger(__name__)
 
@@ -38,6 +39,14 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
 
     logger.info("=== EVALUATION: caricamento modelli e dataset ===")
 
+    eval_cfg: Dict[str, Any] = config.get("evaluation", {}) or {}
+    gm_cfg: Dict[str, Any] = eval_cfg.get("group_metrics", {}) or {}
+    gm_enabled: bool = bool(gm_cfg.get("enabled", True))
+    gm_original_scale: bool = bool(gm_cfg.get("original_scale", True))
+    gm_report_metrics = gm_cfg.get("report_metrics", ["r2", "rmse", "mse", "mae", "mape", "medae"])
+    gm_min_group_size = int(gm_cfg.get("min_group_size", 30))
+    price_cfg: Dict[str, Any] = gm_cfg.get("price_band", {}) or {}
+
     # Carica sommario training
     summary_path = models_dir / "summary.json"
     if not summary_path.exists():
@@ -53,6 +62,7 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
     # Decidi profilo di riferimento: se presente catboost, usa quello; altrimenti primo profilo salvato in preprocessing_info
     prep_info_path = pre_dir / "preprocessing_info.json"
     prefix: Optional[str] = None
+    transform_metadata: Dict[str, Any] = {"transform": "none"}
     if prep_info_path.exists():
         try:
             import json
@@ -60,13 +70,34 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
             profiles = prep_info.get("profiles_saved", [])
             if profiles:
                 prefix = profiles[0]
-        except Exception:
-            pass
+            transform_metadata = prep_info.get("target_transformation", {"transform": "none"}) or {"transform": "none"}
+            if transform_metadata.get("transform", "none") == "none":
+                legacy_log = bool(((prep_info.get("log_transformation", {}) or {}).get("applied", False)))
+                if legacy_log:
+                    transform_metadata = {"transform": "log"}
+        except Exception as exc:
+            logger.warning(f"Impossibile leggere preprocessing_info.json: {exc}")
 
     data = _load_preprocessed_for_profile(pre_dir, prefix)
     X_test = data["X_test"]
     y_test = data["y_test"].iloc[:, 0].values
     y_test_orig = data["y_test_orig"].iloc[:, 0].values
+
+    transform_applied = str(transform_metadata.get("transform", "none")).lower() != "none"
+    if transform_applied and np.array_equal(y_test_orig, y_test):
+        try:
+            y_test_orig = np.asarray(inverse_target_transform(y_test, transform_metadata))
+        except Exception as exc:
+            logger.warning(f"Impossibile invertire la trasformazione del target per i valori di test: {exc}")
+
+    def _inverse_predictions(values: np.ndarray) -> np.ndarray:
+        if not transform_applied:
+            return np.asarray(values)
+        try:
+            return np.asarray(inverse_target_transform(np.asarray(values), transform_metadata))
+        except Exception as exc:
+            logger.warning(f"Impossibile invertire la trasformazione del target per le predizioni: {exc}")
+            return np.asarray(values)
 
     # Ricarica i migliori modelli: usiamo il ranking da validation_results.csv se presente
     ranking_csv = models_dir / "validation_results.csv"
@@ -117,50 +148,38 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
         _out_log = str(out)
     logger.info(f"Evaluation completata. Report: {_out_log}")
 
-    # Compute group metrics for ensembles (evaluation-time fallback)
+    # Compute group metrics per-ensemble (evaluation-time fallback)
     try:
-        import json as _json
-        prep_info_path = pre_dir / "preprocessing_info.json"
-        log_applied_global = False
-        if prep_info_path.exists():
-            try:
-                prep_info = _json.loads(prep_info_path.read_text(encoding="utf-8"))
-                log_applied_global = bool(((prep_info or {}).get("log_transformation", {}) or {}).get("applied", False))
-            except Exception:
-                pass
-        gm_cfg = ( ( ( ({} if results is None else {}) ) ) )  # placeholder to avoid linter
-        # Reload evaluation config for group settings
-        from utils.config import load_config as _load_cfg
-        cfg = _load_cfg("config/config.yaml") if (Path("config/config.yaml").exists()) else {}
-        eval_cfg: Dict[str, Any] = cfg.get("evaluation", {}) or {}
-        gm = eval_cfg.get("group_metrics", {}) or {}
-        gb_cols = [c for c in (gm.get("group_by_columns", []) or []) if isinstance(c, str)]
-        if gb_cols:
+        gb_cols = [c for c in (gm_cfg.get("group_by_columns", []) or []) if isinstance(c, str)]
+        if gm_enabled and (gb_cols or price_cfg):
             group_cols_path = pre_dir / (f"group_cols_test_{prefix}.parquet" if prefix else "group_cols_test.parquet")
             grp_df = pd.read_parquet(group_cols_path) if group_cols_path.exists() else pd.DataFrame()
-            # Helper to compute and persist
-            def _ensemble_group_metrics(model_name: str, subdir: str) -> None:
+
+            def _ensemble_group_metrics(subdir: str) -> None:
                 model_dir = models_dir / subdir
                 model_path = model_dir / "model.pkl"
                 if not model_path.exists():
                     return
                 try:
                     est = joblib_load(model_path)
-                except Exception:
+                except Exception as exc:
+                    logger.warning(f"Impossibile caricare il modello ensemble '{subdir}': {exc}")
                     return
                 try:
                     y_pred = est.predict(X_test.values)
                 except Exception:
                     try:
                         y_pred = est.predict(X_test)
-                    except Exception:
+                    except Exception as exc:
+                        logger.warning(f"Predizione fallita per ensemble '{subdir}': {exc}")
                         return
-                if log_applied_global:
-                    y_true_series = pd.Series(y_test_orig)
-                    y_pred_series = pd.Series(np.expm1(y_pred))
+
+                y_true_series = pd.Series(y_test_orig if gm_original_scale else y_test)
+                if gm_original_scale:
+                    y_pred_series = pd.Series(_inverse_predictions(y_pred))
                 else:
-                    y_true_series = pd.Series(y_test)
                     y_pred_series = pd.Series(y_pred)
+
                 for gb_col in gb_cols:
                     if gb_col not in grp_df.columns:
                         continue
@@ -169,42 +188,41 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
                         y_true=y_true_series,
                         y_pred=y_pred_series,
                         groups=groups,
-                        report_metrics=eval_cfg.get("report_metrics", ["r2", "rmse", "mse", "mae", "mape", "medae"]),
-                        min_group_size=int(gm.get("min_group_size", 30)),
-                        mape_floor=float((gm.get("price_band", {}) or {}).get("mape_floor", 1e-8)),
+                        report_metrics=gm_report_metrics,
+                        min_group_size=gm_min_group_size,
+                        mape_floor=float(price_cfg.get("mape_floor", 1e-8)),
                     )
                     if not gm_df.empty:
                         out_csv = model_dir / f"group_metrics_{gb_col}.csv"
                         gm_df.to_csv(out_csv, index=False)
-                # Price-band grouped metrics
-                price_cfg = (gm.get("price_band", {}) or {})
-                try:
-                    bands = _build_price_bands(
-                        y_true_orig=y_true_series,
-                        method=str(price_cfg.get("method", "quantile")),
-                        quantiles=price_cfg.get("quantiles"),
-                        fixed_edges=price_cfg.get("fixed_edges"),
-                        label_prefix=str(price_cfg.get("label_prefix", "PREZZO_")),
-                    )
-                    gm_price = grouped_regression_metrics(
-                        y_true=y_true_series,
-                        y_pred=y_pred_series,
-                        groups=bands,
-                        report_metrics=eval_cfg.get("report_metrics", ["r2", "rmse", "mse", "mae", "mape", "medae"]),
-                        min_group_size=int(gm.get("min_group_size", 30)),
-                        mape_floor=float(price_cfg.get("mape_floor", 1e-8)),
-                    )
-                    if not gm_price.empty:
-                        out_csv = model_dir / "group_metrics_price_band.csv"
-                        gm_price.to_csv(out_csv, index=False)
-                except Exception:
-                    pass
+
+                if price_cfg:
+                    try:
+                        bands = _build_price_bands(
+                            y_true_orig=y_true_series,
+                            method=str(price_cfg.get("method", "quantile")),
+                            quantiles=price_cfg.get("quantiles"),
+                            fixed_edges=price_cfg.get("fixed_edges"),
+                            label_prefix=str(price_cfg.get("label_prefix", "PREZZO_")),
+                        )
+                        gm_price = grouped_regression_metrics(
+                            y_true=y_true_series,
+                            y_pred=y_pred_series,
+                            groups=bands,
+                            report_metrics=gm_report_metrics,
+                            min_group_size=gm_min_group_size,
+                            mape_floor=float(price_cfg.get("mape_floor", 1e-8)),
+                        )
+                        if not gm_price.empty:
+                            out_csv = model_dir / "group_metrics_price_band.csv"
+                            gm_price.to_csv(out_csv, index=False)
+                    except Exception as exc:
+                        logger.warning(f"Price-band metrics falliti per ensemble '{subdir}': {exc}")
+
                 logger.info(f"Group metrics salvati per ensemble '{subdir}'")
 
-            # Voting
-            _ensemble_group_metrics("voting", "voting")
-            # Stacking
-            _ensemble_group_metrics("stacking", "stacking")
+            _ensemble_group_metrics("voting")
+            _ensemble_group_metrics("stacking")
     except Exception as e:
         logger.warning(f"Ensemble group metrics (evaluation) failed: {e}")
 

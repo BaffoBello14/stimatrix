@@ -4,6 +4,7 @@ import os
 import re
 import hashlib
 import secrets
+import unicodedata
 from typing import Dict, Any, List, Optional, Union
 from pathlib import Path
 import logging
@@ -25,13 +26,15 @@ class InputValidator:
     
     # SQL injection patterns
     SQL_INJECTION_PATTERNS = [
-        r"(\s|^)(union|select|insert|update|delete|drop|create|alter|exec|execute)\s",
-        r"(\s|^)(script|javascript|vbscript|onload|onerror)\s",
-        r"['\";]",
-        r"--",
+        r"(?i)\bUNION\b\s+SELECT\b",
+        r"(?i)\bOR\b\s+1\s*=\s*1\b",
+        r"(?i)\bDROP\s+(TABLE|DATABASE)\b",
+        r"(?i)\bTRUNCATE\s+TABLE\b",
+        r"(?i)\bWAITFOR\s+DELAY\b",
+        r";--",
         r"/\*.*?\*/",
-        r"xp_cmdshell",
-        r"sp_executesql"
+        r"(?i)xp_cmdshell",
+        r"(?i)sp_executesql",
     ]
     
     # XSS patterns
@@ -96,18 +99,33 @@ class InputValidator:
     
     @classmethod
     def sanitize_column_name(cls, column_name: str) -> str:
-        """Sanitize database column names."""
-        if not isinstance(column_name, str):
-            raise SecurityError("Column name must be a string")
-        
-        # Allow only alphanumeric characters, underscores, and dots
-        if not re.match(r'^[a-zA-Z0-9_\.]+$', column_name):
-            raise SecurityError(f"Invalid column name: {column_name}")
-        
-        # Check length
-        if len(column_name) > 128:
+        """Validate column name allowing local characters while blocking risky patterns."""
+        if not isinstance(column_name, str) or not column_name:
+            raise SecurityError("Column name must be a non-empty string")
+
+        if len(column_name) > 256:
             raise SecurityError("Column name too long")
-        
+
+        disallowed_substrings = ["--", "/*", "*/"]
+        disallowed_chars = {";", "'", '"', "`", "\x00"}
+
+        upper_name = column_name.upper()
+        for pattern in disallowed_substrings:
+            if pattern in upper_name:
+                raise SecurityError(f"Potentially dangerous column name: {column_name}")
+
+        for ch in column_name:
+            if ch in disallowed_chars:
+                raise SecurityError(f"Invalid character in column name: {column_name}")
+            cat = unicodedata.category(ch)
+            if cat.startswith("C"):
+                raise SecurityError(f"Control character detected in column name: {column_name}")
+            if cat[0] in {"L", "N", "M", "S"}:
+                continue
+            if ch in {"_", ".", " ", "-", "/", "(", ")", "[", "]", ":"}:
+                continue
+            raise SecurityError(f"Invalid column name: {column_name}")
+
         return column_name
     
     @classmethod

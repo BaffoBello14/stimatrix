@@ -15,7 +15,14 @@ from preprocessing.feature_extractors import extract_geometry_features, maybe_ex
 from preprocessing.outliers import OutlierConfig, detect_outliers
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
 from preprocessing.imputation import ImputationConfig, impute_missing, fit_imputers, transform_with_imputers
-from preprocessing.target_transforms import apply_target_transform, inverse_target_transform, get_transform_name, validate_transform_compatibility
+from preprocessing.target_transforms import (
+    apply_target_transform,
+    inverse_target_transform,
+    get_transform_name,
+    validate_transform_compatibility,
+    boxcox_transform,
+    yeojohnson_transform,
+)
 from preprocessing.transformers import (
     TemporalSplitConfig,
     ScalingConfig,
@@ -31,7 +38,61 @@ from preprocessing.transformers import (
 from preprocessing.report import dataframe_profile, save_report
 from joblib import dump
 
+from preprocessing.constants import (
+    MISSING_CATEGORY_SENTINEL,
+    DATETIME_SAMPLE_SIZE,
+    DATETIME_ISO_FORMAT,
+    DEFAULT_TEMPORAL_TRAIN_FRACTION,
+    DEFAULT_TEMPORAL_VALID_FRACTION,
+)
+
 logger = get_logger(__name__)
+
+def convert_datetime_columns_to_strings(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert all datetime-like columns to ISO formatted strings.
+
+    Handles both native pandas datetime dtypes and object columns containing
+    `datetime.date` / `datetime.datetime` instances.
+    """
+    if df is None:
+        return None  # type: ignore[return-value]
+
+    converted_cols: List[str] = []
+    converted_object_cols: List[str] = []
+
+    result = df.copy()
+
+    datetime_cols = [col for col in result.columns if pd.api.types.is_datetime64_any_dtype(result[col])]
+    for col in datetime_cols:
+        series = result[col]
+        result[col] = series.dt.strftime(DATETIME_ISO_FORMAT)
+        result.loc[series.isna(), col] = None
+        converted_cols.append(col)
+
+    for col in result.select_dtypes(include=["object"]).columns:
+        sample = result[col].dropna().head(DATETIME_SAMPLE_SIZE)
+        if sample.empty:
+            continue
+        if any(isinstance(value, (datetime.date, datetime.datetime)) for value in sample):
+            result[col] = result[col].apply(
+                lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime))
+                else (None if pd.isna(x) else x)
+            )
+            converted_object_cols.append(col)
+
+    if converted_cols or converted_object_cols:
+        summary_cols = converted_cols + converted_object_cols
+        preview = ", ".join(summary_cols[:5])
+        suffix = " ..." if len(summary_cols) > 5 else ""
+        logger.debug(
+            "Converted %s datetime-like columns to strings: %s%s",
+            len(summary_cols),
+            preview,
+            suffix,
+        )
+
+    return result
 
 
 def choose_target(df: pd.DataFrame, config: Dict[str, Any]) -> str:
@@ -85,21 +146,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     df = pd.read_parquet(raw_files[0])
     logger.info(f"Caricamento raw completato: rows={len(df)}, cols={len(df.columns)}")
 
-    # CRITICAL: Convert datetime columns to strings to prevent NaT issues
-    # NaT (Not a Time) cannot be handled by CatBoost and causes errors
-    for col in df.columns:
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
-            # Convert datetime to ISO format strings, replacing NaT with None
-            df[col] = df[col].apply(lambda x: x.isoformat() if pd.notna(x) else None)
-            logger.info(f"Converted datetime column to strings: {col}")
-        elif df[col].dtype == 'object':
-            # Check for datetime objects in object columns
-            sample = df[col].dropna().head(100)
-            if len(sample) > 0:
-                sample_types = set(type(x) for x in sample)
-                if datetime.date in sample_types or datetime.datetime in sample_types:
-                    df[col] = df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) and pd.notna(x) else (None if pd.isna(x) else x))
-                    logger.info(f"Converted datetime objects to strings in object column: {col}")
+    # Convert datetime columns to strings once to prevent NaT-related issues downstream
+    df = convert_datetime_columns_to_strings(df)
 
     # Initial cleanup
     prev_cols = len(df.columns)
@@ -223,8 +271,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         mode=mode,
         test_start_year=int(date.get("test_start_year", split_cfg_dict.get("test_start_year", 2023))),
         test_start_month=int(date.get("test_start_month", split_cfg_dict.get("test_start_month", 1))),
-        train_fraction=float(frac.get("train", split_cfg_dict.get("train_fraction", 0.8))),
-        valid_fraction=float(frac.get("valid", split_cfg_dict.get("valid_fraction", 0.0))),
+        train_fraction=float(frac.get("train", split_cfg_dict.get("train_fraction", DEFAULT_TEMPORAL_TRAIN_FRACTION))),
+        valid_fraction=float(frac.get("valid", split_cfg_dict.get("valid_fraction", DEFAULT_TEMPORAL_VALID_FRACTION))),
     )
     train_df, val_df, test_df = temporal_split_3way(Xy_full, split_cfg)
     logger.info(
@@ -284,22 +332,33 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     # For Box-Cox/Yeo-Johnson: use lambda fitted on train for test/val
     # For other transforms: apply same transformation directly
     transform_type = transform_metadata.get("transform")
-    if transform_type in ["boxcox", "yeojohnson"]:
-        # Use lambda from train
-        from scipy import stats
-        if transform_type == "boxcox":
-            lambda_val = transform_metadata["boxcox_lambda"]
-            shift = transform_metadata.get("boxcox_shift", 0.0)
-            y_test_shifted = y_test + shift if shift > 0 else y_test
-            y_test = stats.boxcox(y_test_shifted, lmbda=lambda_val)
-            if y_val is not None:
-                y_val_shifted = y_val + shift if shift > 0 else y_val
-                y_val = stats.boxcox(y_val_shifted, lmbda=lambda_val)
-        else:  # yeojohnson
-            lambda_val = transform_metadata["yeojohnson_lambda"]
-            y_test = stats.yeojohnson(y_test, lmbda=lambda_val)
-            if y_val is not None:
-                y_val = stats.yeojohnson(y_val, lmbda=lambda_val)
+    if transform_type == "boxcox":
+        lambda_val = float(transform_metadata.get("lambda", transform_metadata.get("boxcox_lambda")))
+        shift = float(transform_metadata.get("shift", transform_metadata.get("boxcox_shift", 0.0)))
+        y_test = pd.Series(
+            boxcox_transform(y_test.to_numpy(), lambda_val, shift),
+            index=y_test.index,
+            name=y_test.name,
+        )
+        if y_val is not None:
+            y_val = pd.Series(
+                boxcox_transform(y_val.to_numpy(), lambda_val, shift),
+                index=y_val.index,
+                name=y_val.name,
+            )
+    elif transform_type == "yeojohnson":
+        lambda_val = float(transform_metadata.get("lambda", transform_metadata.get("yeojohnson_lambda")))
+        y_test = pd.Series(
+            yeojohnson_transform(y_test.to_numpy(), lambda_val),
+            index=y_test.index,
+            name=y_test.name,
+        )
+        if y_val is not None:
+            y_val = pd.Series(
+                yeojohnson_transform(y_val.to_numpy(), lambda_val),
+                index=y_val.index,
+                name=y_val.name,
+            )
     elif transform_type != "none":
         # For log, log10, sqrt: apply directly (no fitting needed)
         y_test, _ = apply_target_transform(
@@ -335,9 +394,9 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     dump(fitted_imputers, artifacts_dir / "imputers.joblib")
 
     # Prepare base copies before per-profile transformations
-    base_train = X_train.copy()
-    base_test = X_test.copy()
-    base_val = X_val.copy() if X_val is not None else None
+    base_train = X_train.copy(deep=False)
+    base_test = X_test.copy(deep=False)
+    base_val = X_val.copy(deep=False) if X_val is not None else None
 
     # Optional profile-level thresholds
     profiles_cfg = config.get("profiles", {})
@@ -452,23 +511,22 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 outs.append(tmp)
         return train, outs
 
+    def _convert_optional(df_opt: pd.DataFrame | None) -> pd.DataFrame | None:
+        return convert_datetime_columns_to_strings(df_opt) if df_opt is not None else None
+
     # Profile: scaled
     if profiles_cfg.get("scaled", {}).get("enabled", False):
         logger.info(f"[scaled] Starting multi-strategy encoding")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
-        
-        # CRITICAL: Convert datetime.date objects to strings before encoding
-        for _df in (X_tr, X_te, X_va):
-            if _df is not None:
-                for col in _df.select_dtypes(include=["object"]).columns:
-                    sample = _df[col].dropna().head(100)
-                    if len(sample) > 0:
-                        sample_types = set(type(x) for x in sample)
-                        if datetime.date in sample_types or datetime.datetime in sample_types:
-                            _df[col] = _df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) else x)
-                            logger.info(f"[scaled] Converted datetime objects to strings in column: {col}")
-        
-        # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
+
+        X_tr = convert_datetime_columns_to_strings(X_tr)
+        X_te = _convert_optional(X_te)
+        X_va = _convert_optional(X_va)
+
+        # Coerce numeric-like strings before planning encoders
+        X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
+
+        # Fit encoders ONLY on training data to prevent data leakage
         # Create profile-specific config with encoding overrides
         profile_config = config.copy()
         profile_encoding = profiles_cfg.get("scaled", {}).get("encoding", {})
@@ -485,7 +543,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         X_te = transform_with_encoders(X_te, encoders)
         if X_va is not None:
             X_va = transform_with_encoders(X_va, encoders)
-        X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         prev_cols = len(X_tr.columns)
         X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
         logger.info(f"[scaled] Drop non descrittive: {len(removed_nd)}")
@@ -557,19 +614,15 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     if profiles_cfg.get("tree", {}).get("enabled", False):
         logger.info(f"[tree] Starting multi-strategy encoding")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
-        
-        # CRITICAL: Convert datetime.date objects to strings before encoding
-        for _df in (X_tr, X_te, X_va):
-            if _df is not None:
-                for col in _df.select_dtypes(include=["object"]).columns:
-                    sample = _df[col].dropna().head(100)
-                    if len(sample) > 0:
-                        sample_types = set(type(x) for x in sample)
-                        if datetime.date in sample_types or datetime.datetime in sample_types:
-                            _df[col] = _df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) else x)
-                            logger.info(f"[tree] Converted datetime objects to strings in column: {col}")
-        
-        # CRITICAL: Fit encoders ONLY on training data to prevent data leakage
+
+        X_tr = convert_datetime_columns_to_strings(X_tr)
+        X_te = _convert_optional(X_te)
+        X_va = _convert_optional(X_va)
+
+        # Coerce numeric-like strings before planning encoders
+        X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
+
+        # Fit encoders ONLY on training data to prevent data leakage
         # Create profile-specific config with encoding overrides
         profile_config = config.copy()
         profile_encoding = profiles_cfg.get("tree", {}).get("encoding", {})
@@ -592,7 +645,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 _ord_cols = [c for c in _df.columns if c.endswith("__ord")]
                 if _ord_cols:
                     _df[_ord_cols] = _df[_ord_cols].fillna(-1).astype(float)
-        X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
         logger.info(f"[tree] Drop non descrittive: {len(removed_nd)}")
         X_te = X_te.drop(columns=[c for c in removed_nd if c in X_te.columns], errors="ignore")
@@ -606,10 +658,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 numeric_cols = _df.select_dtypes(include=[np.number]).columns
                 if len(numeric_cols) > 0:
                     _df[numeric_cols] = _df[numeric_cols].fillna(0)
-                # Fill categorical NaN values with "UNKNOWN"
+        # Fill categorical NaN values with sentinel
                 cat_cols = _df.select_dtypes(include=["object", "category"]).columns
                 if len(cat_cols) > 0:
-                    _df[cat_cols] = _df[cat_cols].fillna("UNKNOWN")
+                    _df[cat_cols] = _df[cat_cols].fillna(MISSING_CATEGORY_SENTINEL)
         # Audit: log if any NaN remain
         for name, _df in [("X_tr", X_tr), ("X_te", X_te), ("X_va", X_va)]:
             if _df is not None and _df.isnull().any().any():
@@ -636,34 +688,24 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     if profiles_cfg.get("catboost", {}).get("enabled", False):
         logger.info("[catboost] Preservazione categoriche; niente OHE")
         X_tr = base_train.copy(); X_te = base_test.copy(); X_va = base_val.copy() if base_val is not None else None
-        
-        # CRITICAL: Convert datetime.date objects to strings to avoid CatBoost errors
-        # CatBoost cannot handle datetime.date objects in categorical features
+
+        X_tr = convert_datetime_columns_to_strings(X_tr)
+        X_te = _convert_optional(X_te)
+        X_va = _convert_optional(X_va)
+
+        # Replace NaT values in all columns (both object and numeric)
+        # NaT cannot be converted to float and causes CatBoost errors
         for _df in (X_tr, X_te, X_va):
             if _df is not None:
-                for col in _df.select_dtypes(include=["object"]).columns:
-                    # Check if column contains datetime.date objects
-                    sample = _df[col].dropna().head(100)
-                    if len(sample) > 0:
-                        sample_types = set(type(x) for x in sample)
-                        if datetime.date in sample_types or datetime.datetime in sample_types:
-                            # Convert all datetime objects to ISO format strings
-                            _df[col] = _df[col].apply(lambda x: x.isoformat() if isinstance(x, (datetime.date, datetime.datetime)) else x)
-                            logger.info(f"[catboost] Converted datetime objects to strings in column: {col}")
-                
-                # CRITICAL: Replace NaT values in all columns (both object and numeric)
-                # NaT cannot be converted to float and causes CatBoost errors
                 for col in _df.columns:
                     try:
-                        # Replace NaT with None/NaN depending on dtype
                         if _df[col].dtype == 'object':
                             _df[col] = _df[col].replace({pd.NaT: None})
                         else:
-                            # For numeric columns, replace NaT with NaN
                             _df[col] = _df[col].replace({pd.NaT: np.nan})
                     except (TypeError, ValueError, AttributeError):
                         pass
-        
+
         # Coerce numeric-like strings to numeric
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         # Drop non-descriptive
@@ -680,10 +722,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
                 numeric_cols = _df.select_dtypes(include=[np.number]).columns
                 if len(numeric_cols) > 0:
                     _df[numeric_cols] = _df[numeric_cols].fillna(0)
-                # Fill categorical NaN values with "UNKNOWN"
+        # Fill categorical NaN values with sentinel
                 cat_cols = _df.select_dtypes(include=["object", "category"]).columns
                 if len(cat_cols) > 0:
-                    _df[cat_cols] = _df[cat_cols].fillna("UNKNOWN")
+                    _df[cat_cols] = _df[cat_cols].fillna(MISSING_CATEGORY_SENTINEL)
         
         # Numeric-only correlation prune
         corr_thr = float(profiles_cfg.get("catboost", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))

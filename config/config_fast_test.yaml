@@ -413,6 +413,7 @@ training:
       trials: *trials_advanced
       base_params:
         allow_writing_files: false  # Disabilita creazione cartella catboost_info
+      baseline_iterations: 50
       fit_params:
         cat_features: __categorical_indices__
       search_space:
