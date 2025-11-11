@@ -49,9 +49,10 @@ temporal_filter:
     - 'E2'             # 29 campioni
     - 'E3'             # 24 campioni
     - 'R1'             # 5 campioni
-  exclude_tipologie:    # NUOVO: Escludi box/cantine (categorie diverse)
-    - '18'             # Box/garage: €21k medio (933 campioni)
-    - '8'              # Cantine/magazzini: €6k medio (381 campioni)
+  exclude_tipologie:    # NUOVO: Escludi box/cantine/ville (categorie diverse o pochi campioni)
+    - '18'             # Box/garage: €21k medio (933 campioni) - categoria diversa
+    - '8'              # Cantine/magazzini: €6k medio (381 campioni) - categoria diversa
+    - '4'              # Ville: €172k medio (13 campioni) - TROPPO POCHI (rischio overfitting)
 
 # Database Configuration (for data retrieval)
 database:
@@ -258,8 +259,9 @@ uncertainty:
 # Training configuration
 training:
   # Opzioni globali
-  primary_metric: "neg_root_mean_squared_error" # 'r2' | 'neg_root_mean_squared_error' | 'neg_mean_squared_error' | 'neg_mean_absolute_error' | 'neg_mean_absolute_percentage_error'
+  primary_metric: "neg_mean_absolute_percentage_error"  # CAMBIATO: da RMSE a MAPE (ottimizza errore %)
   report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
+  # Nota: con transform='log', MAPE su scala log + back-transform = errori % uniformi
   sampler: "auto"   # auto (OptunaHub) | tpe
   seed: ${SEED:-42}
   n_jobs_default: ${N_JOBS:--1}
