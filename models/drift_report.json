@@ -1,0 +1,2843 @@
+{
+  "features": {
+    "A_AnnoStipula": {
+      "psi": 7.8510511387353725,
+      "ks_statistic": 1.0,
+      "ks_pvalue": 0.0
+    },
+    "A_MeseStipula": {
+      "psi": 3.2849815521481065,
+      "ks_statistic": 0.47080457799305586,
+      "ks_pvalue": 8.118915302532034e-101
+    },
+    "A_Semestre": {
+      "psi": 7.158757779295527,
+      "ks_statistic": 1.0,
+      "ks_pvalue": 0.0
+    },
+    "A_RegPart": {
+      "psi": 5.37300957845792,
+      "ks_statistic": 0.3607188703465982,
+      "ks_pvalue": 3.608262754626093e-58
+    },
+    "A_TotaleImmobili": {
+      "psi": 0.027899851176042104,
+      "ks_statistic": 0.04075298194476719,
+      "ks_pvalue": 0.37060582455838564
+    },
+    "A_Numero": {
+      "psi": 6.900851648375276,
+      "ks_statistic": 1.0,
+      "ks_pvalue": 0.0
+    },
+    "AI_Foglio": {
+      "psi": 0.09356210097331019,
+      "ks_statistic": 0.1297842531658135,
+      "ks_pvalue": 9.426221674100792e-08
+    },
+    "AI_Particella": {
+      "psi": 0.09122853780724682,
+      "ks_statistic": 0.10223643037466357,
+      "ks_pvalue": 5.6661935874383095e-05
+    },
+    "AI_Latitudine": {
+      "psi": 0.06452119651772083,
+      "ks_statistic": 0.06623741401598643,
+      "ks_pvalue": 0.024367923264187213
+    },
+    "AI_Longitudine": {
+      "psi": 0.04429417907527357,
+      "ks_statistic": 0.06485490162458743,
+      "ks_pvalue": 0.02920943104566102
+    },
+    "AI_QuotaFavore": {
+      "psi": 0.0,
+      "ks_statistic": 0.042433294002720806,
+      "ks_pvalue": 0.32287242616574696
+    },
+    "AI_ConsistenzaValore": {
+      "psi": 0.7046898180351379,
+      "ks_statistic": 0.29307232245386927,
+      "ks_pvalue": 3.3766220970695965e-38
+    },
+    "AI_IdParticellaCatastale": {
+      "psi": 0.1063242531695229,
+      "ks_statistic": 0.12255629428924018,
+      "ks_pvalue": 5.857275557441866e-07
+    },
+    "AI_Superficie": {
+      "psi": 0.01786264737083591,
+      "ks_statistic": 0.032798572366447,
+      "ks_pvalue": 0.6456693220048838
+    },
+    "II_P1": {
+      "psi": 0.05681667202544426,
+      "ks_statistic": 0.07383040308989715,
+      "ks_pvalue": 0.0084152403952818
+    },
+    "II_P14": {
+      "psi": 0.05497170534825387,
+      "ks_statistic": 0.041691050894414224,
+      "ks_pvalue": 0.34342396961050276
+    },
+    "II_P15": {
+      "psi": 0.08637719462869659,
+      "ks_statistic": 0.04053685158070709,
+      "ks_pvalue": 0.3770589129488266
+    },
+    "II_P16": {
+      "psi": 0.03543623951109453,
+      "ks_statistic": 0.04171045299390187,
+      "ks_pvalue": 0.34286536798326345
+    },
+    "II_P17": {
+      "psi": 0.050388058101829857,
+      "ks_statistic": 0.0713717509943576,
+      "ks_pvalue": 0.012024631619791008
+    },
+    "II_P18": {
+      "psi": 0.012905593020054848,
+      "ks_statistic": 0.04552634963034488,
+      "ks_pvalue": 0.24643973044817735
+    },
+    "II_P19": {
+      "psi": 0.04319488930860823,
+      "ks_statistic": 0.04928133269862899,
+      "ks_pvalue": 0.17276794755714625
+    },
+    "II_P20": {
+      "psi": 0.02512349438498843,
+      "ks_statistic": 0.03120624657361179,
+      "ks_pvalue": 0.7053673914664388
+    },
+    "II_P21": {
+      "psi": 0.10902825550529735,
+      "ks_statistic": 0.0546516533521639,
+      "ks_pvalue": 0.09888066465660067
+    },
+    "II_P22": {
+      "psi": 0.08121307372763957,
+      "ks_statistic": 0.028718265723032772,
+      "ks_pvalue": 0.7950050208954087
+    },
+    "II_P23": {
+      "psi": 0.04111597707605339,
+      "ks_statistic": 0.06387306514818918,
+      "ks_pvalue": 0.03314471947966543
+    },
+    "II_P24": {
+      "psi": 0.11294357268957339,
+      "ks_statistic": 0.05781735404996266,
+      "ks_pvalue": 0.06925740034194001
+    },
+    "II_P25": {
+      "psi": 0.04923323827522196,
+      "ks_statistic": 0.07133971496962217,
+      "ks_pvalue": 0.012079403897999044
+    },
+    "II_P26": {
+      "psi": 0.09296208685791953,
+      "ks_statistic": 0.11339760090783776,
+      "ks_pvalue": 5.099198855995292e-06
+    },
+    "II_P27": {
+      "psi": 0.07044877837688829,
+      "ks_statistic": 0.09569341073116586,
+      "ks_pvalue": 0.0002069305940938687
+    },
+    "II_P28": {
+      "psi": 0.030700358030947086,
+      "ks_statistic": 0.05856095079311722,
+      "ks_pvalue": 0.06351479482740346
+    },
+    "II_P29": {
+      "psi": 0.08759220807064041,
+      "ks_statistic": 0.09856988478311386,
+      "ks_pvalue": 0.0001183328371699777
+    },
+    "II_P30": {
+      "psi": 0.033950355682745674,
+      "ks_statistic": 0.03965473287144304,
+      "ks_pvalue": 0.40410809778223616
+    },
+    "II_P31": {
+      "psi": 0.05829417450240752,
+      "ks_statistic": 0.0581805794008361,
+      "ks_pvalue": 0.06639693396265177
+    },
+    "II_P32": {
+      "psi": 0.029248474721908564,
+      "ks_statistic": 0.01931185716445084,
+      "ks_pvalue": 0.9906826737451604
+    },
+    "II_P33": {
+      "psi": 0.05355625840658997,
+      "ks_statistic": 0.05117912875549068,
+      "ks_pvalue": 0.14279469307568002
+    },
+    "II_P34": {
+      "psi": 0.027088286572008485,
+      "ks_statistic": 0.02395527590462289,
+      "ks_pvalue": 0.9307167680083013
+    },
+    "II_P36": {
+      "psi": 0.06030403539613137,
+      "ks_statistic": 0.07352899373041459,
+      "ks_pvalue": 0.008797457470119608
+    },
+    "II_P42": {
+      "psi": 0.07448988117942326,
+      "ks_statistic": 0.07956620515238544,
+      "ks_pvalue": 0.0034921156025467855
+    },
+    "II_P43": {
+      "psi": 0.0487859603183384,
+      "ks_statistic": 0.08763386884631957,
+      "ks_pvalue": 0.000906635235052592
+    },
+    "II_P67": {
+      "psi": 0.050059855809787245,
+      "ks_statistic": 0.028853629207830328,
+      "ks_pvalue": 0.7903321883641953
+    },
+    "II_P68": {
+      "psi": 0.02070066995350949,
+      "ks_statistic": 0.034279900101748216,
+      "ks_pvalue": 0.5902380434065567
+    },
+    "II_P69": {
+      "psi": 0.05030548935839832,
+      "ks_statistic": 0.030043474239200813,
+      "ks_pvalue": 0.7481096212693693
+    },
+    "II_P70": {
+      "psi": 0.036632222877743495,
+      "ks_statistic": 0.06829899988945315,
+      "ks_pvalue": 0.01846730194191571
+    },
+    "II_P71": {
+      "psi": 0.043738724746265334,
+      "ks_statistic": 0.07110192644799447,
+      "ks_pvalue": 0.012495622219283237
+    },
+    "II_P73": {
+      "psi": 0.02522575678260413,
+      "ks_statistic": 0.028272017434816842,
+      "ks_pvalue": 0.8101488411965331
+    },
+    "II_P86": {
+      "psi": 0.05368427912932137,
+      "ks_statistic": 0.08560386778597229,
+      "ks_pvalue": 0.0012885908390567551
+    },
+    "II_P87": {
+      "psi": 0.020372563667100912,
+      "ks_statistic": 0.05142007575843033,
+      "ks_pvalue": 0.13930885119849848
+    },
+    "II_P90": {
+      "psi": 0.08463956817105148,
+      "ks_statistic": 0.0742035550963224,
+      "ks_pvalue": 0.007963087567028253
+    },
+    "II_P91": {
+      "psi": 0.03777570839571503,
+      "ks_statistic": 0.07210271381226438,
+      "ks_pvalue": 0.01082713127015483
+    },
+    "II_P92": {
+      "psi": 0.07444322037984971,
+      "ks_statistic": 0.039739109443633513,
+      "ks_pvalue": 0.40145958277075555
+    },
+    "II_P96": {
+      "psi": 0.0731526508060701,
+      "ks_statistic": 0.06328107550800788,
+      "ks_pvalue": 0.03573387974149421
+    },
+    "II_IT1": {
+      "psi": 0.08255502805259106,
+      "ks_statistic": 0.08874565426812348,
+      "ks_pvalue": 0.0007452020645307712
+    },
+    "II_ST1": {
+      "psi": 0.08106546467908535,
+      "ks_statistic": 0.09912397264755184,
+      "ks_pvalue": 0.00010604490642423063
+    },
+    "II_ST5": {
+      "psi": 0.025412199271920042,
+      "ks_statistic": 0.04452285499637903,
+      "ks_pvalue": 0.269633717169687
+    },
+    "II_ST16": {
+      "psi": 0.034996391592653754,
+      "ks_statistic": 0.05378713189592353,
+      "ks_pvalue": 0.10859396304495779
+    },
+    "II_ST17": {
+      "psi": 0.009632918179090986,
+      "ks_statistic": 0.016977739474925042,
+      "ks_pvalue": 0.9983307188780083
+    },
+    "II_ST24": {
+      "psi": 0.014884852480465845,
+      "ks_statistic": 0.02890371369720542,
+      "ks_pvalue": 0.7885928741250205
+    },
+    "II_ST27": {
+      "psi": 0.006087043773465306,
+      "ks_statistic": 0.02500659896988388,
+      "ks_pvalue": 0.906596115257977
+    },
+    "II_ST28": {
+      "psi": 0.04047141242186252,
+      "ks_statistic": 0.07469176606482557,
+      "ks_pvalue": 0.007403844940595187
+    },
+    "II_ST30": {
+      "psi": 0.006364665212100262,
+      "ks_statistic": 0.028694351507385207,
+      "ks_pvalue": 0.7958238972425435
+    },
+    "II_ST33": {
+      "psi": 0.054786279829519155,
+      "ks_statistic": 0.06753735468165893,
+      "ks_pvalue": 0.020477505544641866
+    },
+    "II_PF6": {
+      "psi": 0.028957989891870345,
+      "ks_statistic": 0.032907765577517026,
+      "ks_pvalue": 0.6415691277131176
+    },
+    "II_PF7": {
+      "psi": 0.006075342001923675,
+      "ks_statistic": 0.026394525900674787,
+      "ks_pvalue": 0.8691770443003164
+    },
+    "II_PF8": {
+      "psi": 0.005585449259380593,
+      "ks_statistic": 0.023023072705983742,
+      "ks_pvalue": 0.9488058029676453
+    },
+    "II_A3": {
+      "psi": 0.07198050693328975,
+      "ks_statistic": 0.07952875458825812,
+      "ks_pvalue": 0.003512779216140932
+    },
+    "II_E3": {
+      "psi": 0.02921105477649088,
+      "ks_statistic": 0.04484276403211724,
+      "ks_pvalue": 0.26207912453146065
+    },
+    "ISC_Sez21": {
+      "psi": 0.11022803821674189,
+      "ks_statistic": 0.11505399875014383,
+      "ks_pvalue": 3.4910849911851815e-06
+    },
+    "ISC_CodTipoS": {
+      "psi": 0.0,
+      "ks_statistic": 0.02079318489975206,
+      "ks_pvalue": 0.9793575375189997
+    },
+    "ISC_TipoLoc": {
+      "psi": 0.0,
+      "ks_statistic": 0.010031336646730633,
+      "ks_pvalue": 0.999999998939629
+    },
+    "ISC_ShapeLeng": {
+      "psi": 0.06252272235777356,
+      "ks_statistic": 0.06518157883456552,
+      "ks_pvalue": 0.027993041607000235
+    },
+    "ISC_ShapeArea": {
+      "psi": 0.04991670612166663,
+      "ks_statistic": 0.06938416382591353,
+      "ks_pvalue": 0.01590498704574579
+    },
+    "OV_ValoreMercatoMin_normale": {
+      "psi": 0.1251830049485016,
+      "ks_statistic": 0.11839341592009944,
+      "ks_pvalue": 1.5993266638203276e-06
+    },
+    "OV_ValoreMercatoMin_ottimo": {
+      "psi": 0.031298836483438466,
+      "ks_statistic": 0.09185946563008318,
+      "ks_pvalue": 0.00042462791130362703
+    },
+    "OV_ValoreLocazioneMin_normale": {
+      "psi": 0.7695835839808967,
+      "ks_statistic": 0.22313452197513373,
+      "ks_pvalue": 3.555080531923166e-22
+    },
+    "OV_ValoreLocazioneMin_ottimo": {
+      "psi": 0.16226624417022512,
+      "ks_statistic": 0.15006486166979882,
+      "ks_pvalue": 3.176236000717291e-10
+    },
+    "PC_Area": {
+      "psi": 0.07020284639407202,
+      "ks_statistic": 0.11575112069685121,
+      "ks_pvalue": 2.9715491701098984e-06
+    },
+    "PC_Perimetro": {
+      "psi": 0.04168118396763421,
+      "ks_statistic": 0.10910748086298734,
+      "ks_pvalue": 1.3254336722539066e-05
+    },
+    "PC_IdQuartiere": {
+      "psi": 0.05427591405003218,
+      "ks_statistic": 0.059606408107370314,
+      "ks_pvalue": 0.056132836973186
+    },
+    "C1_FOGLIO": {
+      "psi": 0.09392611513132812,
+      "ks_statistic": 0.04342866682759881,
+      "ks_pvalue": 0.29666320650281774
+    },
+    "C1_PARTICELLA": {
+      "psi": 0.007539847061634624,
+      "ks_statistic": 0.045699614890885754,
+      "ks_pvalue": 0.24258660903600343
+    },
+    "C1_SUPERFICIE_LORDA": {
+      "psi": 0.013946122791814146,
+      "ks_statistic": 0.057806073759562863,
+      "ks_pvalue": 0.06934292631006632
+    },
+    "C1_SUPERFICIE_DISPERDENTE": {
+      "psi": 0.35532425663035294,
+      "ks_statistic": 0.05879151992888905,
+      "ks_pvalue": 0.06181976900639522
+    },
+    "C1_SUPERFICIE_VETRATA_OPACA": {
+      "psi": 0.03129935340293336,
+      "ks_statistic": 0.051775179300215905,
+      "ks_pvalue": 0.13429445664506437
+    },
+    "C1_TRASMITTANZA_MEDIA_INVOLUCRO": {
+      "psi": 0.16596181507019228,
+      "ks_statistic": 0.051346077053407664,
+      "ks_pvalue": 0.14037106234372465
+    },
+    "C1_TRASMITTANZA_MEDIA_COPERTURA": {
+      "psi": 0.1058649157507759,
+      "ks_statistic": 0.0292755120687827,
+      "ks_pvalue": 0.7755841443760118
+    },
+    "C1_TRASMITTANZA_MEDIA_BASAMENTO": {
+      "psi": 0.07297243513141172,
+      "ks_statistic": 0.028115898215683666,
+      "ks_pvalue": 0.8153617351963494
+    },
+    "C1_TRASMITTANZA_MEDIA_SERRAMENTO": {
+      "psi": 0.14801443117586224,
+      "ks_statistic": 0.06524971178858029,
+      "ks_pvalue": 0.027748118950185006
+    },
+    "C1_EPH": {
+      "psi": 0.002321766366420728,
+      "ks_statistic": 0.04303746635653388,
+      "ks_pvalue": 0.306794196245776
+    },
+    "C1_ETH": {
+      "psi": 0.02049968071694388,
+      "ks_statistic": 0.051804508055255376,
+      "ks_pvalue": 0.13388395316145338
+    },
+    "C1_ETC": {
+      "psi": 0.0433118476639778,
+      "ks_statistic": 0.060590500641848524,
+      "ks_pvalue": 0.049867437162172144
+    },
+    "C1_EFER": {
+      "psi": 0.0,
+      "ks_statistic": 0.00975609756097561,
+      "ks_pvalue": 0.9999999996956762
+    },
+    "C1_EPW": {
+      "psi": 0.23481282325899167,
+      "ks_statistic": 0.05725288831835687,
+      "ks_pvalue": 0.07390060550864622
+    },
+    "C1_EPT": {
+      "psi": 0.015020321392376383,
+      "ks_statistic": 0.041497029899537734,
+      "ks_pvalue": 0.3489429271087098
+    },
+    "C1_EF_GLOB_MEDIA_RISCALDAMENTO": {
+      "psi": 0.14310125409788732,
+      "ks_statistic": 0.06230149508968959,
+      "ks_pvalue": 0.040412963023846026
+    },
+    "C1_EF_GLOB_MEDIA_ACQUA_CALDA_SAN": {
+      "psi": 0.025622156247461333,
+      "ks_statistic": 0.06756217132053847,
+      "ks_pvalue": 0.020409629055815195
+    },
+    "C1_EGHW": {
+      "psi": 0.1988625140946719,
+      "ks_statistic": 0.0658958468226806,
+      "ks_pvalue": 0.025493157074036227
+    },
+    "C1_POTENZA_GENERATORE": {
+      "psi": 0.044591390006544745,
+      "ks_statistic": 0.05281431965184512,
+      "ks_pvalue": 0.12046136133650125
+    },
+    "C2_COD_APE": {
+      "psi": 1.2192203331656648,
+      "ks_statistic": 0.14163577747145523,
+      "ks_pvalue": 3.746782993863844e-09
+    },
+    "C2_FOGLIO": {
+      "psi": 0.43003187039029145,
+      "ks_statistic": 0.14311891005322042,
+      "ks_pvalue": 2.4528038253612852e-09
+    },
+    "C2_PARTICELLA": {
+      "psi": 1.2600811451042704,
+      "ks_statistic": 0.11886854175173886,
+      "ks_pvalue": 1.4290857729220702e-06
+    },
+    "C2_SUBALTERNO": {
+      "psi": 0.9362355020306388,
+      "ks_statistic": 0.21573645631933147,
+      "ks_pvalue": 9.568204837830497e-21
+    },
+    "C2_NUMERO_UNITA_IMMOBILIARI": {
+      "psi": 0.38375295934849696,
+      "ks_statistic": 0.11005683010303417,
+      "ks_pvalue": 1.0762402413767171e-05
+    },
+    "C2_SUPERF_UTILE_RISCALDATA": {
+      "psi": 0.14920459551789778,
+      "ks_statistic": 0.11192078528869648,
+      "ks_pvalue": 7.114422966164552e-06
+    },
+    "C2_SUPERF_UTILE_RAFFRESCATA": {
+      "psi": 0.2583448032394763,
+      "ks_statistic": 0.13452964573119972,
+      "ks_pvalue": 2.6815998755084635e-08
+    },
+    "C2_VOLUME_LORDO_RISCALDATO": {
+      "psi": 0.9434044960431086,
+      "ks_statistic": 0.1160286158406862,
+      "ks_pvalue": 2.7867991002981567e-06
+    },
+    "C2_EP_GL_NREN": {
+      "psi": 1.1956406513904283,
+      "ks_statistic": 0.10911424903722722,
+      "ks_pvalue": 1.3232947540575907e-05
+    },
+    "C2_EP_GL_REN": {
+      "psi": 0.8283686446661537,
+      "ks_statistic": 0.11424903722721438,
+      "ks_pvalue": 4.199188381377975e-06
+    },
+    "C2_CONSUMI_ENERGIA_ELETTRICA": {
+      "psi": 0.8574356861220708,
+      "ks_statistic": 0.11296534017971759,
+      "ks_pvalue": 5.622783711583743e-06
+    },
+    "C2_CONSUMI_GAS_NATURALE": {
+      "psi": 0.27927156563124694,
+      "ks_statistic": 0.09773153360060101,
+      "ks_pvalue": 0.00013950703979581874
+    },
+    "C2_CONSUMI_GPL": {
+      "psi": 0.0,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "C2_CONSUMI_GASOLIO": {
+      "psi": 0.0,
+      "ks_statistic": 0.0015404364569961489,
+      "ks_pvalue": 1.0
+    },
+    "C2_CONSUMI_BIOMASSE_SOLIDE": {
+      "psi": 0.0,
+      "ks_statistic": 0.0007702182284980744,
+      "ks_pvalue": 1.0
+    },
+    "C2_CONSUMI_SOLARE_FOTOVOLTAICO": {
+      "psi": 0.0,
+      "ks_statistic": 0.0020539152759948653,
+      "ks_pvalue": 1.0
+    },
+    "C2_CONSUMI_SOLARE_TERMICO": {
+      "psi": 0.0,
+      "ks_statistic": 0.0012836970474967907,
+      "ks_pvalue": 1.0
+    },
+    "C2_CONSUMI_TELERISCALDAMENTO": {
+      "psi": 0.0,
+      "ks_statistic": 0.09704749679075739,
+      "ks_pvalue": 0.00015937162765019002
+    },
+    "C2_CONSUMI_ALTRO": {
+      "psi": 0.0,
+      "ks_statistic": 0.014634146341463415,
+      "ks_pvalue": 0.9998812868455608
+    },
+    "C2_RIQ_EP_GL_NREN_RAGG": {
+      "psi": 0.23247016182966915,
+      "ks_statistic": 0.05789721850599322,
+      "ks_pvalue": 0.06861861216122066
+    },
+    "C2_NM_TEMPO_RITORNO_INVESTIM_1": {
+      "psi": 0.18070100131606917,
+      "ks_statistic": 0.07804878048780488,
+      "ks_pvalue": 0.004434774684293517
+    },
+    "C2_DS_CLASSE_RAGGIUNGIBILE_1": {
+      "psi": 0.147424393606715,
+      "ks_statistic": 0.05750782288139226,
+      "ks_pvalue": 0.07177463100995246
+    },
+    "C2_NM_EP_GL_NREN_RAGGIUNG_1": {
+      "psi": 0.35472364817091256,
+      "ks_statistic": 0.08343850324082744,
+      "ks_pvalue": 0.0018580154017481868
+    },
+    "C2_NM_TEMPO_RITORNO_INVESTIM_2": {
+      "psi": 0.02642230871958184,
+      "ks_statistic": 0.052116295281905735,
+      "ks_pvalue": 0.12962115443775585
+    },
+    "C2_DS_CLASSE_RAGGIUNGIBILE_2": {
+      "psi": 0.00238355235057473,
+      "ks_statistic": 0.032778267843727366,
+      "ks_pvalue": 0.6464467469444273
+    },
+    "C2_NM_EP_GL_NREN_RAGGIUNG_2": {
+      "psi": 0.3358242288723629,
+      "ks_statistic": 0.045699614890885754,
+      "ks_pvalue": 0.24258660903600343
+    },
+    "C2_NM_TEMPO_RITORNO_INVESTIM_3": {
+      "psi": 0.0019839175999833442,
+      "ks_statistic": 0.02114603238345768,
+      "ks_pvalue": 0.9756758762687677
+    },
+    "C2_DS_CLASSE_RAGGIUNGIBILE_3": {
+      "psi": 0.04734716443882399,
+      "ks_statistic": 0.014065619705313694,
+      "ks_pvalue": 0.9999493259767323
+    },
+    "C2_NM_EP_GL_NREN_RAGGIUNG_3": {
+      "psi": 0.07186058563545061,
+      "ks_statistic": 0.021916250611955755,
+      "ks_pvalue": 0.9661700042707042
+    },
+    "C2_NM_TEMPO_RITORNO_INVESTIM_4": {
+      "psi": 0.0,
+      "ks_statistic": 0.006837209617124383,
+      "ks_pvalue": 1.0
+    },
+    "C2_DS_CLASSE_RAGGIUNGIBILE_4": {
+      "psi": 0.006385911870972685,
+      "ks_statistic": 0.02371342647845126,
+      "ks_pvalue": 0.9357115255987645
+    },
+    "C2_NM_TEMPO_RITORNO_INVESTIM_5": {
+      "psi": 0.0006767310339918516,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "C2_DS_CLASSE_RAGGIUNGIBILE_5": {
+      "psi": 0.0006767310339918516,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "C2_NM_EP_GL_NREN_RAGGIUNG_5": {
+      "psi": 0.0006767310339918516,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "C2_NM_TEMPO_RITORNO_INVESTIM_6": {
+      "psi": 0.0023797709284588873,
+      "ks_statistic": 0.023361932629593615,
+      "ks_pvalue": 0.9425991869952293
+    },
+    "C2_NM_EP_GL_NREN_RAGGIUNG_6": {
+      "psi": 0.03462662480688731,
+      "ks_statistic": 0.023239654281659826,
+      "ks_pvalue": 0.9448858016637467
+    },
+    "C2_NM_TEMPO_RITORNO_INVESTIM_7": {
+      "psi": 0.08442414735132006,
+      "ks_statistic": 0.04711596815348414,
+      "ks_pvalue": 0.21279703268827646
+    },
+    "C2_DS_CLASSE_RAGGIUNGIBILE_7": {
+      "psi": 0.1691917656419531,
+      "ks_statistic": 0.06448129840654618,
+      "ks_pvalue": 0.030653751207064317
+    },
+    "C2_NM_EP_GL_NREN_RAGGIUNG_7": {
+      "psi": 0.09195130477124826,
+      "ks_statistic": 0.12064992521167466,
+      "ks_pvalue": 9.322248377030989e-07
+    },
+    "C2_ENERGIA_ESPORTATA": {
+      "psi": 0.0,
+      "ks_statistic": 0.0020539152759948653,
+      "ks_pvalue": 1.0
+    },
+    "C2_SUPERFICIE_DISPERDENTE": {
+      "psi": 1.1270883248584465,
+      "ks_statistic": 0.13170731707317074,
+      "ks_pvalue": 5.693707782330516e-08
+    },
+    "C2_RAPPORTO_SV": {
+      "psi": 1.2228050954099594,
+      "ks_statistic": 0.12426187419768935,
+      "ks_pvalue": 3.843002338067145e-07
+    },
+    "C2_EP_H_ND": {
+      "psi": 0.8101730339107154,
+      "ks_statistic": 0.10783055198973042,
+      "ks_pvalue": 1.7485405192703713e-05
+    },
+    "C2_A_SOL_EST_A_SUP_UTILE": {
+      "psi": 0.6774343091462905,
+      "ks_statistic": 0.07062228850019515,
+      "ks_pvalue": 0.01337387010749543
+    },
+    "C2_Y_IE": {
+      "psi": 0.722560799001248,
+      "ks_statistic": 0.11265129689498726,
+      "ks_pvalue": 6.0371940821982336e-06
+    },
+    "C2_CI_ANNO_INSTALLAZIONE_1": {
+      "psi": 1.0390217831908362,
+      "ks_statistic": 0.1186118023422395,
+      "ks_pvalue": 1.519042358975833e-06
+    },
+    "C2_CI_POTENZA_NOMINALE_1": {
+      "psi": 0.62000329849265,
+      "ks_statistic": 0.11197808916392743,
+      "ks_pvalue": 7.022271267132972e-06
+    },
+    "C2_CI_ANNO_INSTALLAZIONE_2": {
+      "psi": 0.006077872129823071,
+      "ks_statistic": 0.025252058088983443,
+      "ks_pvalue": 0.9004130307979935
+    },
+    "C2_CI_POTENZA_NOMINALE_2": {
+      "psi": 0.008171305206238228,
+      "ks_statistic": 0.02129042010057507,
+      "ks_pvalue": 0.9740520842557433
+    },
+    "C2_CI_EFFICIENZA_MEDIA": {
+      "psi": 1.1115852727045308,
+      "ks_statistic": 0.12503028757972345,
+      "ks_pvalue": 3.17271967193649e-07
+    },
+    "C2_CI_EPREN": {
+      "psi": 0.11828431909475379,
+      "ks_statistic": 0.09446250544274012,
+      "ks_pvalue": 0.00026150593917649204
+    },
+    "C2_CE_ANNO_INSTALLAZIONE_1": {
+      "psi": 0.036584610133030895,
+      "ks_statistic": 0.07218167584506295,
+      "ks_pvalue": 0.010705144901767294
+    },
+    "C2_CE_POTENZA_NOMINALE_1": {
+      "psi": 0.3152080721736568,
+      "ks_statistic": 0.05314325291990317,
+      "ks_pvalue": 0.11634089788637896
+    },
+    "C2_CE_ANNO_INSTALLAZIONE_2": {
+      "psi": 0.02103518734352014,
+      "ks_statistic": 0.03328858818141414,
+      "ks_pvalue": 0.6272586780118918
+    },
+    "C2_CE_POTENZA_NOMINALE_2": {
+      "psi": 0.010241460949974374,
+      "ks_statistic": 0.02268646884045383,
+      "ks_pvalue": 0.9545588899804038
+    },
+    "C2_CE_EFFICIENZA_MEDIA": {
+      "psi": 0.7486232220580297,
+      "ks_statistic": 0.1355584082156611,
+      "ks_pvalue": 2.029180456423638e-08
+    },
+    "C2_CE_EPREN": {
+      "psi": 0.06665102856151572,
+      "ks_statistic": 0.13350268809320226,
+      "ks_pvalue": 3.533674866765271e-08
+    },
+    "C2_PA_ANNO_INSTALLAZIONE": {
+      "psi": 0.8985731992689748,
+      "ks_statistic": 0.12143593584673244,
+      "ks_pvalue": 7.704828446968842e-07
+    },
+    "C2_PA_POTENZA_NOMINALE": {
+      "psi": 0.15155111826386122,
+      "ks_statistic": 0.10847488217736677,
+      "ks_pvalue": 1.5211579324978784e-05
+    },
+    "C2_PA_EFFICIENZA_MEDIA": {
+      "psi": 0.49419352972526065,
+      "ks_statistic": 0.12686717006842624,
+      "ks_pvalue": 1.9958540544632216e-07
+    },
+    "C2_PA_EPREN": {
+      "psi": 0.03623660409622436,
+      "ks_statistic": 0.11967846660244422,
+      "ks_pvalue": 1.177727793865918e-06
+    },
+    "C2_PA_EPNREN": {
+      "psi": 1.6387417086980087,
+      "ks_statistic": 0.12682926829268293,
+      "ks_pvalue": 2.0147366508367595e-07
+    },
+    "C2_PFR_ANNO_INSTALLAZIONE_1": {
+      "psi": 0.009890508234228625,
+      "ks_statistic": 0.027221596792787833,
+      "ks_pvalue": 0.844225459237957
+    },
+    "C2_PFR_POTENZA_NOMINALE_1": {
+      "psi": 0.03478304936770141,
+      "ks_statistic": 0.034315545819411576,
+      "ks_pvalue": 0.5889015731766319
+    },
+    "C2_PFR_ANNO_INSTALLAZIONE_2": {
+      "psi": 0.003940404683011623,
+      "ks_statistic": 0.028248554430785267,
+      "ks_pvalue": 0.8109386991970158
+    },
+    "C2_PFR_POTENZA_NOMINALE_2": {
+      "psi": 0.012365711296322553,
+      "ks_statistic": 0.01885568222068309,
+      "ks_pvalue": 0.9929922934951143
+    },
+    "C2_VM_EPREN": {
+      "psi": 0.0,
+      "ks_statistic": 0.004878048780487805,
+      "ks_pvalue": 1.0
+    },
+    "C2_ILL_POTENZA_NOMINALE": {
+      "psi": 0.0,
+      "ks_statistic": 0.042787946332890396,
+      "ks_pvalue": 0.31335688304921827
+    },
+    "C2_ILL_EPREN": {
+      "psi": 0.012773913111273042,
+      "ks_statistic": 0.042398550708289434,
+      "ks_pvalue": 0.3238132599937226
+    },
+    "C2_TPC_POTENZA_NOMINALE_1": {
+      "psi": 0.00014785416698820364,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C2_TPC_EFFICIENZA_MEDIA_1": {
+      "psi": 0.0,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "C2_TPC_EPREN_1": {
+      "psi": 0.0,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "POI_lodging_count": {
+      "psi": 0.02075385251928915,
+      "ks_statistic": 0.04863113675998475,
+      "ks_pvalue": 0.18410363302654242
+    },
+    "POI_tourist_attraction_count": {
+      "psi": 0.05514423782689547,
+      "ks_statistic": 0.08451374052173599,
+      "ks_pvalue": 0.0015508892929194818
+    },
+    "POI_cafe_count": {
+      "psi": 0.06420449369451395,
+      "ks_statistic": 0.08915580562706006,
+      "ks_pvalue": 0.0006927928552951346
+    },
+    "POI_shopping_mall_count": {
+      "psi": 0.005284324508799919,
+      "ks_statistic": 0.0238108881875055,
+      "ks_pvalue": 0.9337233664523505
+    },
+    "POI_pharmacy_count": {
+      "psi": 0.0424865091660644,
+      "ks_statistic": 0.07531353567166234,
+      "ks_pvalue": 0.006745012157331812
+    },
+    "POI_bus_station_count": {
+      "psi": 0.0,
+      "ks_statistic": 0.01784722425894132,
+      "ks_pvalue": 0.9965632298552318
+    },
+    "POI_museum_count": {
+      "psi": 0.01158437879721147,
+      "ks_statistic": 0.02303390178476755,
+      "ks_pvalue": 0.9486189439543363
+    },
+    "POI_hospital_count": {
+      "psi": 0.007493368927027468,
+      "ks_statistic": 0.03392254050188268,
+      "ks_pvalue": 0.6035436401085634
+    },
+    "POI_gym_count": {
+      "psi": 0.035593843990284986,
+      "ks_statistic": 0.09063262124620136,
+      "ks_pvalue": 0.0005312728975509595
+    },
+    "POI_park_count": {
+      "psi": 0.05405170367715419,
+      "ks_statistic": 0.07971690983212672,
+      "ks_pvalue": 0.003409250624434616
+    },
+    "POI_school_count": {
+      "psi": 0.022225230892095382,
+      "ks_statistic": 0.07108117071365885,
+      "ks_pvalue": 0.01253158975982272
+    },
+    "POI_gas_station_count": {
+      "psi": 0.041446359597646525,
+      "ks_statistic": 0.039402505578103604,
+      "ks_pvalue": 0.4120320510623235
+    },
+    "POI_transit_station_count": {
+      "psi": 0.052742682548449785,
+      "ks_statistic": 0.08395153084821015,
+      "ks_pvalue": 0.0017050447603616102
+    },
+    "POI_supermarket_count": {
+      "psi": 0.02689172576549996,
+      "ks_statistic": 0.04631687238156259,
+      "ks_pvalue": 0.22924967956582107
+    },
+    "POI_university_count": {
+      "psi": 0.0013892368000217661,
+      "ks_statistic": 0.01657300265538036,
+      "ks_pvalue": 0.9988550425733547
+    },
+    "InZTL": {
+      "psi": 0.0,
+      "ks_statistic": 0.009827840207918312,
+      "ks_pvalue": 0.9999999995747649
+    },
+    "PC_PoligonoMetrico_vertex_count": {
+      "psi": 0.05497824809447465,
+      "ks_statistic": 0.09158332412109617,
+      "ks_pvalue": 0.0004467058435620362
+    },
+    "PC_Isodistanza_vertex_count": {
+      "psi": 0.041339747462521705,
+      "ks_statistic": 0.03713381357289662,
+      "ks_pvalue": 0.48737269684159945
+    },
+    "AI_Civico_num": {
+      "psi": 0.20737824899479038,
+      "ks_statistic": 0.08998468136563707,
+      "ks_pvalue": 0.0005971178548655773
+    },
+    "A_IdTipologiaAtto_Non residenziale misto": {
+      "psi": 0.0,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "A_IdTipologiaAtto_Pertinenze": {
+      "psi": 0.0,
+      "ks_statistic": 0.017622520874177386,
+      "ks_pvalue": 0.9971193341738418
+    },
+    "A_IdTipologiaAtto_Residenziale": {
+      "psi": 0.0,
+      "ks_statistic": 0.03834892645476265,
+      "ks_pvalue": 0.4461807661360558
+    },
+    "A_IdTipologiaAtto_Residenziale misto": {
+      "psi": 0.0,
+      "ks_statistic": 0.0034910242729288823,
+      "ks_pvalue": 1.0
+    },
+    "A_IdTipologiaAtto_Terziario Commerciale": {
+      "psi": 0.0,
+      "ks_statistic": 0.05299390187500987,
+      "ks_pvalue": 0.11818911570089581
+    },
+    "A_IdDecodificaAtto_Residenziale con depositi o box": {
+      "psi": 0.0,
+      "ks_statistic": 0.00821295383428351,
+      "ks_pvalue": 0.9999999999999756
+    },
+    "A_IdDecodificaAtto_Residenziale misto": {
+      "psi": 0.0,
+      "ks_statistic": 0.004721929561354627,
+      "ks_pvalue": 1.0
+    },
+    "A_IdDecodificaAtto_Residenziale multiplo": {
+      "psi": 0.0,
+      "ks_statistic": 0.006942793135266474,
+      "ks_pvalue": 1.0
+    },
+    "A_IdDecodificaAtto_Residenziale singolo": {
+      "psi": 0.0,
+      "ks_statistic": 0.031406133319496175,
+      "ks_pvalue": 0.6979083258293444
+    },
+    "A_IdTipoConsistenza_CATASTALE": {
+      "psi": 0.0,
+      "ks_statistic": 0.49687017062567257,
+      "ks_pvalue": 6.50685726459774e-113
+    },
+    "AI_IdSettoreMercato_PER": {
+      "psi": 0.0,
+      "ks_statistic": 0.004887073012807642,
+      "ks_pvalue": 1.0
+    },
+    "AI_IdSettoreMercato_RES": {
+      "psi": 0.0,
+      "ks_statistic": 0.038806003821762386,
+      "ks_pvalue": 0.4311886686866116
+    },
+    "AI_IdSettoreMercato_TCO": {
+      "psi": 0.0,
+      "ks_statistic": 0.04369307683457003,
+      "ks_pvalue": 0.28995560967621636
+    },
+    "AI_IdCategoriaCatastale_00020": {
+      "psi": 0.0,
+      "ks_statistic": 0.02525386293544741,
+      "ks_pvalue": 0.9003715905825632
+    },
+    "AI_IdCategoriaCatastale_00040": {
+      "psi": 0.0,
+      "ks_statistic": 0.005253908056609009,
+      "ks_pvalue": 1.0
+    },
+    "AI_IdCategoriaCatastale_00050": {
+      "psi": 0.0,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "AI_IdCategoriaCatastale_00070": {
+      "psi": 0.0,
+      "ks_statistic": 0.006714931269190594,
+      "ks_pvalue": 1.0
+    },
+    "AI_IdCategoriaCatastale_00100": {
+      "psi": 0.0,
+      "ks_statistic": 0.01623008182722656,
+      "ks_pvalue": 0.9991860082426309
+    },
+    "AI_IdCategoriaCatastale_00210": {
+      "psi": 0.0,
+      "ks_statistic": 0.006029089612882994,
+      "ks_pvalue": 1.0
+    },
+    "AI_IdCategoriaCatastale_00275": {
+      "psi": 0.0,
+      "ks_statistic": 0.002565589248529614,
+      "ks_pvalue": 1.0
+    },
+    "AI_ConsistenzaUm_mq": {
+      "psi": 0.0,
+      "ks_statistic": 0.2752643536055192,
+      "ks_pvalue": 1.1065840330606011e-33
+    },
+    "AI_VisuraErrore_CheckRichiesta: DOCUMENTO NON PRONTO": {
+      "psi": 0.0,
+      "ks_statistic": 0.028627572188218414,
+      "ks_pvalue": 0.7980952937780464
+    },
+    "AI_VisuraParseMutazioniSoggettiveErrore_Repertorio eccessivamente lungo": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "OV_Id_scadente_2e761b5b-9d0f-4ec4-915b-5ae48a74fddb": {
+      "psi": 0.0,
+      "ks_statistic": 0.005648267008985879,
+      "ks_pvalue": 1.0
+    },
+    "OV_Id_scadente_405a4cae-0b5d-4188-9343-2f80550dabdb": {
+      "psi": 0.0,
+      "ks_statistic": 0.004878048780487805,
+      "ks_pvalue": 1.0
+    },
+    "OV_Id_scadente_56d45505-11c3-4da5-a88c-7a128102c55c": {
+      "psi": 0.0,
+      "ks_statistic": 0.008215661103979461,
+      "ks_pvalue": 0.9999999999999744
+    },
+    "OV_Id_scadente_8065877a-86c8-4f42-8cc1-e2cff54701cf": {
+      "psi": 0.0,
+      "ks_statistic": 0.003594351732991014,
+      "ks_pvalue": 1.0
+    },
+    "OV_Id_scadente_910544f1-92c5-4e93-b69c-1f87a4d62448": {
+      "psi": 0.0,
+      "ks_statistic": 0.009634721636273805,
+      "ks_pvalue": 0.9999999998302531
+    },
+    "OV_Id_scadente_9567d6be-e574-4ff3-a93f-979b416fa1b5": {
+      "psi": 0.0,
+      "ks_statistic": 0.010269576379974325,
+      "ks_pvalue": 0.9999999971133019
+    },
+    "OV_Id_scadente_9f6c99e5-5fb7-4745-b4b3-0ba2733f2c08": {
+      "psi": 0.0,
+      "ks_statistic": 0.005648267008985879,
+      "ks_pvalue": 1.0
+    },
+    "OV_Id_scadente_b62ebdcf-624a-4b9d-a624-c625e371d92f": {
+      "psi": 0.0,
+      "ks_statistic": 0.010269576379974325,
+      "ks_pvalue": 0.9999999971133019
+    },
+    "OV_Id_scadente_e359add3-1ec3-4be1-b848-8cbffbd14e30": {
+      "psi": 0.0,
+      "ks_statistic": 0.006675224646983312,
+      "ks_pvalue": 1.0
+    },
+    "OV_IdTipologiaEdilizia_ottimo___MISSING__": {
+      "psi": 0.0,
+      "ks_statistic": 0.012856372574455557,
+      "ks_pvalue": 0.9999943942984296
+    },
+    "C1_DATA_CHIUSURA_PRATICA_2008-12-29": {
+      "psi": 0.0,
+      "ks_statistic": 0.0012836970474967907,
+      "ks_pvalue": 1.0
+    },
+    "C1_DATA_CHIUSURA_PRATICA_2010-01-04": {
+      "psi": 0.0,
+      "ks_statistic": 0.018228498074454428,
+      "ks_pvalue": 0.9954365466091256
+    },
+    "C1_DATA_CHIUSURA_PRATICA_2011-01-03": {
+      "psi": 0.0,
+      "ks_statistic": 0.04694541016263923,
+      "ks_pvalue": 0.21622003378980573
+    },
+    "C1_DATA_CHIUSURA_PRATICA_2012-01-02": {
+      "psi": 0.0,
+      "ks_statistic": 0.0019988674588438606,
+      "ks_pvalue": 1.0
+    },
+    "C1_DATA_CHIUSURA_PRATICA_2012-12-31": {
+      "psi": 0.0,
+      "ks_statistic": 0.02079589216944801,
+      "ks_pvalue": 0.9793331006317996
+    },
+    "C1_DATA_CHIUSURA_PRATICA_2013-12-30": {
+      "psi": 0.0,
+      "ks_statistic": 0.007428296834073696,
+      "ks_pvalue": 1.0
+    },
+    "C1_DATA_CHIUSURA_PRATICA_2014-12-29": {
+      "psi": 0.0,
+      "ks_statistic": 0.011553273427471117,
+      "ks_pvalue": 0.9999997682307173
+    },
+    "C1_DATA_CHIUSURA_PRATICA_2016-01-04": {
+      "psi": 0.0,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "C1_SEZIONE_CU": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C1_SEZIONE_E897": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C1_SEZIONE_NCEU": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C1_DESTINAZIONE_DI_USO_E.1(1)": {
+      "psi": 0.0,
+      "ks_statistic": 0.04111485366079264,
+      "ks_pvalue": 0.3599497092074771
+    },
+    "C1_DESTINAZIONE_DI_USO_E.1(2)": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C1_DESTINAZIONE_DI_USO_E.2": {
+      "psi": 0.0,
+      "ks_statistic": 0.022002432030610197,
+      "ks_pvalue": 0.964980937059517
+    },
+    "C1_DESTINAZIONE_DI_USO_E.3": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C1_DESTINAZIONE_DI_USO_E.4(3)": {
+      "psi": 0.0,
+      "ks_statistic": 0.0007702182284980744,
+      "ks_pvalue": 1.0
+    },
+    "C1_CLASSE_ENERGETICA_A": {
+      "psi": 0.0,
+      "ks_statistic": 0.0023106546854942235,
+      "ks_pvalue": 1.0
+    },
+    "C1_CLASSE_ENERGETICA_B": {
+      "psi": 0.0,
+      "ks_statistic": 0.017458279845956354,
+      "ks_pvalue": 0.9974781741677116
+    },
+    "C1_CLASSE_ENERGETICA_C": {
+      "psi": 0.0,
+      "ks_statistic": 0.00693196405648267,
+      "ks_pvalue": 1.0
+    },
+    "C1_CLASSE_ENERGETICA_E": {
+      "psi": 0.0,
+      "ks_statistic": 0.023657927449684264,
+      "ks_pvalue": 0.9368328840530691
+    },
+    "C1_CLASSE_ENERGETICA_F": {
+      "psi": 0.0,
+      "ks_statistic": 0.021052631578947368,
+      "ks_pvalue": 0.9766917087452129
+    },
+    "C1_CLASSE_ENERGETICA_G": {
+      "psi": 0.0,
+      "ks_statistic": 0.05403033495694313,
+      "ks_pvalue": 0.10578626816207365
+    },
+    "C1_TIPOLOGIA_PANNELLO_ST_Collettori piani vetrati": {
+      "psi": 0.0,
+      "ks_statistic": 0.026279015726980874,
+      "ks_pvalue": 0.8725072957352475
+    },
+    "C1_SUPERFICIE_CAPTANTE_FV_17.6000": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C1_SUPERFICIE_APERTURA_ST_10.8000": {
+      "psi": 0.0,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "C1_SUPERFICIE_APERTURA_ST_11.3600": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C1_SUPERFICIE_APERTURA_ST_3.6800": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C1_SUPERFICIE_APERTURA_ST_3.8000": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C1_SUPERFICIE_APERTURA_ST_35.9700": {
+      "psi": 0.0,
+      "ks_statistic": 0.0025673940949935813,
+      "ks_pvalue": 1.0
+    },
+    "C1_SUPERFICIE_APERTURA_ST_9.3400": {
+      "psi": 0.0,
+      "ks_statistic": 0.0012836970474967907,
+      "ks_pvalue": 1.0
+    },
+    "C1_TIPOLOGIA_COMBUSTIBILE_Gas naturale": {
+      "psi": 0.0,
+      "ks_statistic": 0.020671808975050252,
+      "ks_pvalue": 0.980532716285144
+    },
+    "C1_TIPOLOGIA_COMBUSTIBILE_Gas naturale|Energia elettrica": {
+      "psi": 0.0,
+      "ks_statistic": 0.018998716302952502,
+      "ks_pvalue": 0.992320903608819
+    },
+    "C1_TIPOLOGIA_COMBUSTIBILE_Gas naturale|Gasolio": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C1_TIPOLOGIA_COMBUSTIBILE_Gas naturale|RSU": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C1_TIPOLOGIA_COMBUSTIBILE_Gasolio": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C1_TIPOLOGIA_COMBUSTIBILE_RSU": {
+      "psi": 0.0,
+      "ks_statistic": 0.0007702182284980744,
+      "ks_pvalue": 1.0
+    },
+    "C2_CLASSIFICAZIONE_DPR_E.1 (1)": {
+      "psi": 0.0,
+      "ks_statistic": 0.014208202575967116,
+      "ks_pvalue": 0.9999366463626864
+    },
+    "C2_CLASSIFICAZIONE_DPR_E.1 (3)": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C2_CLASSIFICAZIONE_DPR_E.1(1)": {
+      "psi": 0.0,
+      "ks_statistic": 0.048523748395378694,
+      "ks_pvalue": 0.186029110990358
+    },
+    "C2_CLASSIFICAZIONE_DPR_E.4 (3)": {
+      "psi": 0.0,
+      "ks_statistic": 0.0010269576379974327,
+      "ks_pvalue": 1.0
+    },
+    "C2_CLASSIFICAZIONE_DPR_E.5": {
+      "psi": 0.0,
+      "ks_statistic": 0.020396118677679237,
+      "ks_pvalue": 0.9830234698749496
+    },
+    "C2_PI_green": {
+      "psi": 0.0,
+      "ks_statistic": 0.004107830551989731,
+      "ks_pvalue": 1.0
+    },
+    "C2_PI_red": {
+      "psi": 0.0,
+      "ks_statistic": 0.014120667522464698,
+      "ks_pvalue": 0.9999446992504257
+    },
+    "C2_PI_yellow": {
+      "psi": 0.0,
+      "ks_statistic": 0.010012836970474968,
+      "ks_pvalue": 0.9999999990219784
+    },
+    "C2_PE_green": {
+      "psi": 0.0,
+      "ks_statistic": 0.07265725288831835,
+      "ks_pvalue": 0.00999171067205119
+    },
+    "C2_PE_red": {
+      "psi": 0.0,
+      "ks_statistic": 0.04289443227426447,
+      "ks_pvalue": 0.3105509801242875
+    },
+    "C2_PE_yellow": {
+      "psi": 0.0,
+      "ks_statistic": 0.11555168516258282,
+      "ks_pvalue": 3.1122580195555042e-06
+    },
+    "C2_CLASSE_ENERGETICA_A1": {
+      "psi": 0.0,
+      "ks_statistic": 0.0038510911424903724,
+      "ks_pvalue": 1.0
+    },
+    "C2_CLASSE_ENERGETICA_A2": {
+      "psi": 0.0,
+      "ks_statistic": 0.0020539152759948653,
+      "ks_pvalue": 1.0
+    },
+    "C2_CLASSE_ENERGETICA_A3": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C2_CLASSE_ENERGETICA_A4": {
+      "psi": 0.0,
+      "ks_statistic": 0.0012836970474967907,
+      "ks_pvalue": 1.0
+    },
+    "C2_CLASSE_ENERGETICA_B": {
+      "psi": 0.0,
+      "ks_statistic": 0.010783055198973043,
+      "ks_pvalue": 0.9999999799027391
+    },
+    "C2_CLASSE_ENERGETICA_C": {
+      "psi": 0.0,
+      "ks_statistic": 0.017715019255455714,
+      "ks_pvalue": 0.996899581379096
+    },
+    "C2_CLASSE_ENERGETICA_D": {
+      "psi": 0.0,
+      "ks_statistic": 0.0032821132947246593,
+      "ks_pvalue": 1.0
+    },
+    "C2_CLASSE_ENERGETICA_E": {
+      "psi": 0.0,
+      "ks_statistic": 0.02632864900473998,
+      "ks_pvalue": 0.8710919887412902
+    },
+    "C2_CLASSE_ENERGETICA_F": {
+      "psi": 0.0,
+      "ks_statistic": 0.0790757381258023,
+      "ks_pvalue": 0.0037741265640529884
+    },
+    "C2_CLASSE_ENERGETICA_G": {
+      "psi": 0.0,
+      "ks_statistic": 0.1446300177551771,
+      "ks_pvalue": 1.5859047884843776e-09
+    },
+    "C2_RIQ_CLASSE_RAGG_A1": {
+      "psi": 0.0,
+      "ks_statistic": 0.013350449293966624,
+      "ks_pvalue": 0.9999851727484701
+    },
+    "C2_RIQ_CLASSE_RAGG_A2": {
+      "psi": 0.0,
+      "ks_statistic": 0.004878048780487805,
+      "ks_pvalue": 1.0
+    },
+    "C2_RIQ_CLASSE_RAGG_A3": {
+      "psi": 0.0,
+      "ks_statistic": 0.0015404364569961489,
+      "ks_pvalue": 1.0
+    },
+    "C2_RIQ_CLASSE_RAGG_C": {
+      "psi": 0.0,
+      "ks_statistic": 0.020025673940949937,
+      "ks_pvalue": 0.9860128186586169
+    },
+    "C2_RIQ_CLASSE_RAGG_D": {
+      "psi": 0.0,
+      "ks_statistic": 0.0665713106118204,
+      "ks_pvalue": 0.0233093749860186
+    },
+    "C2_RIQ_CLASSE_RAGG_E": {
+      "psi": 0.0,
+      "ks_statistic": 0.026700898587933248,
+      "ks_pvalue": 0.860141915846882
+    },
+    "C2_RIQ_CLASSE_RAGG_F": {
+      "psi": 0.0,
+      "ks_statistic": 0.025215509948088105,
+      "ks_pvalue": 0.9013442151386327
+    },
+    "C2_RIQ_CLASSE_RAGG_G": {
+      "psi": 0.0,
+      "ks_statistic": 0.00975609756097561,
+      "ks_pvalue": 0.9999999996956762
+    },
+    "C2_FL_COMPORTA_RISTRUT_1_No": {
+      "psi": 0.0,
+      "ks_statistic": 0.032349165596919124,
+      "ks_pvalue": 0.6625631452360086
+    },
+    "C2_FL_COMPORTA_RISTRUT_2_No": {
+      "psi": 0.0,
+      "ks_statistic": 0.004878048780487805,
+      "ks_pvalue": 1.0
+    },
+    "C2_FL_COMPORTA_RISTRUT_3_Si": {
+      "psi": 0.0,
+      "ks_statistic": 0.0010269576379974327,
+      "ks_pvalue": 1.0
+    },
+    "C2_FL_COMPORTA_RISTRUT_5_Si": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C2_FL_COMPORTA_RISTRUT_7_No": {
+      "psi": 0.0,
+      "ks_statistic": 0.010269576379974325,
+      "ks_pvalue": 0.9999999971133019
+    },
+    "C2_CI_TIPO_IMPIANTO_1_Generatore a biomassa": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C2_CI_TIPO_IMPIANTO_1_Generatore a combustione": {
+      "psi": 0.0,
+      "ks_statistic": 0.0688936967993304,
+      "ks_pvalue": 0.01701969591396234
+    },
+    "C2_CI_TIPO_IMPIANTO_1_Generatore ad effetto joule": {
+      "psi": 0.0,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "C2_CI_TIPO_IMPIANTO_1_Generatore di aria calda": {
+      "psi": 0.0,
+      "ks_statistic": 0.0030808729139922978,
+      "ks_pvalue": 1.0
+    },
+    "C2_CI_TIPO_IMPIANTO_1_Impianto simulato in quanto assente": {
+      "psi": 0.0,
+      "ks_statistic": 0.010269576379974325,
+      "ks_pvalue": 0.9999999971133019
+    },
+    "C2_CI_TIPO_IMPIANTO_1_Impianto simulato per sottodimensionamento": {
+      "psi": 0.0,
+      "ks_statistic": 0.0038510911424903724,
+      "ks_pvalue": 1.0
+    },
+    "C2_CI_TIPO_IMPIANTO_1_Pompa di calore": {
+      "psi": 0.0,
+      "ks_statistic": 0.0061617458279845955,
+      "ks_pvalue": 1.0
+    },
+    "C2_CI_TIPO_IMPIANTO_1_Teleriscaldamento": {
+      "psi": 0.0,
+      "ks_statistic": 0.044760192306390736,
+      "ks_pvalue": 0.2640066704785296
+    },
+    "C2_CI_VETTORE_ENERGETICO_1_Gas naturale": {
+      "psi": 0.0,
+      "ks_statistic": 0.10474967907573812,
+      "ks_pvalue": 3.3670164066816313e-05
+    },
+    "C2_CI_TIPO_IMPIANTO_2_Generatore a biomassa": {
+      "psi": 0.0,
+      "ks_statistic": 0.0010269576379974327,
+      "ks_pvalue": 1.0
+    },
+    "C2_CI_TIPO_IMPIANTO_2_Generatore di aria calda": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C2_CI_TIPO_IMPIANTO_2_Teleriscaldamento": {
+      "psi": 0.0,
+      "ks_statistic": 0.0012836970474967907,
+      "ks_pvalue": 1.0
+    },
+    "C2_CI_VETTORE_ENERGETICO_2_Biomasse solide": {
+      "psi": 0.0,
+      "ks_statistic": 0.0012836970474967907,
+      "ks_pvalue": 1.0
+    },
+    "C2_CI_VETTORE_ENERGETICO_2_Energia elettrica": {
+      "psi": 0.0,
+      "ks_statistic": 0.01393973166445197,
+      "ks_pvalue": 0.9999585935213446
+    },
+    "C2_CE_TIPO_IMPIANTO_1_Impianto simulato per sottodimensionamento": {
+      "psi": 0.0,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "C2_PA_TIPO_IMPIANTO_Generatore a combustione": {
+      "psi": 0.0,
+      "ks_statistic": 0.08455480077879125,
+      "ks_pvalue": 0.0015402349459610152
+    },
+    "C2_PA_TIPO_IMPIANTO_Generatore ad effetto joule": {
+      "psi": 0.0,
+      "ks_statistic": 0.0030808729139922978,
+      "ks_pvalue": 1.0
+    },
+    "C2_PA_TIPO_IMPIANTO_Impianto simulato per sottodimensionamento": {
+      "psi": 0.0,
+      "ks_statistic": 0.003594351732991014,
+      "ks_pvalue": 1.0
+    },
+    "C2_PA_TIPO_IMPIANTO_Pompa di calore": {
+      "psi": 0.0,
+      "ks_statistic": 0.00693196405648267,
+      "ks_pvalue": 1.0
+    },
+    "C2_PA_TIPO_IMPIANTO_Scalda-acqua": {
+      "psi": 0.0,
+      "ks_statistic": 0.0388551858879055,
+      "ks_pvalue": 0.4295929527141324
+    },
+    "C2_PA_TIPO_IMPIANTO_Teleriscaldamento": {
+      "psi": 0.0,
+      "ks_statistic": 0.03209242618741977,
+      "ks_pvalue": 0.6722075215385551
+    },
+    "C2_PA_VETTORE_ENERGETICO_Energia elettrica": {
+      "psi": 0.0,
+      "ks_statistic": 0.034802854364682764,
+      "ks_pvalue": 0.5708862896731206
+    },
+    "C2_PA_VETTORE_ENERGETICO_Gas naturale": {
+      "psi": 0.0,
+      "ks_statistic": 0.06792223819009996,
+      "ks_pvalue": 0.0194382795652959
+    },
+    "C2_PA_VETTORE_ENERGETICO_Gasolio e olio combustibile": {
+      "psi": 0.0,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "C2_PFR_TIPO_IMPIANTO_1_Fotovoltaico": {
+      "psi": 0.0,
+      "ks_statistic": 0.008255367726186742,
+      "ks_pvalue": 0.9999999999999658
+    },
+    "C2_PFR_TIPO_IMPIANTO_1_Generatore a biomassa": {
+      "psi": 0.0,
+      "ks_statistic": 0.0012836970474967907,
+      "ks_pvalue": 1.0
+    },
+    "C2_PFR_TIPO_IMPIANTO_1_Pompa di calore": {
+      "psi": 0.0,
+      "ks_statistic": 0.0068457826378282285,
+      "ks_pvalue": 1.0
+    },
+    "C2_PFR_TIPO_IMPIANTO_1_Solare termico": {
+      "psi": 0.0,
+      "ks_statistic": 0.0007702182284980744,
+      "ks_pvalue": 1.0
+    },
+    "C2_PFR_TIPO_IMPIANTO_2_Solare termico": {
+      "psi": 0.0,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "C2_TITOLO_CERT_Diploma di geometra": {
+      "psi": 0.0,
+      "ks_statistic": 0.16528287584235568,
+      "ks_pvalue": 2.5582392905244767e-12
+    },
+    "C2_TITOLO_CERT_Diploma di laurea in architettura": {
+      "psi": 0.0,
+      "ks_statistic": 0.05103564346160527,
+      "ks_pvalue": 0.14489577045375518
+    },
+    "C2_TITOLO_CERT_Diploma di laurea in scienze geologiche": {
+      "psi": 0.0,
+      "ks_statistic": 0.0012836970474967907,
+      "ks_pvalue": 1.0
+    },
+    "C2_TITOLO_CERT_Diploma di perito agrario": {
+      "psi": 0.0,
+      "ks_statistic": 0.0005134788189987163,
+      "ks_pvalue": 1.0
+    },
+    "C2_TITOLO_CERT_Diploma di perito industriale o di istruzione tecnica": {
+      "psi": 0.0,
+      "ks_statistic": 0.012836970474967908,
+      "ks_pvalue": 0.9999946130221395
+    },
+    "C2_TITOLO_CERT_Laurea magistrale in architettura": {
+      "psi": 0.0,
+      "ks_statistic": 0.028754813863928114,
+      "ks_pvalue": 0.7937310325945052
+    },
+    "C2_TITOLO_CERT_Laurea magistrale in ingegneria": {
+      "psi": 0.0,
+      "ks_statistic": 0.05391527599486521,
+      "ks_pvalue": 0.10710474247458746
+    },
+    "C2_TITOLO_CERT_Laurea magistrale in scienze e tecnologie agrarie": {
+      "psi": 0.0,
+      "ks_statistic": 0.005905006418485238,
+      "ks_pvalue": 1.0
+    },
+    "C2_ORDINE_CERT_Altro": {
+      "psi": 0.0,
+      "ks_statistic": 0.007702182284980745,
+      "ks_pvalue": 1.0
+    },
+    "C2_ORDINE_CERT_Collegio dei geometri": {
+      "psi": 0.0,
+      "ks_statistic": 0.13400037450564128,
+      "ks_pvalue": 3.0922733449875215e-08
+    },
+    "C2_ORDINE_CERT_Collegio dei periti agrari": {
+      "psi": 0.0,
+      "ks_statistic": 0.00025673940949935817,
+      "ks_pvalue": 1.0
+    },
+    "C2_ORDINE_CERT_Ordine degli architetti": {
+      "psi": 0.0,
+      "ks_statistic": 0.05312926535980742,
+      "ks_pvalue": 0.11650797265433721
+    },
+    "C2_ORDINE_CERT_Ordine degli ingegneri": {
+      "psi": 0.0,
+      "ks_statistic": 0.05442694996739996,
+      "ks_pvalue": 0.10133474659692303
+    },
+    "AI_ZonaOmi__target": {
+      "psi": 0.04493645796386752,
+      "ks_statistic": 0.03950989394270966,
+      "ks_pvalue": 0.4086580804794604
+    },
+    "C1_MOTIVAZIONE_APE__target": {
+      "psi": 0.00027019321647799493,
+      "ks_statistic": 0.037227214377406934,
+      "ks_pvalue": 0.4841409839889535
+    },
+    "C1_TIPOLOGIA_VENTILAZIONE__target": {
+      "psi": 0.0021601117281553014,
+      "ks_statistic": 0.01570081060166813,
+      "ks_pvalue": 0.9995411373363494
+    },
+    "C1_TIPOLOGIA_GENERATORE__target": {
+      "psi": 0.3366248286588977,
+      "ks_statistic": 0.05593128949511676,
+      "ks_pvalue": 0.08582427352169432
+    },
+    "C1_ANNO_COSTRUZIONE__freq": {
+      "psi": 0.42634739882961026,
+      "ks_statistic": 0.07456948771689179,
+      "ks_pvalue": 0.007541106232193123
+    },
+    "C1_NUMERO_RICAMBI_ORARI__freq": {
+      "psi": 0.14737302108682618,
+      "ks_statistic": 0.04445562446559624,
+      "ks_pvalue": 0.2712305670544213
+    },
+    "C2_PIANO__freq": {
+      "psi": 0.630219907992439,
+      "ks_statistic": 0.13352163898107394,
+      "ks_pvalue": 3.515297263680614e-08
+    },
+    "C2_ANNO_COSTRUZIONE__freq": {
+      "psi": 0.7364710015866095,
+      "ks_statistic": 0.1898454825821036,
+      "ks_pvalue": 3.9056012309794405e-16
+    },
+    "OV_Id_ottimo__ord": {
+      "psi": 1.5085538497969047,
+      "ks_statistic": 0.26441000697121947,
+      "ks_pvalue": 4.455616717113011e-31
+    },
+    "OV_IdZona_normale__ord": {
+      "psi": 6.067480829640691,
+      "ks_statistic": 0.8804920913884007,
+      "ks_pvalue": 5.2e-322
+    },
+    "C1_SUBALTERNO__ord": {
+      "psi": 0.7156858831482017,
+      "ks_statistic": 0.10717539272331027,
+      "ks_pvalue": 2.0133757537175565e-05
+    },
+    "C2_CI_CODICE_CATASTO_1__ord": {
+      "psi": 0.0004801724203683767,
+      "ks_statistic": 0.03957757568510844,
+      "ks_pvalue": 0.4065140758683728
+    }
+  },
+  "alerts": [
+    {
+      "feature": "A_AnnoStipula",
+      "method": "psi",
+      "value": 7.8510511387353725,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "A_AnnoStipula",
+      "method": "ks_test",
+      "statistic": 1.0,
+      "pvalue": 0.0,
+      "severity": "high"
+    },
+    {
+      "feature": "A_MeseStipula",
+      "method": "psi",
+      "value": 3.2849815521481065,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "A_MeseStipula",
+      "method": "ks_test",
+      "statistic": 0.47080457799305586,
+      "pvalue": 8.118915302532034e-101,
+      "severity": "high"
+    },
+    {
+      "feature": "A_Semestre",
+      "method": "psi",
+      "value": 7.158757779295527,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "A_Semestre",
+      "method": "ks_test",
+      "statistic": 1.0,
+      "pvalue": 0.0,
+      "severity": "high"
+    },
+    {
+      "feature": "A_RegPart",
+      "method": "psi",
+      "value": 5.37300957845792,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "A_RegPart",
+      "method": "ks_test",
+      "statistic": 0.3607188703465982,
+      "pvalue": 3.608262754626093e-58,
+      "severity": "high"
+    },
+    {
+      "feature": "A_Numero",
+      "method": "psi",
+      "value": 6.900851648375276,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "A_Numero",
+      "method": "ks_test",
+      "statistic": 1.0,
+      "pvalue": 0.0,
+      "severity": "high"
+    },
+    {
+      "feature": "AI_Foglio",
+      "method": "ks_test",
+      "statistic": 0.1297842531658135,
+      "pvalue": 9.426221674100792e-08,
+      "severity": "high"
+    },
+    {
+      "feature": "AI_Particella",
+      "method": "ks_test",
+      "statistic": 0.10223643037466357,
+      "pvalue": 5.6661935874383095e-05,
+      "severity": "high"
+    },
+    {
+      "feature": "AI_Latitudine",
+      "method": "ks_test",
+      "statistic": 0.06623741401598643,
+      "pvalue": 0.024367923264187213,
+      "severity": "moderate"
+    },
+    {
+      "feature": "AI_Longitudine",
+      "method": "ks_test",
+      "statistic": 0.06485490162458743,
+      "pvalue": 0.02920943104566102,
+      "severity": "moderate"
+    },
+    {
+      "feature": "AI_ConsistenzaValore",
+      "method": "psi",
+      "value": 0.7046898180351379,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "AI_ConsistenzaValore",
+      "method": "ks_test",
+      "statistic": 0.29307232245386927,
+      "pvalue": 3.3766220970695965e-38,
+      "severity": "high"
+    },
+    {
+      "feature": "AI_IdParticellaCatastale",
+      "method": "ks_test",
+      "statistic": 0.12255629428924018,
+      "pvalue": 5.857275557441866e-07,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P1",
+      "method": "ks_test",
+      "statistic": 0.07383040308989715,
+      "pvalue": 0.0084152403952818,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P17",
+      "method": "ks_test",
+      "statistic": 0.0713717509943576,
+      "pvalue": 0.012024631619791008,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P23",
+      "method": "ks_test",
+      "statistic": 0.06387306514818918,
+      "pvalue": 0.03314471947966543,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P25",
+      "method": "ks_test",
+      "statistic": 0.07133971496962217,
+      "pvalue": 0.012079403897999044,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P26",
+      "method": "ks_test",
+      "statistic": 0.11339760090783776,
+      "pvalue": 5.099198855995292e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P27",
+      "method": "ks_test",
+      "statistic": 0.09569341073116586,
+      "pvalue": 0.0002069305940938687,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P29",
+      "method": "ks_test",
+      "statistic": 0.09856988478311386,
+      "pvalue": 0.0001183328371699777,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P36",
+      "method": "ks_test",
+      "statistic": 0.07352899373041459,
+      "pvalue": 0.008797457470119608,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P42",
+      "method": "ks_test",
+      "statistic": 0.07956620515238544,
+      "pvalue": 0.0034921156025467855,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P43",
+      "method": "ks_test",
+      "statistic": 0.08763386884631957,
+      "pvalue": 0.000906635235052592,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P70",
+      "method": "ks_test",
+      "statistic": 0.06829899988945315,
+      "pvalue": 0.01846730194191571,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P71",
+      "method": "ks_test",
+      "statistic": 0.07110192644799447,
+      "pvalue": 0.012495622219283237,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P86",
+      "method": "ks_test",
+      "statistic": 0.08560386778597229,
+      "pvalue": 0.0012885908390567551,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P90",
+      "method": "ks_test",
+      "statistic": 0.0742035550963224,
+      "pvalue": 0.007963087567028253,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P91",
+      "method": "ks_test",
+      "statistic": 0.07210271381226438,
+      "pvalue": 0.01082713127015483,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P96",
+      "method": "ks_test",
+      "statistic": 0.06328107550800788,
+      "pvalue": 0.03573387974149421,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_IT1",
+      "method": "ks_test",
+      "statistic": 0.08874565426812348,
+      "pvalue": 0.0007452020645307712,
+      "severity": "high"
+    },
+    {
+      "feature": "II_ST1",
+      "method": "ks_test",
+      "statistic": 0.09912397264755184,
+      "pvalue": 0.00010604490642423063,
+      "severity": "high"
+    },
+    {
+      "feature": "II_ST28",
+      "method": "ks_test",
+      "statistic": 0.07469176606482557,
+      "pvalue": 0.007403844940595187,
+      "severity": "high"
+    },
+    {
+      "feature": "II_ST33",
+      "method": "ks_test",
+      "statistic": 0.06753735468165893,
+      "pvalue": 0.020477505544641866,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_A3",
+      "method": "ks_test",
+      "statistic": 0.07952875458825812,
+      "pvalue": 0.003512779216140932,
+      "severity": "high"
+    },
+    {
+      "feature": "ISC_Sez21",
+      "method": "ks_test",
+      "statistic": 0.11505399875014383,
+      "pvalue": 3.4910849911851815e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "ISC_ShapeLeng",
+      "method": "ks_test",
+      "statistic": 0.06518157883456552,
+      "pvalue": 0.027993041607000235,
+      "severity": "moderate"
+    },
+    {
+      "feature": "ISC_ShapeArea",
+      "method": "ks_test",
+      "statistic": 0.06938416382591353,
+      "pvalue": 0.01590498704574579,
+      "severity": "moderate"
+    },
+    {
+      "feature": "OV_ValoreMercatoMin_normale",
+      "method": "ks_test",
+      "statistic": 0.11839341592009944,
+      "pvalue": 1.5993266638203276e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_ValoreMercatoMin_ottimo",
+      "method": "ks_test",
+      "statistic": 0.09185946563008318,
+      "pvalue": 0.00042462791130362703,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_ValoreLocazioneMin_normale",
+      "method": "psi",
+      "value": 0.7695835839808967,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_ValoreLocazioneMin_normale",
+      "method": "ks_test",
+      "statistic": 0.22313452197513373,
+      "pvalue": 3.555080531923166e-22,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_ValoreLocazioneMin_ottimo",
+      "method": "psi",
+      "value": 0.16226624417022512,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "OV_ValoreLocazioneMin_ottimo",
+      "method": "ks_test",
+      "statistic": 0.15006486166979882,
+      "pvalue": 3.176236000717291e-10,
+      "severity": "high"
+    },
+    {
+      "feature": "PC_Area",
+      "method": "ks_test",
+      "statistic": 0.11575112069685121,
+      "pvalue": 2.9715491701098984e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "PC_Perimetro",
+      "method": "ks_test",
+      "statistic": 0.10910748086298734,
+      "pvalue": 1.3254336722539066e-05,
+      "severity": "high"
+    },
+    {
+      "feature": "C1_SUPERFICIE_DISPERDENTE",
+      "method": "psi",
+      "value": 0.35532425663035294,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C1_TRASMITTANZA_MEDIA_INVOLUCRO",
+      "method": "psi",
+      "value": 0.16596181507019228,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C1_TRASMITTANZA_MEDIA_SERRAMENTO",
+      "method": "ks_test",
+      "statistic": 0.06524971178858029,
+      "pvalue": 0.027748118950185006,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C1_ETC",
+      "method": "ks_test",
+      "statistic": 0.060590500641848524,
+      "pvalue": 0.049867437162172144,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C1_EPW",
+      "method": "psi",
+      "value": 0.23481282325899167,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C1_EF_GLOB_MEDIA_RISCALDAMENTO",
+      "method": "ks_test",
+      "statistic": 0.06230149508968959,
+      "pvalue": 0.040412963023846026,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C1_EF_GLOB_MEDIA_ACQUA_CALDA_SAN",
+      "method": "ks_test",
+      "statistic": 0.06756217132053847,
+      "pvalue": 0.020409629055815195,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C1_EGHW",
+      "method": "psi",
+      "value": 0.1988625140946719,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C1_EGHW",
+      "method": "ks_test",
+      "statistic": 0.0658958468226806,
+      "pvalue": 0.025493157074036227,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_COD_APE",
+      "method": "psi",
+      "value": 1.2192203331656648,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_COD_APE",
+      "method": "ks_test",
+      "statistic": 0.14163577747145523,
+      "pvalue": 3.746782993863844e-09,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_FOGLIO",
+      "method": "psi",
+      "value": 0.43003187039029145,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_FOGLIO",
+      "method": "ks_test",
+      "statistic": 0.14311891005322042,
+      "pvalue": 2.4528038253612852e-09,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PARTICELLA",
+      "method": "psi",
+      "value": 1.2600811451042704,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PARTICELLA",
+      "method": "ks_test",
+      "statistic": 0.11886854175173886,
+      "pvalue": 1.4290857729220702e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_SUBALTERNO",
+      "method": "psi",
+      "value": 0.9362355020306388,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_SUBALTERNO",
+      "method": "ks_test",
+      "statistic": 0.21573645631933147,
+      "pvalue": 9.568204837830497e-21,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_NUMERO_UNITA_IMMOBILIARI",
+      "method": "psi",
+      "value": 0.38375295934849696,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_NUMERO_UNITA_IMMOBILIARI",
+      "method": "ks_test",
+      "statistic": 0.11005683010303417,
+      "pvalue": 1.0762402413767171e-05,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_SUPERF_UTILE_RISCALDATA",
+      "method": "ks_test",
+      "statistic": 0.11192078528869648,
+      "pvalue": 7.114422966164552e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_SUPERF_UTILE_RAFFRESCATA",
+      "method": "psi",
+      "value": 0.2583448032394763,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_SUPERF_UTILE_RAFFRESCATA",
+      "method": "ks_test",
+      "statistic": 0.13452964573119972,
+      "pvalue": 2.6815998755084635e-08,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_VOLUME_LORDO_RISCALDATO",
+      "method": "psi",
+      "value": 0.9434044960431086,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_VOLUME_LORDO_RISCALDATO",
+      "method": "ks_test",
+      "statistic": 0.1160286158406862,
+      "pvalue": 2.7867991002981567e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_EP_GL_NREN",
+      "method": "psi",
+      "value": 1.1956406513904283,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_EP_GL_NREN",
+      "method": "ks_test",
+      "statistic": 0.10911424903722722,
+      "pvalue": 1.3232947540575907e-05,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_EP_GL_REN",
+      "method": "psi",
+      "value": 0.8283686446661537,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_EP_GL_REN",
+      "method": "ks_test",
+      "statistic": 0.11424903722721438,
+      "pvalue": 4.199188381377975e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CONSUMI_ENERGIA_ELETTRICA",
+      "method": "psi",
+      "value": 0.8574356861220708,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CONSUMI_ENERGIA_ELETTRICA",
+      "method": "ks_test",
+      "statistic": 0.11296534017971759,
+      "pvalue": 5.622783711583743e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CONSUMI_GAS_NATURALE",
+      "method": "psi",
+      "value": 0.27927156563124694,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CONSUMI_GAS_NATURALE",
+      "method": "ks_test",
+      "statistic": 0.09773153360060101,
+      "pvalue": 0.00013950703979581874,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CONSUMI_TELERISCALDAMENTO",
+      "method": "ks_test",
+      "statistic": 0.09704749679075739,
+      "pvalue": 0.00015937162765019002,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_RIQ_EP_GL_NREN_RAGG",
+      "method": "psi",
+      "value": 0.23247016182966915,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_NM_TEMPO_RITORNO_INVESTIM_1",
+      "method": "psi",
+      "value": 0.18070100131606917,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_NM_TEMPO_RITORNO_INVESTIM_1",
+      "method": "ks_test",
+      "statistic": 0.07804878048780488,
+      "pvalue": 0.004434774684293517,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_NM_EP_GL_NREN_RAGGIUNG_1",
+      "method": "psi",
+      "value": 0.35472364817091256,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_NM_EP_GL_NREN_RAGGIUNG_1",
+      "method": "ks_test",
+      "statistic": 0.08343850324082744,
+      "pvalue": 0.0018580154017481868,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_NM_EP_GL_NREN_RAGGIUNG_2",
+      "method": "psi",
+      "value": 0.3358242288723629,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_DS_CLASSE_RAGGIUNGIBILE_7",
+      "method": "psi",
+      "value": 0.1691917656419531,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_DS_CLASSE_RAGGIUNGIBILE_7",
+      "method": "ks_test",
+      "statistic": 0.06448129840654618,
+      "pvalue": 0.030653751207064317,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_NM_EP_GL_NREN_RAGGIUNG_7",
+      "method": "ks_test",
+      "statistic": 0.12064992521167466,
+      "pvalue": 9.322248377030989e-07,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_SUPERFICIE_DISPERDENTE",
+      "method": "psi",
+      "value": 1.1270883248584465,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_SUPERFICIE_DISPERDENTE",
+      "method": "ks_test",
+      "statistic": 0.13170731707317074,
+      "pvalue": 5.693707782330516e-08,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_RAPPORTO_SV",
+      "method": "psi",
+      "value": 1.2228050954099594,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_RAPPORTO_SV",
+      "method": "ks_test",
+      "statistic": 0.12426187419768935,
+      "pvalue": 3.843002338067145e-07,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_EP_H_ND",
+      "method": "psi",
+      "value": 0.8101730339107154,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_EP_H_ND",
+      "method": "ks_test",
+      "statistic": 0.10783055198973042,
+      "pvalue": 1.7485405192703713e-05,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_A_SOL_EST_A_SUP_UTILE",
+      "method": "psi",
+      "value": 0.6774343091462905,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_A_SOL_EST_A_SUP_UTILE",
+      "method": "ks_test",
+      "statistic": 0.07062228850019515,
+      "pvalue": 0.01337387010749543,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_Y_IE",
+      "method": "psi",
+      "value": 0.722560799001248,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_Y_IE",
+      "method": "ks_test",
+      "statistic": 0.11265129689498726,
+      "pvalue": 6.0371940821982336e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CI_ANNO_INSTALLAZIONE_1",
+      "method": "psi",
+      "value": 1.0390217831908362,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CI_ANNO_INSTALLAZIONE_1",
+      "method": "ks_test",
+      "statistic": 0.1186118023422395,
+      "pvalue": 1.519042358975833e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CI_POTENZA_NOMINALE_1",
+      "method": "psi",
+      "value": 0.62000329849265,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CI_POTENZA_NOMINALE_1",
+      "method": "ks_test",
+      "statistic": 0.11197808916392743,
+      "pvalue": 7.022271267132972e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CI_EFFICIENZA_MEDIA",
+      "method": "psi",
+      "value": 1.1115852727045308,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CI_EFFICIENZA_MEDIA",
+      "method": "ks_test",
+      "statistic": 0.12503028757972345,
+      "pvalue": 3.17271967193649e-07,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CI_EPREN",
+      "method": "ks_test",
+      "statistic": 0.09446250544274012,
+      "pvalue": 0.00026150593917649204,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CE_ANNO_INSTALLAZIONE_1",
+      "method": "ks_test",
+      "statistic": 0.07218167584506295,
+      "pvalue": 0.010705144901767294,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_CE_POTENZA_NOMINALE_1",
+      "method": "psi",
+      "value": 0.3152080721736568,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CE_EFFICIENZA_MEDIA",
+      "method": "psi",
+      "value": 0.7486232220580297,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CE_EFFICIENZA_MEDIA",
+      "method": "ks_test",
+      "statistic": 0.1355584082156611,
+      "pvalue": 2.029180456423638e-08,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CE_EPREN",
+      "method": "ks_test",
+      "statistic": 0.13350268809320226,
+      "pvalue": 3.533674866765271e-08,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PA_ANNO_INSTALLAZIONE",
+      "method": "psi",
+      "value": 0.8985731992689748,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PA_ANNO_INSTALLAZIONE",
+      "method": "ks_test",
+      "statistic": 0.12143593584673244,
+      "pvalue": 7.704828446968842e-07,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PA_POTENZA_NOMINALE",
+      "method": "psi",
+      "value": 0.15155111826386122,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_PA_POTENZA_NOMINALE",
+      "method": "ks_test",
+      "statistic": 0.10847488217736677,
+      "pvalue": 1.5211579324978784e-05,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PA_EFFICIENZA_MEDIA",
+      "method": "psi",
+      "value": 0.49419352972526065,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PA_EFFICIENZA_MEDIA",
+      "method": "ks_test",
+      "statistic": 0.12686717006842624,
+      "pvalue": 1.9958540544632216e-07,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PA_EPREN",
+      "method": "ks_test",
+      "statistic": 0.11967846660244422,
+      "pvalue": 1.177727793865918e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PA_EPNREN",
+      "method": "psi",
+      "value": 1.6387417086980087,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PA_EPNREN",
+      "method": "ks_test",
+      "statistic": 0.12682926829268293,
+      "pvalue": 2.0147366508367595e-07,
+      "severity": "high"
+    },
+    {
+      "feature": "POI_tourist_attraction_count",
+      "method": "ks_test",
+      "statistic": 0.08451374052173599,
+      "pvalue": 0.0015508892929194818,
+      "severity": "high"
+    },
+    {
+      "feature": "POI_cafe_count",
+      "method": "ks_test",
+      "statistic": 0.08915580562706006,
+      "pvalue": 0.0006927928552951346,
+      "severity": "high"
+    },
+    {
+      "feature": "POI_pharmacy_count",
+      "method": "ks_test",
+      "statistic": 0.07531353567166234,
+      "pvalue": 0.006745012157331812,
+      "severity": "high"
+    },
+    {
+      "feature": "POI_gym_count",
+      "method": "ks_test",
+      "statistic": 0.09063262124620136,
+      "pvalue": 0.0005312728975509595,
+      "severity": "high"
+    },
+    {
+      "feature": "POI_park_count",
+      "method": "ks_test",
+      "statistic": 0.07971690983212672,
+      "pvalue": 0.003409250624434616,
+      "severity": "high"
+    },
+    {
+      "feature": "POI_school_count",
+      "method": "ks_test",
+      "statistic": 0.07108117071365885,
+      "pvalue": 0.01253158975982272,
+      "severity": "moderate"
+    },
+    {
+      "feature": "POI_transit_station_count",
+      "method": "ks_test",
+      "statistic": 0.08395153084821015,
+      "pvalue": 0.0017050447603616102,
+      "severity": "high"
+    },
+    {
+      "feature": "PC_PoligonoMetrico_vertex_count",
+      "method": "ks_test",
+      "statistic": 0.09158332412109617,
+      "pvalue": 0.0004467058435620362,
+      "severity": "high"
+    },
+    {
+      "feature": "AI_Civico_num",
+      "method": "psi",
+      "value": 0.20737824899479038,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "AI_Civico_num",
+      "method": "ks_test",
+      "statistic": 0.08998468136563707,
+      "pvalue": 0.0005971178548655773,
+      "severity": "high"
+    },
+    {
+      "feature": "A_IdTipoConsistenza_CATASTALE",
+      "method": "ks_test",
+      "statistic": 0.49687017062567257,
+      "pvalue": 6.50685726459774e-113,
+      "severity": "high"
+    },
+    {
+      "feature": "AI_ConsistenzaUm_mq",
+      "method": "ks_test",
+      "statistic": 0.2752643536055192,
+      "pvalue": 1.1065840330606011e-33,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PE_green",
+      "method": "ks_test",
+      "statistic": 0.07265725288831835,
+      "pvalue": 0.00999171067205119,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PE_yellow",
+      "method": "ks_test",
+      "statistic": 0.11555168516258282,
+      "pvalue": 3.1122580195555042e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CLASSE_ENERGETICA_F",
+      "method": "ks_test",
+      "statistic": 0.0790757381258023,
+      "pvalue": 0.0037741265640529884,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CLASSE_ENERGETICA_G",
+      "method": "ks_test",
+      "statistic": 0.1446300177551771,
+      "pvalue": 1.5859047884843776e-09,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_RIQ_CLASSE_RAGG_D",
+      "method": "ks_test",
+      "statistic": 0.0665713106118204,
+      "pvalue": 0.0233093749860186,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_CI_TIPO_IMPIANTO_1_Generatore a combustione",
+      "method": "ks_test",
+      "statistic": 0.0688936967993304,
+      "pvalue": 0.01701969591396234,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_CI_VETTORE_ENERGETICO_1_Gas naturale",
+      "method": "ks_test",
+      "statistic": 0.10474967907573812,
+      "pvalue": 3.3670164066816313e-05,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PA_TIPO_IMPIANTO_Generatore a combustione",
+      "method": "ks_test",
+      "statistic": 0.08455480077879125,
+      "pvalue": 0.0015402349459610152,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PA_VETTORE_ENERGETICO_Gas naturale",
+      "method": "ks_test",
+      "statistic": 0.06792223819009996,
+      "pvalue": 0.0194382795652959,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_TITOLO_CERT_Diploma di geometra",
+      "method": "ks_test",
+      "statistic": 0.16528287584235568,
+      "pvalue": 2.5582392905244767e-12,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_ORDINE_CERT_Collegio dei geometri",
+      "method": "ks_test",
+      "statistic": 0.13400037450564128,
+      "pvalue": 3.0922733449875215e-08,
+      "severity": "high"
+    },
+    {
+      "feature": "C1_TIPOLOGIA_GENERATORE__target",
+      "method": "psi",
+      "value": 0.3366248286588977,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C1_ANNO_COSTRUZIONE__freq",
+      "method": "psi",
+      "value": 0.42634739882961026,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C1_ANNO_COSTRUZIONE__freq",
+      "method": "ks_test",
+      "statistic": 0.07456948771689179,
+      "pvalue": 0.007541106232193123,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PIANO__freq",
+      "method": "psi",
+      "value": 0.630219907992439,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PIANO__freq",
+      "method": "ks_test",
+      "statistic": 0.13352163898107394,
+      "pvalue": 3.515297263680614e-08,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_ANNO_COSTRUZIONE__freq",
+      "method": "psi",
+      "value": 0.7364710015866095,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_ANNO_COSTRUZIONE__freq",
+      "method": "ks_test",
+      "statistic": 0.1898454825821036,
+      "pvalue": 3.9056012309794405e-16,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_Id_ottimo__ord",
+      "method": "psi",
+      "value": 1.5085538497969047,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_Id_ottimo__ord",
+      "method": "ks_test",
+      "statistic": 0.26441000697121947,
+      "pvalue": 4.455616717113011e-31,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_IdZona_normale__ord",
+      "method": "psi",
+      "value": 6.067480829640691,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_IdZona_normale__ord",
+      "method": "ks_test",
+      "statistic": 0.8804920913884007,
+      "pvalue": 5.2e-322,
+      "severity": "high"
+    },
+    {
+      "feature": "C1_SUBALTERNO__ord",
+      "method": "psi",
+      "value": 0.7156858831482017,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "C1_SUBALTERNO__ord",
+      "method": "ks_test",
+      "statistic": 0.10717539272331027,
+      "pvalue": 2.0133757537175565e-05,
+      "severity": "high"
+    }
+  ],
+  "summary": {
+    "total_features_checked": 345,
+    "psi_alerts": 50,
+    "ks_alerts": 108,
+    "total_alerts": 158
+  }
+}

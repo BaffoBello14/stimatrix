@@ -1,0 +1,126 @@
+{
+  "top_models": [
+    {
+      "Model": "Optimized_catboost",
+      "Category": "Optimized",
+      "Test_RMSE": 6.770172519041543,
+      "Test_R2": 0.8631360921489858
+    },
+    {
+      "Model": "Ensemble_stacking",
+      "Category": "Ensemble",
+      "Test_RMSE": 6.982773423177895,
+      "Test_R2": 0.8544053671696995
+    },
+    {
+      "Model": "Baseline_rf",
+      "Category": "Baseline",
+      "Test_RMSE": 7.023560232413569,
+      "Test_R2": 0.8526995453535728
+    },
+    {
+      "Model": "Optimized_rf",
+      "Category": "Optimized",
+      "Test_RMSE": 7.049920589584829,
+      "Test_R2": 0.8515917940212514
+    },
+    {
+      "Model": "Ensemble_voting",
+      "Category": "Ensemble",
+      "Test_RMSE": 7.073985072433081,
+      "Test_R2": 0.8505768997382985
+    },
+    {
+      "Model": "Optimized_xgboost",
+      "Category": "Optimized",
+      "Test_RMSE": 7.11417670965223,
+      "Test_R2": 0.8488741481481197
+    },
+    {
+      "Model": "Baseline_gbr",
+      "Category": "Baseline",
+      "Test_RMSE": 7.151318106675535,
+      "Test_R2": 0.847292045926631
+    },
+    {
+      "Model": "Baseline_catboost",
+      "Category": "Baseline",
+      "Test_RMSE": 7.15699823931324,
+      "Test_R2": 0.8470493645356366
+    },
+    {
+      "Model": "Baseline_hgbt",
+      "Category": "Baseline",
+      "Test_RMSE": 7.172999466794945,
+      "Test_R2": 0.8463646825756324
+    },
+    {
+      "Model": "Baseline_lightgbm",
+      "Category": "Baseline",
+      "Test_RMSE": 7.194518493088502,
+      "Test_R2": 0.8454414867547816
+    }
+  ],
+  "test_metrics": [
+    {
+      "model": "rf",
+      "r2": 0.8515917940212514,
+      "rmse": 7.049920589584829,
+      "mae": 5.196753611906524,
+      "r2_orig": 0.6475441119027384,
+      "rmse_orig": 45614.81096163397,
+      "mae_orig": 21909.1869920907,
+      "mape_floor_orig": 0.4691948398871287
+    },
+    {
+      "model": "gbr",
+      "r2": 0.8444682098429527,
+      "rmse": 7.217135395943668,
+      "mae": 5.301099218391541,
+      "r2_orig": 0.6628344071851853,
+      "rmse_orig": 44614.40638302043,
+      "mae_orig": 22624.27331019437,
+      "mape_floor_orig": 0.48794641486096196
+    },
+    {
+      "model": "hgbt",
+      "r2": 0.8337202109262419,
+      "rmse": 7.462339440938025,
+      "mae": 5.5324923873604925,
+      "r2_orig": 0.6605451097161406,
+      "rmse_orig": 44765.61229627204,
+      "mae_orig": 22963.90042037894,
+      "mape_floor_orig": 0.49675739115438655
+    },
+    {
+      "model": "xgboost",
+      "r2": 0.8488741481481197,
+      "rmse": 7.11417670965223,
+      "mae": 5.309611818054569,
+      "r2_orig": 0.6709916404673428,
+      "rmse_orig": 44071.41155218954,
+      "mae_orig": 22645.418363808323,
+      "mape_floor_orig": 0.49835310885169315
+    },
+    {
+      "model": "lightgbm",
+      "r2": 0.8433783551446689,
+      "rmse": 7.242377495367791,
+      "mae": 5.271350761706526,
+      "r2_orig": 0.6772899573358162,
+      "rmse_orig": 43647.536280692424,
+      "mae_orig": 22457.257289543762,
+      "mape_floor_orig": 0.5225635435562405
+    },
+    {
+      "model": "catboost",
+      "r2": 0.8631360921489858,
+      "rmse": 6.770172519041543,
+      "mae": 4.917282922736684,
+      "r2_orig": 0.6731170507481923,
+      "rmse_orig": 43928.829157190274,
+      "mae_orig": 21483.82643953014,
+      "mape_floor_orig": 0.45489993672219076
+    }
+  ]
+}

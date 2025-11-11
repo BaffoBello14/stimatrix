@@ -1,0 +1,71 @@
+{
+  "model_key": "lightgbm",
+  "prefix": "tree",
+  "primary_metric": "neg_root_mean_squared_error",
+  "best_primary_value": -6.957655827940171,
+  "best_params": {
+    "n_estimators": 656,
+    "max_depth": 6,
+    "learning_rate": 0.09730017211575605,
+    "num_leaves": 28,
+    "subsample": 0.7696973294415477,
+    "colsample_bytree": 0.6574455217505529,
+    "reg_alpha": 0.7803595833597773,
+    "reg_lambda": 0.004601362350728493,
+    "min_child_samples": 29,
+    "min_split_gain": 0.4797861408071763
+  },
+  "metrics_train": {
+    "r2": 0.9876480826974009,
+    "mse": 3.6689655896873625,
+    "rmse": 1.9154544081463705,
+    "mae": 1.3433884525885629,
+    "mape": 0.028397066833760313,
+    "explained_variance": 0.9876480827011647,
+    "medae": 0.936125696281426
+  },
+  "metrics_test": {
+    "r2": 0.8433783551446689,
+    "mse": 52.45203178540983,
+    "rmse": 7.242377495367791,
+    "mae": 5.271350761706526,
+    "mape": 0.10652048802745849,
+    "explained_variance": 0.8442137081172514,
+    "medae": 3.615703080294182
+  },
+  "metrics_train_original": {
+    "r2": 0.9776637442051876,
+    "mse": 93145329.542495,
+    "rmse": 9651.182805360957,
+    "mae": 4678.5123044854045,
+    "mape": 0.10679652862620652,
+    "explained_variance": 0.9778717030909408,
+    "medae": 2253.8150337391708,
+    "mape_floor": 0.10467467040625579
+  },
+  "metrics_test_original": {
+    "r2": 0.6772899573358162,
+    "mse": 1905107423.3743615,
+    "rmse": 43647.536280692424,
+    "mae": 22457.257289543762,
+    "mape": 0.5240625538055568,
+    "explained_variance": 0.6776943139664287,
+    "medae": 10259.2122195786,
+    "mape_floor": 0.5225635435562405
+  },
+  "smearing_factor": null,
+  "overfit": {
+    "gap_r2": 0.14426972755273204,
+    "gap_explained_variance": 0.14343437458391328,
+    "ratio_rmse": 3.781023168479592,
+    "delta_rmse": 5.32692308722142,
+    "ratio_mse": 14.296136200579449,
+    "delta_mse": 48.78306619572247,
+    "ratio_mae": 3.9239214477013027,
+    "delta_mae": 3.927962309117963,
+    "ratio_mape": 3.7511088258178793,
+    "delta_mape": 0.07812342119369818,
+    "ratio_medae": 3.862411954566408,
+    "delta_medae": 2.679577384012756
+  }
+}
