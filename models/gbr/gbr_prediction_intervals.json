@@ -1,14 +1,14 @@
 {
   "80%": {
-    "coverage": 0.7906976744186046,
-    "average_width": 141792.55874191108,
-    "average_width_pct": 1254359.214448096,
+    "coverage": 0.8151815181518152,
+    "average_width": 131950.51584660477,
+    "average_width_pct": 1294707.523812478,
     "target_coverage": 0.8
   },
   "90%": {
-    "coverage": 0.8953488372093024,
-    "average_width": 194504.25223990975,
-    "average_width_pct": 1719628.7227516773,
+    "coverage": 0.900990099009901,
+    "average_width": 173394.59420807302,
+    "average_width_pct": 1698432.5648789508,
     "target_coverage": 0.9
   }
 }

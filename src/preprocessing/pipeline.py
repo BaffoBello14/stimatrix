@@ -146,7 +146,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     df = pd.read_parquet(raw_files[0])
     logger.info(f"Caricamento raw completato: rows={len(df)}, cols={len(df.columns)}")
 
-    # NUOVO: Apply temporal and zone filtering to reduce drift
+    # Apply temporal and zone filtering to reduce drift
     temporal_cfg = config.get("temporal_filter", {})
     if temporal_cfg.get("enabled", False):
         initial_rows = len(df)
@@ -169,11 +169,11 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             df = df[~df["AI_ZonaOmi"].isin(exclude_zones)]
             logger.info(f"Filtro zone: escluse {exclude_zones} → {len(df)} righe ({len(df)/initial_rows*100:.1f}%)")
         
-        # Filter out non-residential (box, cantine, etc.)
+        # Filter out problematic building types
         exclude_tipologie = temporal_cfg.get("exclude_tipologie", [])
         if exclude_tipologie and "AI_IdTipologiaEdilizia" in df.columns:
             df = df[~df["AI_IdTipologiaEdilizia"].isin(exclude_tipologie)]
-            logger.info(f"Filtro tipologie: escluse {exclude_tipologie} (box/cantine) → {len(df)} righe ({len(df)/initial_rows*100:.1f}%)")
+            logger.info(f"Filtro tipologie: escluse {exclude_tipologie} → {len(df)} righe ({len(df)/initial_rows*100:.1f}%)")
         
         removed_rows = initial_rows - len(df)
         logger.info(f"✅ Temporal filter: rimossi {removed_rows} campioni ({removed_rows/initial_rows*100:.1f}%)")

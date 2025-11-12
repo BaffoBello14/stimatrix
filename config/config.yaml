@@ -14,7 +14,9 @@ logging:
 
 # Execution Configuration
 execution:
-  # Passi della pipeline da eseguire: [schema, dataset, preprocessing, training, evaluation] oppure ["all"]
+  # Passi della pipeline da eseguire: [schema, dataset, preprocessing, training, evaluation]
+  # ["all"] esegue tutti i passi
+  # ["ml"] esegue solo preprocessing + training + evaluation
   steps: ["all"]
   # Se true, forza la rielaborazione anche se gli output intermedi esistono già
   force_reload: true
@@ -44,15 +46,13 @@ temporal_filter:
   enabled: true
   min_year: 2022        # Filtra transazioni >= 2022 (elimina drift temporale)
   min_month: null       # Opzionale: mese minimo (null = tutto l'anno)
-  exclude_zones:        # Zone con troppo pochi campioni post-2022
-    - 'E1'             # 18 campioni
-    - 'E2'             # 29 campioni
-    - 'E3'             # 24 campioni
-    - 'R1'             # 5 campioni
-  exclude_tipologie:    # NUOVO: Escludi box/cantine/ville (categorie diverse o pochi campioni)
-    - '18'             # Box/garage: €21k medio (933 campioni) - categoria diversa
-    - '8'              # Cantine/magazzini: €6k medio (381 campioni) - categoria diversa
-    - '4'              # Ville: €172k medio (13 campioni) - TROPPO POCHI (rischio overfitting)
+  exclude_zones:        # Zone con troppo pochi campioni
+    - 'E1'
+    - 'E2'
+    - 'E3'
+    - 'R1'
+  exclude_tipologie:    # Escludi ville (pochi campioni)
+    - '4'              # Ville: €172k medio - TROPPO POCHI (rischio overfitting)
 
 # Database Configuration (for data retrieval)
 database:
@@ -91,10 +91,10 @@ target:
 # Outlier detection
 outliers:
   method: 'ensemble'       # 'iqr' | 'zscore' | 'iso_forest' | 'ensemble'
-  z_thresh: 3.0
-  iqr_factor: 1.2          # CAMBIATO: da 1.5 a 1.2 (più aggressivo)
-  iso_forest_contamination: 0.05  # CAMBIATO: da 0.02 a 0.05 (rimuove 5% outlier)
-  group_by_col: 'AI_ZonaOmi'  # CAMBIATO: da TipologiaEdilizia a ZonaOmi (più predittivo)
+  z_thresh: 3.0            # Threshold for z-score method
+  iqr_factor: 1.2          # IQR factor for outlier detection
+  iso_forest_contamination: 0.05  # Contamination rate for isolation forest
+  group_by_col: 'AI_ZonaOmi'  # Column to group by for outlier detection
   min_group_size: 30       # minimum samples per group to apply group-wise outlier detection
   fallback_strategy: 'global'  # 'skip' keeps all small groups; 'global' applies global detection
 
@@ -161,8 +161,8 @@ drop_non_descriptive:
 
 # Feature extraction toggles
 feature_extraction:
-  geometry: true
-  json: true
+  geometry: false
+  json: false
 
 # Feature pruning
 feature_pruning:
@@ -258,10 +258,9 @@ uncertainty:
 
 # Training configuration
 training:
-  # Opzioni globali
-  primary_metric: "neg_mean_absolute_percentage_error"  # CAMBIATO: da RMSE a MAPE (ottimizza errore %)
+  # r2 | neg_mean_absolute_percentage_error | neg_mean_squared_error | neg_root_mean_squared_error | neg_mean_absolute_error
+  primary_metric: "neg_mean_absolute_percentage_error"
   report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
-  # Nota: con transform='log', MAPE su scala log + back-transform = errori % uniformi
   sampler: "auto"   # auto (OptunaHub) | tpe
   seed: ${SEED:-42}
   n_jobs_default: ${N_JOBS:--1}
@@ -454,8 +453,8 @@ training:
       search_space:
         depth: {type: int, low: 4, high: 10}
         learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-        l2_leaf_reg: {type: float, low: 1.0, high: 15.0}
-        bagging_temperature: {type: float, low: 0.0, high: 5.0}
+        l2_leaf_reg: {type: float, low: 10.0, high: 100.0}
+        bagging_temperature: {type: float, low: 0.5, high: 5.0}
         border_count: {type: int, low: 16, high: 255}
         random_strength: {type: float, low: 0.0, high: 2.0}
         rsm: {type: float, low: 0.5, high: 1.0}
