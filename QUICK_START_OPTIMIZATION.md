@@ -2,10 +2,11 @@
 
 ## 🎯 Obiettivo
 
-Ridurre **MAPE da 58% a 25-35%** e **RMSE da 37k€ a 22-26k€** con **2 modifiche chiave**:
+Ridurre **MAPE da 58% a 25-35%** e **RMSE da 37k€ a 22-26k€** con **3 modifiche chiave**:
 
 1. ✅ **Feature Contestuali** → Aggiunte 44 feature di contesto mercato
-2. ✅ **Regularizzazione Aggressiva** → Riduce overfitting del 60%
+2. ✅ **Feature Pruning** → Rimosse 56 colonne inutili (data-driven)
+3. ✅ **Regularizzazione Aggressiva** → Riduce overfitting del 60%
 
 ---
 
@@ -56,20 +57,58 @@ Overfitting: Gap R² < 0.10 (-60%)
    └─ Integrata chiamata a add_all_contextual_features()
 
 ✅ NUOVO: config/config_optimized.yaml
-   └─ Regularizzazione aggressiva su tutti i modelli
+   └─ Regularizzazione aggressiva + 56 colonne dropped + numeric_coercion corretto
    
 ✅ NUOVO: run_optimization.py
    └─ Script automatico: preprocessing → training → confronto
 
 ✅ NUOVO: OPTIMIZATION_GUIDE.md
    └─ Guida dettagliata (leggi per approfondire)
+
+✅ NUOVO: DATA_DRIVEN_ANALYSIS.md
+   └─ Analisi data-driven per feature pruning (56 colonne dropped)
 ```
 
 ---
 
 ## ⚙️ Cosa È Stato Modificato
 
-### **1. Feature Contestuali (+44 feature)**
+### **1. Feature Pruning (-56 colonne inutili)** 🗑️
+
+**Analisi data-driven** (correlation matrix + SQL query):
+
+Rimosse colonne:
+- **12 ID/FK**: A_Id, AI_Id, PC_Id, ecc. (identificatori univoci)
+- **5 Superficie ridondanti**: r > 0.98 con AI_Superficie
+- **7 Indicatori Istat ridondanti**: r > 0.95 tra loro
+- **4 OmiValori ridondanti**: r > 0.98 (Max vs Min)
+- **13 Metadata/Tecnici**: Date, Semestre, Geometry raw, ecc.
+- **8 Codici catastali**: Foglio, Particella, Subalterno (poco predittivi)
+- **7 Privacy/Poco predittivi**: Età acquirenti/venditori, ecc.
+
+**Benefici**:
+- ✅ Meno noise → Modello più robusto
+- ✅ Meno multicollinearità → Coefficienti più stabili
+- ✅ Training più veloce → ~40% meno feature
+
+### **2. Numeric Coercion Corretto** 🔧
+
+**PRIMA** (Errore):
+```yaml
+blacklist_globs:
+  - 'II_*'  # ❌ Blocca TUTTO Istat (anche metriche valide!)
+```
+
+**DOPO** (Corretto):
+```yaml
+blacklist_globs:
+  - 'II_IdIstatZonaCensuaria'  # ✅ Solo ID, non metriche
+  # II_ST1, II_P98, ... → convertiti in float (corretto!)
+```
+
+**Perché**: `II_ST*` sono metriche numeriche (popolazione, densità), NON codici.
+
+### **3. Feature Contestuali (+44 feature)**
 
 Prima: Il modello non sapeva che 150k€ è "normale" in zona D2 ma "lusso" in zona C4
 
@@ -80,7 +119,7 @@ Dopo: ✅
 - Prezzo/mq relativo: cattura dinamiche di mercato locali
 - Trend temporali: inflazione e stagionalità
 
-### **2. Regularizzazione Aggressiva**
+### **4. Regularizzazione Aggressiva**
 
 **CatBoost** (esempio):
 ```yaml

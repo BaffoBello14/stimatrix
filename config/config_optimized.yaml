@@ -130,19 +130,39 @@ temporal_split:
     test_start_year: 2023
     test_start_month: 1
 
-# Numeric coercion configuration (INVARIATO)
+# Numeric coercion configuration - ✅ CORRETTO (data-driven)
 numeric_coercion:
   enabled: true
-  threshold: 0.95
+  threshold: 0.95  # Converti solo se ≥95% valori sono convertibili
+  
+  # Blacklist: colonne che SEMBRANO numeriche ma NON devono essere convertite
+  # (es. "00020" = codice catastale → deve rimanere string per CatBoost)
   blacklist_globs:
-    - 'II_*'
-    - 'AI_Id*'
-    - 'Foglio'
-    - 'Particella*'
-    - 'Subalterno'
-    - 'SezioneAmministrativa'
-    - 'ZonaOmi'
-    - '*COD*'
+    # ID e chiavi esterne
+    - '*Id'                        # Tutti gli ID (A_Id, AI_Id, PC_Id, ...)
+    - '*_Id*'                      # Varianti (IdAtto, IdParticella, ...)
+    
+    # Codici catastali (con leading zeros)
+    - 'Foglio*'                    # Foglio catastale ("0001")
+    - '*Particella*'               # Particella ("00350")
+    - '*Subalterno*'               # Subalterno ("0001")
+    - '*Sezione*'                  # Sezioni catastali ("01")
+    
+    # Codici e zone (categorici)
+    - '*COD*'                      # Tutti i codici
+    - '*Codice*'                   # Varianti
+    - 'AI_ZonaOmi'                 # Zona OMI ("D2", "C4") - CATEGORICO
+    - 'OZ_CodiceZona'              # Codice zona
+    - '*IdCategoriaCatastale*'     # Categorie ("00210", "00020")
+    - '*IdTipologiaEdilizia*'      # Tipologie ("2", "3", "8")
+    
+    # Metadata
+    - '*Repertorio*'               # Numero repertorio notaio
+    
+    # IMPORTANTE: Solo ID Istat, NON metriche II_ST* (sono numerici veri!)
+    - 'II_IdIstatZonaCensuaria'    # ID (non metrica)
+    - 'ISC_Id'                     # ID sezione
+    # NOTA: II_ST1, II_ST2, II_P98, ecc. → DEVONO essere convertiti in float!
 
 # PCA configuration (DISABILITATO - mantiene più informazioni)
 pca: &pca_defaults
@@ -163,24 +183,92 @@ feature_extraction:
   geometry: false
   json: false
 
-# Feature pruning (INVARIATO)
+# Feature pruning - ✅ ESPANSO (data-driven: ~56 colonne)
 feature_pruning:
   drop_columns:
-    - 'A_ImmobiliPrincipaliConSuperficieValorizzata'
-    - 'AI_SuperficieCalcolata'
-    - 'AI_SuperficieVisuraTotale'
-    - 'AI_SuperficieVisuraTotaleE'
-    - 'AI_SuperficieVisuraTotaleAttuale'
-    - 'AI_SuperficieVisuraTotaleEAttuale'
-    - 'A_AcquirentiCount'
-    - 'A_VenditoriCount'
-    - 'A_EtaMediaAcquirenti'
-    - 'A_EtaMediaVenditori'
-    - 'A_AcquirentiVenditoriStessoCognome'
-    - 'A_VenditoriEredita'
-    - 'AI_Subalterno'
-    - 'AI_Piano'
-    - 'AI_Rendita'
+    # === ID e chiavi esterne (12 colonne) === #
+    - 'A_Id'                        # ID atto (univoco)
+    - 'AI_Id'                       # ID atto immobile (quasi univoco)
+    - 'AI_IdAtto'                   # Foreign key
+    - 'AI_IdParticellaCatastale'    # Foreign key
+    - 'AI_IdImmobile'               # ID univoco
+    - 'PC_Id'                       # ID particella
+    - 'PC_IdSezioneCensuaria'       # Foreign key
+    - 'ISC_Id'                      # ID sezione censuaria
+    - 'II_IdIstatZonaCensuaria'     # Foreign key
+    - 'OZ_Id'                       # ID zona OMI
+    - 'PC_OZ_IdParticella'          # Foreign key
+    - 'PC_OZ_IdZona'                # Foreign key
+    
+    # === Superficie ridondanti (5 colonne - correlazione > 0.98) === #
+    - 'AI_SuperficieCalcolata'           # r=0.91 con AI_Superficie
+    - 'AI_SuperficieVisuraTotale'        # r=1.0 con AI_Superficie (IDENTICA!)
+    - 'AI_SuperficieVisuraTotaleE'       # r=0.995 con Totale
+    - 'AI_SuperficieVisuraTotaleAttuale' # r=0.98 con AI_Superficie
+    - 'AI_SuperficieVisuraTotaleEAttuale' # r=0.976 con Totale
+    
+    # === Indicatori Istat ridondanti (7 colonne - correlazione > 0.95) === #
+    # Cluster 1: II_ST2_B, II_ST21, II_ST29 (r > 0.98) - keep II_ST1
+    - 'II_ST2_B'                    # r=0.99 con II_ST21, II_ST29
+    - 'II_ST21'                     # r=0.98 con II_ST1, II_ST29
+    - 'II_ST29'                     # r=0.98 con II_ST2_B, II_ST1
+    # Cluster 2: II_ST31, II_ST32 (r > 0.98) - keep II_ST23
+    - 'II_ST31'                     # r=0.99 con II_ST23
+    - 'II_ST32'                     # r=0.98 con II_ST23, II_ST31
+    # Cluster 3: II_ST22, II_ST26 (r > 0.98) - keep II_ST2, II_ST20
+    - 'II_ST22'                     # r=0.94 con II_ST2, II_ST20
+    - 'II_ST26'                     # r=0.99 con II_ST2, II_ST20
+    
+    # === OmiValori ridondanti (4 colonne - correlazione > 0.98) === #
+    - 'OV_ValoreMercatoMax_normale'      # r=0.98 con Min_normale
+    - 'OV_ValoreMercatoMax_ottimo'       # r=0.98 con Min_ottimo
+    - 'OV_ValoreMercatoMin_scadente'     # Pochi dati (scadente poco usato)
+    - 'OV_ValoreMercatoMax_scadente'     # Pochi dati
+    
+    # === Metadata e colonne tecniche (13 colonne) === #
+    - 'A_Semestre'                  # Ridondante con AnnoStipula/MeseStipula
+    - 'OZ_IdAnnoSemestre'           # Ridondante
+    - 'A_DataStipula'               # Già estratti anno/mese
+    - 'A_DataRegistrazione'         # Metadata, non feature
+    - 'A_TotaleFabbricati'          # Sempre uguale a TotaleImmobili (filtro WHERE)
+    - 'A_TotaleImmobili'            # Constant dopo filtro
+    - 'A_NumeroRepertorio'          # Metadata notaio
+    - 'A_IdNotaio'                  # ID univoco, troppi unique
+    - 'PC_PoligonoMetricoSrid'      # Constant (sempre stesso SRID)
+    - 'PC_PoligonoMetrico'          # WKT grezzo (già processato)
+    - 'AI_IndirizzoGeometry'        # Geometry raw (già processato)
+    - 'OZ_IdComune'                 # Constant (singolo comune)
+    - 'A_ImmobiliPrincipaliConSuperficieValorizzata'  # Già in config
+    
+    # === Codici catastali (8 colonne - poco predittivi) === #
+    - 'PC_Foglio'                   # Codice catastale (troppi unique)
+    - 'PC_Particella'               # Codice catastale (troppi unique)
+    - 'PC_SezioneUrbana'            # Codice (molti missing)
+    - 'PC_SezioneAmministrativa'    # Codice (molti missing)
+    - 'PC_SezioneAggraria'          # Quasi sempre missing
+    - 'OZ_CodiceZona'               # Codice (già abbiamo AI_ZonaOmi)
+    - 'OZ_DescrizioneZona'          # Testo (ridondante con CodiceZona)
+    - 'AI_Subalterno'               # Codice catastale (già in config)
+    
+    # === Colonne già processate o poco predittive (7 colonne) === #
+    - 'AI_Piano'                    # Raw (già estratte floor features dal preprocessing)
+    - 'AI_Civico'                   # Raw (già estratto AI_Civico_num)
+    - 'AI_Rendita'                  # Alta correlazione con Prezzo (risk leakage)
+    - 'A_AcquirentiCount'           # Poco predittivo
+    - 'A_VenditoriCount'            # Poco predittivo
+    - 'A_EtaMediaAcquirenti'        # Privacy + poco predittivo
+    - 'A_EtaMediaVenditori'         # Privacy + poco predittivo
+    - 'A_AcquirentiVenditoriStessoCognome'  # Poco predittivo
+    - 'A_VenditoriEredita'          # Poco predittivo
+    
+    # === CENED con troppo missing (opzionale - verificare prima!) === #
+    # Uncomment se missing > 50%:
+    # - 'C1_EPGlNren'               # Metrica tecnica con troppi missing
+    # - 'C1_EPHTot'                 # Metrica tecnica con troppi missing
+    # - 'C2_ClasseEnergetica'       # Ridondante con C1
+    # - 'C2_EPGlNren'               # Ridondante con C1
+  
+  # KEEP AI_Superficie come feature (è predittivo!)
   include_ai_superficie: true
 
 # Scaling configuration (INVARIATO)
