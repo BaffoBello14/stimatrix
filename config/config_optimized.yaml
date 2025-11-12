@@ -1,0 +1,450 @@
+# ==========================================
+# CONFIGURAZIONE OTTIMIZZATA - STIMATRIX
+# ==========================================
+# 
+# Obiettivi:
+# 1. ✅ Ridurre overfitting (gap train-test < 0.10)
+# 2. ✅ Migliorare MAPE (target < 35%)
+# 3. ✅ Migliorare RMSE (target < 26k€)
+# 4. ✅ Performance uniforme tra gruppi
+#
+# Modifiche principali rispetto a config.yaml:
+# - Feature contestuali aggiunte automaticamente
+# - Regularizzazione AGGRESSIVA su tutti i modelli
+# - Outlier detection più stringente
+# - Early stopping abilitato
+# - Hyperparameter ranges ottimizzati
+# ==========================================
+
+# Logging Configuration
+logging:
+  level: ${LOG_LEVEL:-INFO}
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  file: ${LOG_FILE:-'logs/pipeline_optimized.log'}
+  console: ${LOG_CONSOLE:-true}
+  rotate:
+    enabled: ${LOG_ROTATE:-false}
+    max_bytes: ${LOG_MAX_BYTES:-10485760}
+    backup_count: ${LOG_BACKUP_COUNT:-5}
+
+# Execution Configuration
+execution:
+  steps: ["preprocessing", "training", "evaluation"]  # Skip schema/dataset se già presenti
+  force_reload: true
+
+# Experiment tracking (Weights & Biases)
+tracking:
+  wandb:
+    enabled: ${WANDB_ENABLED:-true}
+    project: ${WANDB_PROJECT:-'stimatrix-optimized'}
+    entity: ${WANDB_ENTITY:-null}
+    group: ${WANDB_GROUP:-'optimization-v1'}
+    tags: ['optimized', 'regularized', 'contextual-features']
+    mode: ${WANDB_MODE:-'online'}
+    name: 'opt_contextual_reg'
+
+# Paths Configuration
+paths:
+  raw_data: ${RAW_DATA_DIR:-'data/raw'}
+  preprocessed_data: ${PREPROC_DIR:-'data/preprocessed'}
+  schema: ${SCHEMA_PATH:-'schema/db_schema.json'}
+  models_dir: ${MODELS_DIR:-'models'}
+  raw_filename: 'raw.parquet'
+  preprocessed_filename: 'preprocessed.parquet'
+
+# Temporal and zone filtering (INVARIATO - già ottimale)
+temporal_filter:
+  enabled: true
+  min_year: 2022
+  min_month: null
+  exclude_zones:
+    - 'E1'
+    - 'E2'
+    - 'E3'
+    - 'R1'
+  exclude_tipologie:
+    - '4'  # Ville
+
+# Database Configuration
+database:
+  schema_name: null
+  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV', 'C1', 'C2']
+  custom_aliases:
+    attiimmobili_cened1: 'C1'
+    attiimmobili_cened2: 'C2'
+  use_poi: true
+  use_ztl: true
+  output_format: 'parquet'
+  compression: 'snappy'
+
+# Target configuration - MIGLIORATO
+target:
+  column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
+  
+  # Yeo-Johnson è più flessibile di log per distribuzioni eterogenee
+  transform: 'yeojohnson'  # ✅ CAMBIATO da 'log' - trova automaticamente lambda ottimale
+  
+  # Fallback se yeojohnson da problemi
+  # transform: 'log'
+  log10_offset: 1.0
+
+# Outlier detection - PIÙ AGGRESSIVO
+outliers:
+  method: 'ensemble'
+  z_thresh: 2.5           # ✅ RIDOTTO da 3.0 - più aggressivo
+  iqr_factor: 1.0         # ✅ RIDOTTO da 1.2
+  iso_forest_contamination: 0.08  # ✅ AUMENTATO da 0.05
+  group_by_col: 'AI_ZonaOmi'
+  min_group_size: 20      # ✅ RIDOTTO da 30
+  fallback_strategy: 'global'
+
+# Missing value imputation (INVARIATO)
+imputation:
+  numeric_strategy: 'median'
+  categorical_strategy: 'most_frequent'
+  group_by_col: 'AI_ZonaOmi'
+
+# Categorical encoding - PIÙ CONSERVATIVO
+encoding: &encoding_defaults
+  one_hot_max: 8          # ✅ RIDOTTO da 10
+  target_encoding_range: [9, 20]    # ✅ RIDOTTO upper da 30
+  frequency_encoding_range: [21, 100]
+  ordinal_encoding_range: [101, 200]
+  drop_above: 200
+  
+  # Target encoding con più smoothing per prevenire overfitting
+  target_encoder:
+    smoothing: 5.0        # ✅ AUMENTATO da 1.0
+    min_samples_leaf: 10  # ✅ AUMENTATO da 1
+    # noise: 0.01         # Opzionale: aggiungi rumore per regularizzazione
+
+# Temporal split configuration (INVARIATO)
+temporal_split:
+  year_col: 'A_AnnoStipula'
+  month_col: 'A_MeseStipula'
+  mode: 'fraction'
+  fraction:
+    train: 0.7
+    valid: 0.2
+  date:
+    test_start_year: 2023
+    test_start_month: 1
+
+# Numeric coercion configuration (INVARIATO)
+numeric_coercion:
+  enabled: true
+  threshold: 0.95
+  blacklist_globs:
+    - 'II_*'
+    - 'AI_Id*'
+    - 'Foglio'
+    - 'Particella*'
+    - 'Subalterno'
+    - 'SezioneAmministrativa'
+    - 'ZonaOmi'
+    - '*COD*'
+
+# PCA configuration (DISABILITATO - mantiene più informazioni)
+pca: &pca_defaults
+  enabled: false
+  n_components: 0.95
+  random_state: 42
+
+# Correlation pruning - RIDOTTA soglia
+correlation: &correlation_defaults
+  numeric_threshold: 0.98  # ✅ AUMENTATO da 0.95 (mantiene più feature)
+
+# Non-descriptive columns pruning (INVARIATO)
+drop_non_descriptive:
+  na_threshold: 0.80
+
+# Feature extraction toggles (INVARIATO)
+feature_extraction:
+  geometry: false
+  json: false
+
+# Feature pruning (INVARIATO)
+feature_pruning:
+  drop_columns:
+    - 'A_ImmobiliPrincipaliConSuperficieValorizzata'
+    - 'AI_SuperficieCalcolata'
+    - 'AI_SuperficieVisuraTotale'
+    - 'AI_SuperficieVisuraTotaleE'
+    - 'AI_SuperficieVisuraTotaleAttuale'
+    - 'AI_SuperficieVisuraTotaleEAttuale'
+    - 'A_AcquirentiCount'
+    - 'A_VenditoriCount'
+    - 'A_EtaMediaAcquirenti'
+    - 'A_EtaMediaVenditori'
+    - 'A_AcquirentiVenditoriStessoCognome'
+    - 'A_VenditoriEredita'
+    - 'AI_Subalterno'
+    - 'AI_Piano'
+    - 'AI_Rendita'
+  include_ai_superficie: true
+
+# Scaling configuration (INVARIATO)
+scaling: &scaling_defaults
+  scaler_type: 'standard'
+  with_mean: true
+  with_std: true
+
+# Winsorization (INVARIATO)
+winsorization: &winsor_defaults
+  enabled: true
+  lower_quantile: 0.01
+  upper_quantile: 0.99
+
+# Profiles (INVARIATI - già ottimali)
+profiles:
+  scaled:
+    enabled: false
+    output_prefix: 'scaled'
+    encoding: *encoding_defaults
+    winsorization: *winsor_defaults
+    scaling: *scaling_defaults
+    pca: *pca_defaults
+    correlation: *correlation_defaults
+  tree:
+    enabled: true
+    output_prefix: 'tree'
+    encoding: *encoding_defaults
+    correlation: *correlation_defaults
+  catboost:
+    enabled: true
+    output_prefix: 'catboost'
+    correlation: *correlation_defaults
+
+# Diagnostics configuration (INVARIATO)
+diagnostics:
+  residual_analysis:
+    enabled: true
+    by_groups:
+      - AI_ZonaOmi
+      - AI_IdCategoriaCatastale
+      - price_quartile
+    save_worst_predictions: true
+    top_n_worst: 50
+    plots:
+      - residual_vs_predicted
+      - residual_vs_actual
+      - residual_distribution
+      - qq_plot
+  
+  drift_detection:
+    enabled: true
+    methods:
+      - psi
+      - ks_test
+    alert_threshold: 0.15
+    save_report: true
+
+# Uncertainty quantification (INVARIATO)
+uncertainty:
+  prediction_intervals:
+    enabled: true
+    method: 'residual_bootstrap'
+    n_bootstraps: 100
+    confidence_levels: [0.8, 0.9]
+
+# ==========================================
+# TRAINING CONFIGURATION - OTTIMIZZATO
+# ==========================================
+training:
+  primary_metric: "neg_mean_absolute_percentage_error"
+  report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
+  sampler: "auto"
+  seed: ${SEED:-42}
+  n_jobs_default: ${N_JOBS:--1}
+  timeout: ${TRAIN_TIMEOUT:-null}
+  trials_base: &trials_base 50
+  trials_advanced: &trials_advanced 150  # ✅ AUMENTATO da 100 per trovare miglior regularizzazione
+  
+  # Cross-validation robusta
+  cv_when_no_val:
+    enabled: true
+    kind: kfold
+    n_splits: 10          # ✅ AUMENTATO da 5 per validation più robusta
+    shuffle: true
+
+  # ==========================================
+  # MODELLI - REGULARIZZAZIONE AGGRESSIVA
+  # ==========================================
+  models:
+    # ========================================
+    # CATBOOST - REGULARIZZATO
+    # ========================================
+    catboost:
+      enabled: true
+      profile: catboost
+      trials: *trials_advanced
+      base_params:
+        allow_writing_files: false
+        iterations: 800        # ✅ AUMENTATO ma con early stopping
+        early_stopping_rounds: 50  # ✅ NUOVO - stop se validation non migliora
+        use_best_model: true   # ✅ NUOVO
+        eval_metric: 'MAPE'    # ✅ NUOVO - ottimizza direttamente MAPE
+      fit_params:
+        cat_features: __categorical_indices__
+      search_space:
+        depth: {type: int, low: 4, high: 7}  # ✅ RIDOTTO max da 10 a 7
+        learning_rate: {type: float, low: 0.01, high: 0.12, log: true}  # ✅ RIDOTTO upper da 0.3
+        l2_leaf_reg: {type: float, low: 3.0, high: 30.0}  # ✅ RIDOTTO range (più regularizzazione)
+        bagging_temperature: {type: float, low: 0.0, high: 1.5}  # ✅ RIDOTTO max da 5.0
+        border_count: {type: int, low: 32, high: 128}  # ✅ RIDOTTO max da 255
+        random_strength: {type: float, low: 0.0, high: 1.0}  # ✅ RIDOTTO max da 2.0
+        rsm: {type: float, low: 0.5, high: 0.85}  # ✅ RIDOTTO max da 1.0
+        min_data_in_leaf: {type: int, low: 20, high: 80}  # ✅ NUOVO - previene overfitting
+        max_ctr_complexity: {type: int, low: 1, high: 3}  # ✅ NUOVO - limita categorical interactions
+
+    # ========================================
+    # XGBOOST - REGULARIZZATO
+    # ========================================
+    xgboost:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params:
+        early_stopping_rounds: 50  # ✅ NUOVO
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 400, high: 1200}
+        max_depth: {type: int, low: 3, high: 6}  # ✅ RIDOTTO max da 8
+        learning_rate: {type: float, low: 0.005, high: 0.05, log: true}  # ✅ RIDOTTO da 0.01-0.1
+        subsample: {type: float, low: 0.6, high: 0.85}  # ✅ RIDOTTO max da 0.9
+        colsample_bytree: {type: float, low: 0.6, high: 0.85}
+        min_child_weight: {type: float, low: 5.0, high: 20.0}  # ✅ AUMENTATO min da 1.0
+        reg_alpha: {type: float, low: 0.1, high: 50.0, log: true}  # ✅ AUMENTATO min da 1e-4
+        reg_lambda: {type: float, low: 1.0, high: 100.0, log: true}  # ✅ AUMENTATO min da 1e-4
+        gamma: {type: float, low: 0.0, high: 5.0, log: true}  # ✅ RIDOTTO max da 10.0
+
+    # ========================================
+    # LIGHTGBM - REGULARIZZATO
+    # ========================================
+    lightgbm:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {}
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 400, high: 1200}
+        max_depth: {type: categorical, choices: [4, 5, 6]}  # ✅ RIDOTTO - rimossi 7, 8, -1
+        learning_rate: {type: float, low: 0.01, high: 0.08, log: true}  # ✅ RIDOTTO da 0.1
+        num_leaves: {type: int, low: 16, high: 40}  # ✅ RIDOTTO max da 63
+        subsample: {type: float, low: 0.65, high: 0.85}
+        colsample_bytree: {type: float, low: 0.65, high: 0.85}
+        reg_alpha: {type: float, low: 0.1, high: 50.0, log: true}  # ✅ AUMENTATO min
+        reg_lambda: {type: float, low: 1.0, high: 100.0, log: true}  # ✅ AUMENTATO min
+        min_child_samples: {type: int, low: 50, high: 200}  # ✅ AUMENTATO min da 20
+        min_split_gain: {type: float, low: 0.0, high: 0.5}  # ✅ RIDOTTO max da 1.0
+
+    # ========================================
+    # GRADIENT BOOSTING (sklearn) - REGULARIZZATO
+    # ========================================
+    gbr:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {}
+      fit_params: {}
+      search_space:
+        learning_rate: {type: float, low: 0.01, high: 0.08, log: true}  # ✅ RIDOTTO
+        n_estimators: {type: int, low: 300, high: 1000}  # ✅ RIDOTTO max da 1500
+        max_depth: {type: int, low: 2, high: 6}  # ✅ RIDOTTO max da 8
+        subsample: {type: float, low: 0.6, high: 0.9}
+        min_samples_leaf: {type: int, low: 20, high: 60}  # ✅ AUMENTATO min da 1
+        max_features: {type: categorical, choices: ["sqrt", "log2", null]}
+        min_samples_split: {type: int, low: 10, high: 40}  # ✅ AUMENTATO min da 2
+        min_impurity_decrease: {type: float, low: 0.0, high: 0.005}  # ✅ RIDOTTO max
+
+    # ========================================
+    # HIST GRADIENT BOOSTING - REGULARIZZATO
+    # ========================================
+    hgbt:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {}
+      fit_params: {}
+      search_space:
+        learning_rate: {type: float, low: 0.01, high: 0.15, log: true}  # ✅ RIDOTTO da 0.3
+        max_depth: {type: int, low: 3, high: 10}  # ✅ RIDOTTO max da 16
+        max_leaf_nodes: {type: int, low: 15, high: 100}  # ✅ RIDOTTO max da 255
+        l2_regularization: {type: float, low: 0.1, high: 10.0, log: true}  # ✅ AUMENTATO min
+        max_bins: {type: int, low: 64, high: 200}  # ✅ RIDOTTO max da 255
+        min_samples_leaf: {type: int, low: 20, high: 80}  # ✅ AUMENTATO min da 1
+
+    # ========================================
+    # RANDOM FOREST - REGULARIZZATO
+    # ========================================
+    rf:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {}
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 300, high: 1000}  # ✅ RIDOTTO max da 1200
+        max_depth: {type: int, low: 6, high: 30}  # ✅ AUMENTATO min da 4 (RF meno prone a overfit)
+        min_samples_split: {type: int, low: 10, high: 40}  # ✅ AUMENTATO min da 2
+        min_samples_leaf: {type: int, low: 5, high: 25}  # ✅ AUMENTATO min da 1
+        max_features: {type: categorical, choices: ["sqrt", "log2", null]}
+        bootstrap: {type: categorical, choices: [true]}  # ✅ FORZATO true (più robusto)
+
+    # Modelli lineari/KNN/SVR/DT disabilitati (invariato)
+    linear:
+      enabled: false
+    ridge:
+      enabled: false
+    lasso:
+      enabled: false
+    elasticnet:
+      enabled: false
+    knn:
+      enabled: false
+    svr:
+      enabled: false
+    dt:
+      enabled: false
+
+  # ==========================================
+  # SHAP (INVARIATO)
+  # ==========================================
+  shap:
+    enabled: true
+    sample_size: 500
+    max_display: 50
+    save_plots: true
+    save_values: true
+
+  # ==========================================
+  # ENSEMBLE - MIGLIORATO
+  # ==========================================
+  ensembles:
+    voting:
+      enabled: true
+      top_n: 5              # ✅ AUMENTATO da 3
+      tune_weights: true
+    stacking:
+      enabled: true
+      top_n: 7              # ✅ AUMENTATO da 5
+      final_estimator: "ridge"
+      cv_folds: 10          # ✅ AUMENTATO da 5
+
+# ==========================================
+# EVALUATION (INVARIATO)
+# ==========================================
+evaluation:
+  group_metrics:
+    enabled: true
+    group_by_columns: ['AI_ZonaOmi', 'AI_IdCategoriaCatastale', 'AI_IdTipologiaEdilizia']
+    min_group_size: 10
+    original_scale: true
+    report_metrics: ['r2', 'rmse', 'mse', 'mae', 'mape', 'medae']
+    price_band:
+      method: 'quantile'
+      quantiles: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+      mape_floor: 1000.0
+      merge_small_bins: true
+      label_prefix: 'PREZZO_'

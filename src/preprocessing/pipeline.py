@@ -15,6 +15,7 @@ from preprocessing.feature_extractors import extract_geometry_features, maybe_ex
 from preprocessing.outliers import OutlierConfig, detect_outliers
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
 from preprocessing.imputation import ImputationConfig, impute_missing, fit_imputers, transform_with_imputers
+from preprocessing.contextual_features import add_all_contextual_features
 from preprocessing.target_transforms import (
     apply_target_transform,
     inverse_target_transform,
@@ -291,6 +292,12 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     elif target_col == "AI_Prezzo_Ridistribuito" and "AI_Prezzo_MQ" in df.columns:
         df = df.drop(columns=["AI_Prezzo_MQ"], errors="ignore")
         logger.info("Target=AI_Prezzo_Ridistribuito: rimossa colonna AI_Prezzo_MQ dalle feature")
+
+    # Add contextual features BEFORE split (uses target for aggregation)
+    # This captures market context: zone statistics, typology patterns, etc.
+    logger.info("🎯 Aggiunta feature contestuali (zona, tipologia, interazioni)...")
+    df = add_all_contextual_features(df, target_col=target_col, config=config)
+    logger.info(f"Feature contestuali aggiunte. Totale colonne: {len(df.columns)}")
 
     # Create combined for split key if needed
     Xy_full = df.copy()
