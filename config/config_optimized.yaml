@@ -401,7 +401,7 @@ training:
         min_child_weight: {type: float, low: 5.0, high: 20.0}  # ✅ AUMENTATO min da 1.0
         reg_alpha: {type: float, low: 0.1, high: 50.0, log: true}  # ✅ AUMENTATO min da 1e-4
         reg_lambda: {type: float, low: 1.0, high: 100.0, log: true}  # ✅ AUMENTATO min da 1e-4
-        gamma: {type: float, low: 0.0, high: 5.0, log: true}  # ✅ RIDOTTO max da 10.0
+        gamma: {type: float, low: 0.0, high: 5.0}  # ✅ RIDOTTO max da 10.0 (linear scale)
 
     # ========================================
     # LIGHTGBM - REGULARIZZATO
