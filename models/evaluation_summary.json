@@ -1,126 +1,126 @@
 {
   "top_models": [
     {
-      "Model": "Optimized_catboost",
-      "Category": "Optimized",
-      "Test_RMSE": 6.770172519041543,
-      "Test_R2": 0.8631360921489858
-    },
-    {
-      "Model": "Ensemble_stacking",
-      "Category": "Ensemble",
-      "Test_RMSE": 6.982773423177895,
-      "Test_R2": 0.8544053671696995
+      "Model": "Baseline_xgboost",
+      "Category": "Baseline",
+      "Test_RMSE": 2.3905169091568266,
+      "Test_R2": 0.9851771667699284
     },
     {
       "Model": "Baseline_rf",
       "Category": "Baseline",
-      "Test_RMSE": 7.023560232413569,
-      "Test_R2": 0.8526995453535728
+      "Test_RMSE": 2.707932611820584,
+      "Test_R2": 0.9809794405128932
     },
     {
-      "Model": "Optimized_rf",
-      "Category": "Optimized",
-      "Test_RMSE": 7.049920589584829,
-      "Test_R2": 0.8515917940212514
+      "Model": "Ensemble_stacking",
+      "Category": "Ensemble",
+      "Test_RMSE": 3.3080384282012,
+      "Test_R2": 0.9716150146553302
     },
     {
       "Model": "Ensemble_voting",
       "Category": "Ensemble",
-      "Test_RMSE": 7.073985072433081,
-      "Test_R2": 0.8505768997382985
+      "Test_RMSE": 3.3361274688935376,
+      "Test_R2": 0.971130925941552
     },
     {
       "Model": "Optimized_xgboost",
       "Category": "Optimized",
-      "Test_RMSE": 7.11417670965223,
-      "Test_R2": 0.8488741481481197
+      "Test_RMSE": 3.3964164446709493,
+      "Test_R2": 0.97007808034963
     },
     {
-      "Model": "Baseline_gbr",
-      "Category": "Baseline",
-      "Test_RMSE": 7.151318106675535,
-      "Test_R2": 0.847292045926631
+      "Model": "Optimized_gbr",
+      "Category": "Optimized",
+      "Test_RMSE": 3.6370552158789966,
+      "Test_R2": 0.9656878942976596
     },
     {
-      "Model": "Baseline_catboost",
-      "Category": "Baseline",
-      "Test_RMSE": 7.15699823931324,
-      "Test_R2": 0.8470493645356366
+      "Model": "Optimized_catboost",
+      "Category": "Optimized",
+      "Test_RMSE": 3.815783331721717,
+      "Test_R2": 0.962232781957944
+    },
+    {
+      "Model": "Optimized_lightgbm",
+      "Category": "Optimized",
+      "Test_RMSE": 3.916213597222227,
+      "Test_R2": 0.9602185760470292
+    },
+    {
+      "Model": "Optimized_hgbt",
+      "Category": "Optimized",
+      "Test_RMSE": 4.004703762817656,
+      "Test_R2": 0.9584004747671973
     },
     {
       "Model": "Baseline_hgbt",
       "Category": "Baseline",
-      "Test_RMSE": 7.172999466794945,
-      "Test_R2": 0.8463646825756324
-    },
-    {
-      "Model": "Baseline_lightgbm",
-      "Category": "Baseline",
-      "Test_RMSE": 7.194518493088502,
-      "Test_R2": 0.8454414867547816
+      "Test_RMSE": 4.150668865570696,
+      "Test_R2": 0.9553127368634794
     }
   ],
   "test_metrics": [
     {
       "model": "rf",
-      "r2": 0.8515917940212514,
-      "rmse": 7.049920589584829,
-      "mae": 5.196753611906524,
-      "r2_orig": 0.6475441119027384,
-      "rmse_orig": 45614.81096163397,
-      "mae_orig": 21909.1869920907,
-      "mape_floor_orig": 0.4691948398871287
+      "r2": 0.9440097601641032,
+      "rmse": 4.646033882402895,
+      "mae": 3.018686186096229,
+      "r2_orig": 0.7965784176508018,
+      "rmse_orig": 39471.85329259348,
+      "mae_orig": 13610.60588894935,
+      "mape_floor_orig": 0.2390378471541501
     },
     {
       "model": "gbr",
-      "r2": 0.8444682098429527,
-      "rmse": 7.217135395943668,
-      "mae": 5.301099218391541,
-      "r2_orig": 0.6628344071851853,
-      "rmse_orig": 44614.40638302043,
-      "mae_orig": 22624.27331019437,
-      "mape_floor_orig": 0.48794641486096196
+      "r2": 0.9656878942976596,
+      "rmse": 3.6370552158789966,
+      "mae": 2.634184749712546,
+      "r2_orig": 0.9390253560084785,
+      "rmse_orig": 21610.44154673832,
+      "mae_orig": 10899.047660520158,
+      "mape_floor_orig": 0.19454200609784758
     },
     {
       "model": "hgbt",
-      "r2": 0.8337202109262419,
-      "rmse": 7.462339440938025,
-      "mae": 5.5324923873604925,
-      "r2_orig": 0.6605451097161406,
-      "rmse_orig": 44765.61229627204,
-      "mae_orig": 22963.90042037894,
-      "mape_floor_orig": 0.49675739115438655
+      "r2": 0.9584004747671971,
+      "rmse": 4.004703762817656,
+      "mae": 2.7858722076451543,
+      "r2_orig": 0.8758329207750248,
+      "rmse_orig": 30838.428349513993,
+      "mae_orig": 12258.57463927615,
+      "mape_floor_orig": 0.20830484613974753
     },
     {
       "model": "xgboost",
-      "r2": 0.8488741481481197,
-      "rmse": 7.11417670965223,
-      "mae": 5.309611818054569,
-      "r2_orig": 0.6709916404673428,
-      "rmse_orig": 44071.41155218954,
-      "mae_orig": 22645.418363808323,
-      "mape_floor_orig": 0.49835310885169315
+      "r2": 0.9700780803496301,
+      "rmse": 3.3964164446709493,
+      "mae": 2.5283977483986213,
+      "r2_orig": 0.9499776064230373,
+      "rmse_orig": 19573.62385853628,
+      "mae_orig": 10173.420839026981,
+      "mape_floor_orig": 0.18141601188108017
     },
     {
       "model": "lightgbm",
-      "r2": 0.8433783551446689,
-      "rmse": 7.242377495367791,
-      "mae": 5.271350761706526,
-      "r2_orig": 0.6772899573358162,
-      "rmse_orig": 43647.536280692424,
-      "mae_orig": 22457.257289543762,
-      "mape_floor_orig": 0.5225635435562405
+      "r2": 0.9602185760470291,
+      "rmse": 3.916213597222227,
+      "mae": 2.83246945569863,
+      "r2_orig": 0.9023873343749828,
+      "rmse_orig": 27342.74361543309,
+      "mae_orig": 11873.83737096204,
+      "mape_floor_orig": 0.21396726785868925
     },
     {
       "model": "catboost",
-      "r2": 0.8631360921489858,
-      "rmse": 6.770172519041543,
-      "mae": 4.917282922736684,
-      "r2_orig": 0.6731170507481923,
-      "rmse_orig": 43928.829157190274,
-      "mae_orig": 21483.82643953014,
-      "mape_floor_orig": 0.45489993672219076
+      "r2": 0.9622327819579439,
+      "rmse": 3.815783331721717,
+      "mae": 2.758824177897406,
+      "r2_orig": 0.9171174390676048,
+      "rmse_orig": 25195.360961529157,
+      "mae_orig": 11703.862408115185,
+      "mape_floor_orig": 0.20470175157843495
     }
   ]
 }

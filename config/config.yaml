@@ -109,8 +109,8 @@ temporal_split:
   month_col: 'A_MeseStipula'
   mode: 'fraction'      # 'date' | 'fraction'
   fraction:
-    train: 0.7          # fraction of time-ordered data for train
-    valid: 0.2          # fraction of time-ordered data for validation (0 disables val)
+    train: 0.8          # fraction of time-ordered data for train
+    valid: 0.0          # fraction of time-ordered data for validation (0 disables val)
   date:
     test_start_year: 2023 # used only if mode=='date'
     test_start_month: 1   # used only if mode=='date'
