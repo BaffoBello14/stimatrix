@@ -124,8 +124,7 @@ Sezione `feature_pruning`:
 ```yaml
 feature_pruning:
   drop_columns: ["col1", "col2", ...]
-  # Flag specifico legacy mantenuto per compatibilità
-  include_ai_superficie: true   # se false, rimuove `AI_Superficie` dalle feature X
+  # Per rimuovere AI_Superficie, aggiungilo a drop_columns
 ```
 
 Artefatti salvati:

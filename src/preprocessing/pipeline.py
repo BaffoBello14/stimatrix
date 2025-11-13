@@ -362,17 +362,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         y_val = val_df[target_col].astype(float)
         X_val = val_df.drop(columns=[target_col])
 
-    # Optionally drop AI_Superficie from features based on configuration
-    include_ai_superficie_flag = bool(prune_cfg.get("include_ai_superficie", True))
-    if not include_ai_superficie_flag:
-        drop_cols = [c for c in ["AI_Superficie"] if c in X_train.columns]
-        if drop_cols:
-            X_train = X_train.drop(columns=drop_cols, errors="ignore")
-            X_test = X_test.drop(columns=drop_cols, errors="ignore")
-            if X_val is not None:
-                X_val = X_val.drop(columns=drop_cols, errors="ignore")
-            logger.info("Rimossa colonna AI_Superficie dalle feature per configurazione")
-
     # Preserve original-scale targets for evaluation
     y_test_orig = y_test.copy()
     y_val_orig = y_val.copy() if y_val is not None else None

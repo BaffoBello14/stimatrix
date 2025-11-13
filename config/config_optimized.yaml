@@ -267,9 +267,6 @@ feature_pruning:
     # - 'C1_EPHTot'                 # Metrica tecnica con troppi missing
     # - 'C2_ClasseEnergetica'       # Ridondante con C1
     # - 'C2_EPGlNren'               # Ridondante con C1
-  
-  # KEEP AI_Superficie come feature (è predittivo!)
-  include_ai_superficie: true
 
 # Scaling configuration (INVARIATO)
 scaling: &scaling_defaults

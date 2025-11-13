@@ -311,8 +311,6 @@ feature_pruning:
     # - 'C1_EPHTot'
     # - 'C2_ClasseEnergetica'
     # - 'C2_EPGlNren'
-    
-  include_ai_superficie: true  # KEEP AI_Superficie come feature
 ```
 
 ### numeric_coercion.blacklist_globs (Lista Corretta)

@@ -159,8 +159,6 @@ feature_pruning:
     - 'AI_Subalterno'
     - 'AI_Piano'
     - 'AI_Rendita'
-  # Keep AI_Superficie as a feature (set to false to drop from X)
-  include_ai_superficie: true
 
 # Scaling configuration
 scaling: &scaling_defaults

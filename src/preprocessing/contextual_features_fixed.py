@@ -158,13 +158,12 @@ def transform_contextual_features(
         zone_price_df = pd.DataFrame.from_dict(stats['zone_price'], orient='index')
         df = df.merge(zone_price_df, left_on=zone_col, right_index=True, how='left')
         
-        # Derived features (ratio, z-score, etc.)
-        if target_col in df.columns:
-            df['price_vs_zone_mean_ratio'] = df[target_col] / (df['zone_price_mean'] + 1e-8)
-            df['price_vs_zone_median_ratio'] = df[target_col] / (df['zone_price_median'] + 1e-8)
-            df['price_zone_zscore'] = (df[target_col] - df['zone_price_mean']) / (df['zone_price_std'] + 1e-8)
-            df['price_zone_iqr_position'] = (df[target_col] - df['zone_price_q25']) / (df['zone_price_q75'] - df['zone_price_q25'] + 1e-8)
-            df['price_zone_range_position'] = (df[target_col] - df['zone_price_min']) / (df['zone_price_max'] - df['zone_price_min'] + 1e-8)
+        # ❌ REMOVED: Derived features that require target instance (not usable in production)
+        # - price_vs_zone_mean_ratio
+        # - price_vs_zone_median_ratio
+        # - price_zone_zscore
+        # - price_zone_iqr_position
+        # - price_zone_range_position
     
     if 'zone_surface' in stats and zone_col in df.columns and surface_col in df.columns:
         zone_surface_df = pd.DataFrame.from_dict(stats['zone_surface'], orient='index')
@@ -184,9 +183,9 @@ def transform_contextual_features(
             how='left'
         )
         
-        if target_col in df.columns:
-            df['price_vs_type_zone_mean'] = df[target_col] / (df['type_zone_price_mean'] + 1e-8)
-            df['type_zone_rarity'] = 1.0 / (df['type_zone_count'] + 1)
+        # ❌ REMOVED: price_vs_type_zone_mean (requires target instance)
+        # ✅ KEEP: type_zone_rarity (uses count, not target instance)
+        df['type_zone_rarity'] = 1.0 / (df['type_zone_count'] + 1)
     
     if 'type_price' in stats and type_col in df.columns:
         type_price_df = pd.DataFrame.from_dict(stats['type_price'], orient='index')
@@ -204,15 +203,10 @@ def transform_contextual_features(
         df['surface_vs_type_zone_mean'] = df[surface_col] / (df['type_zone_surface_mean'] + 1e-8)
     
     # ==========================================
-    # 3. INTERACTION FEATURES (non target-based)
+    # 3. INTERACTION FEATURES (non target-based only!)
     # ==========================================
-    if surface_col in df.columns and target_col in df.columns:
-        df['prezzo_mq'] = df[target_col] / (df[surface_col] + 1.0)
-        
-        # Prezzo/mq relativo alla zona (se disponibile)
-        if 'zone_price_mean' in df.columns and 'zone_surface_mean' in df.columns:
-            zone_prezzo_mq = df['zone_price_mean'] / (df['zone_surface_mean'] + 1.0)
-            df['prezzo_mq_vs_zone'] = df['prezzo_mq'] / (zone_prezzo_mq + 1e-8)
+    # ❌ REMOVED: prezzo_mq (requires target instance)
+    # ❌ REMOVED: prezzo_mq_vs_zone (requires target instance)
     
     if surface_col in df.columns:
         df['log_superficie'] = np.log1p(df[surface_col])
@@ -229,8 +223,7 @@ def transform_contextual_features(
         temporal_price_df = pd.DataFrame.from_dict(stats['temporal_price'], orient='index')
         df = df.merge(temporal_price_df, left_on='year_month', right_index=True, how='left')
         
-        if target_col in df.columns:
-            df['price_vs_temporal_mean'] = df[target_col] / (df['temporal_price_mean'] + 1e-8)
+        # ❌ REMOVED: price_vs_temporal_mean (requires target instance)
         
         # Seasonality
         df['quarter'] = ((df[month_col] - 1) // 3) + 1
