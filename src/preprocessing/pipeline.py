@@ -908,4 +908,4 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         logger.warning(f"Impossibile salvare preprocessing_info.json: {_e}")
 
     logger.info(f"Preprocessing completato. Output in {pre_dir}")
-    return out_path
+    return pre_dir
