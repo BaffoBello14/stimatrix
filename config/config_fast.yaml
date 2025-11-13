@@ -25,7 +25,6 @@ logging:
 # Execution Configuration
 execution:
   steps: ["preprocessing", "training", "evaluation"]  # all | schema | dataset | preprocessing | training | evaluation
-  force_reload: true
 
 # Experiment tracking (Weights & Biases)
 tracking:

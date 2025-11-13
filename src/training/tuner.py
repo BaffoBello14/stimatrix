@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, TYPE_CHECKING
 
 import numpy as np
 import optuna
@@ -10,8 +10,11 @@ from sklearn.base import RegressorMixin
 from sklearn.model_selection import KFold, TimeSeriesSplit
 
 from .model_zoo import build_estimator
-from .metrics import select_primary_value
+from .metrics import select_primary_value, regression_metrics
 from .constants import CATBOOST_KEY, XGBOOST_KEY, LIGHTGBM_KEY, DEFAULT_TUNING_SPLIT_FRACTION
+
+if TYPE_CHECKING:
+    from utils.wandb_utils import WandbTracker
 
 
 @dataclass
@@ -53,6 +56,7 @@ def tune_model(
     cat_features: Optional[List[int]] = None,
     cv_config: Optional[Dict[str, Any]] = None,
     tuning_split_fraction: float = DEFAULT_TUNING_SPLIT_FRACTION,  # fraction for temporal split (consistent with preprocessing)
+    wandb_manager: Optional['WandbTracker'] = None,  # for per-trial logging
 ) -> TuningResult:
     direction = "maximize"
 
@@ -66,6 +70,30 @@ def tune_model(
         sampler = optuna.samplers.TPESampler(seed=seed)
     else:
         sampler = optuna.samplers.TPESampler(seed=seed)
+
+    def _log_trial_to_wandb(trial_number: int, y_true: np.ndarray, y_pred: np.ndarray, trial_params: Dict[str, Any]) -> None:
+        """Helper to log trial metrics to W&B"""
+        if wandb_manager is None:
+            return
+        try:
+            # Compute full metrics for this trial
+            metrics = regression_metrics(y_true, y_pred)
+            # Log trial metrics
+            log_dict = {
+                f"tuning/{model_key}/trial_number": trial_number,
+                f"tuning/{model_key}/{primary_metric}": metrics.get(primary_metric.replace("neg_", ""), 0.0),
+                f"tuning/{model_key}/val_r2": metrics.get("r2", 0.0),
+                f"tuning/{model_key}/val_rmse": metrics.get("rmse", 0.0),
+                f"tuning/{model_key}/val_mae": metrics.get("mae", 0.0),
+                f"tuning/{model_key}/val_mape": metrics.get("mape", 0.0),
+            }
+            # Optionally log hyperparameters (can be noisy, disabled by default)
+            # for k, v in trial_params.items():
+            #     if isinstance(v, (int, float, bool)):
+            #         log_dict[f"tuning/{model_key}/hp_{k}"] = v
+            wandb_manager.log(log_dict, step=trial_number)
+        except Exception:
+            pass  # Fail silently to not break tuning
 
     def objective(trial: optuna.Trial) -> float:
         params = _apply_suggestions(trial, search_space or {}, base_params or {})
@@ -138,7 +166,17 @@ def tune_model(
                             est.fit(X_tr, y_tr)
                     y_pred = est.predict(X_va)
                     scores.append(select_primary_value(primary_metric, y_va, y_pred))
-                return float(np.mean(scores)) if scores else -np.inf
+                final_score = float(np.mean(scores)) if scores else -np.inf
+                # Log CV trial (simplified: only aggregate score)
+                if wandb_manager is not None:
+                    try:
+                        wandb_manager.log({
+                            f"tuning/{model_key}/trial_number": trial.number,
+                            f"tuning/{model_key}/{primary_metric}_cv": final_score,
+                        }, step=trial.number)
+                    except Exception:
+                        pass
+                return final_score
             # Use temporal split instead of random split to avoid data leakage
             # Maintain chronological order for time-series data
             split_point = int(len(X_train) * tuning_split_fraction)
@@ -156,6 +194,8 @@ def tune_model(
             else:
                 est.fit(X_tr, y_tr)
             y_pred = est.predict(X_va)
+            # Log trial to W&B
+            _log_trial_to_wandb(trial.number, y_va, y_pred, params)
             return select_primary_value(primary_metric, y_va, y_pred)
         else:
             # Con validation esterna: abilita early stopping dove supportato
@@ -200,6 +240,8 @@ def tune_model(
                 else:
                     est.fit(X_train, y_train)
             y_pred = est.predict(X_val)
+            # Log trial to W&B
+            _log_trial_to_wandb(trial.number, y_val, y_pred, params)
             return select_primary_value(primary_metric, y_val, y_pred)
 
     study = optuna.create_study(direction=direction, sampler=sampler)

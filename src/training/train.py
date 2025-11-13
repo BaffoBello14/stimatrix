@@ -169,6 +169,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     table_rows: List[Dict[str, Any]] = []
 
     # Per-model loop
+    model_step = 0  # Counter for W&B step tracking
     for model_key in selected_models:
         model_entry = models_cfg.get(model_key, {})
         prefix = model_entry.get("profile", None)
@@ -305,6 +306,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                 cat_features=cat_features,
                 cv_config=(tr_cfg.get("cv_when_no_val", {}) if X_val is None else None),
                 tuning_split_fraction=tuning_split_fraction,
+                wandb_manager=wb,
             )
         except ImportError as e:
             logger.warning(f"Dipendenza mancante per modello {model_key}: {e}. Skip del modello.")
@@ -393,8 +395,27 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             m_test_orig = m_test_orig or None
             m_train_orig = m_train_orig or None
         diag = overfit_diagnostics(m_train, m_test)
-        wb.log_prefixed_metrics(f"model/{model_key}", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
-        wb.log_prefixed_metrics(f"model/{model_key}", {f"overfit_{k}": v for k, v in diag.items()})
+        
+        # Log final metrics to W&B with structured naming
+        final_metrics = {}
+        # Transformed scale metrics
+        for k, v in m_train.items():
+            final_metrics[f"train_{k}"] = v
+        for k, v in m_test.items():
+            final_metrics[f"test_{k}"] = v
+        # Original scale metrics (if available)
+        if m_train_orig is not None:
+            for k, v in m_train_orig.items():
+                final_metrics[f"train_{k}_orig"] = v
+        if m_test_orig is not None:
+            for k, v in m_test_orig.items():
+                final_metrics[f"test_{k}_orig"] = v
+        # Overfit diagnostics
+        for k, v in diag.items():
+            final_metrics[f"overfit_{k}"] = v
+        
+        wb.log_prefixed_metrics(f"final/{model_key}", final_metrics, step=model_step)
+        model_step += 1
 
         model_id = f"{model_key}"
         model_dir = models_dir / model_id
@@ -698,7 +719,26 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "Test_R2": m_test.get("r2"),
         })
         logger.info(f"[voting] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
-        wb.log_prefixed_metrics("ensemble/voting", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
+        
+        # Log final ensemble metrics to W&B
+        ensemble_metrics = {}
+        for k, v in m_train.items():
+            ensemble_metrics[f"train_{k}"] = v
+        for k, v in m_test.items():
+            ensemble_metrics[f"test_{k}"] = v
+        # Original scale metrics (if available)
+        if m_train_orig and isinstance(m_train_orig, dict):
+            for k, v in m_train_orig.items():
+                ensemble_metrics[f"train_{k}_orig"] = v
+        if m_test_orig and isinstance(m_test_orig, dict):
+            for k, v in m_test_orig.items():
+                ensemble_metrics[f"test_{k}_orig"] = v
+        # Overfit diagnostics
+        for k, v in diag.items():
+            ensemble_metrics[f"overfit_{k}"] = v
+        
+        wb.log_prefixed_metrics(f"final/ensemble_voting", ensemble_metrics, step=model_step)
+        model_step += 1
 
         # Group metrics for ensemble voting
         if gm_enabled:
@@ -803,7 +843,26 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "Test_R2": m_test.get("r2"),
         })
         logger.info(f"[stacking] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
-        wb.log_prefixed_metrics("ensemble/stacking", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
+        
+        # Log final ensemble metrics to W&B
+        ensemble_metrics = {}
+        for k, v in m_train.items():
+            ensemble_metrics[f"train_{k}"] = v
+        for k, v in m_test.items():
+            ensemble_metrics[f"test_{k}"] = v
+        # Original scale metrics (if available)
+        if m_train_orig and isinstance(m_train_orig, dict):
+            for k, v in m_train_orig.items():
+                ensemble_metrics[f"train_{k}_orig"] = v
+        if m_test_orig and isinstance(m_test_orig, dict):
+            for k, v in m_test_orig.items():
+                ensemble_metrics[f"test_{k}_orig"] = v
+        # Overfit diagnostics
+        for k, v in diag.items():
+            ensemble_metrics[f"overfit_{k}"] = v
+        
+        wb.log_prefixed_metrics(f"final/ensemble_stacking", ensemble_metrics, step=model_step)
+        model_step += 1
 
         # Group metrics for stacking ensemble
         if gm_enabled:
