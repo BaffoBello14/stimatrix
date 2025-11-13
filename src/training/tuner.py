@@ -78,20 +78,16 @@ def tune_model(
         try:
             # Compute full metrics for this trial
             metrics = regression_metrics(y_true, y_pred)
-            # Log trial metrics (without step parameter - let W&B auto-increment)
+            # Log trial metrics with cleaner structure: {model}/{metric}
             log_dict = {
-                f"tuning/{model_key}/trial_number": trial_number,
-                f"tuning/{model_key}/{primary_metric}": metrics.get(primary_metric.replace("neg_", ""), 0.0),
-                f"tuning/{model_key}/val_r2": metrics.get("r2", 0.0),
-                f"tuning/{model_key}/val_rmse": metrics.get("rmse", 0.0),
-                f"tuning/{model_key}/val_mae": metrics.get("mae", 0.0),
-                f"tuning/{model_key}/val_mape": metrics.get("mape", 0.0),
+                f"{model_key}/trial_number": trial_number,
+                f"{model_key}/r2": metrics.get("r2", 0.0),
+                f"{model_key}/rmse": metrics.get("rmse", 0.0),
+                f"{model_key}/mae": metrics.get("mae", 0.0),
+                f"{model_key}/mape": metrics.get("mape", 0.0),
+                f"{model_key}/mse": metrics.get("mse", 0.0),
             }
-            # Optionally log hyperparameters (can be noisy, disabled by default)
-            # for k, v in trial_params.items():
-            #     if isinstance(v, (int, float, bool)):
-            #         log_dict[f"tuning/{model_key}/hp_{k}"] = v
-            wandb_manager.log(log_dict)  # No step parameter - auto-increment by W&B
+            wandb_manager.log(log_dict)
         except Exception:
             pass  # Fail silently to not break tuning
 
@@ -171,9 +167,9 @@ def tune_model(
                 if wandb_manager is not None:
                     try:
                         wandb_manager.log({
-                            f"tuning/{model_key}/trial_number": trial.number,
-                            f"tuning/{model_key}/{primary_metric}_cv": final_score,
-                        })  # No step parameter - auto-increment by W&B
+                            f"{model_key}/trial_number": trial.number,
+                            f"{model_key}/{primary_metric.replace('neg_', '')}": abs(final_score),
+                        })
                     except Exception:
                         pass
                 return final_score
