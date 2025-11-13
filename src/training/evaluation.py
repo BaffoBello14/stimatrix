@@ -168,9 +168,23 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
                     except Exception:
                         pass
                 
-                # Load X_test with correct profile
+                # CRITICAL FIX: Load ALL data with the SAME ensemble_prefix to ensure alignment
+                # This prevents "All arrays must be of the same length" errors
                 ensemble_data = _load_preprocessed_for_profile(pre_dir, ensemble_prefix)
                 X_test_ensemble = ensemble_data["X_test"]
+                y_test_ensemble = ensemble_data["y_test"].iloc[:, 0].values
+                y_test_ensemble_orig = ensemble_data["y_test_orig"].iloc[:, 0].values
+                
+                # Apply inverse transform if needed and y_test_orig == y_test (not already inverted)
+                if transform_applied and np.array_equal(y_test_ensemble_orig, y_test_ensemble):
+                    try:
+                        y_test_ensemble_orig = np.asarray(inverse_target_transform(y_test_ensemble, transform_metadata))
+                    except Exception as exc:
+                        logger.warning(f"Cannot invert target transform for ensemble '{subdir}': {exc}")
+                
+                # Load group columns with SAME ensemble_prefix
+                group_cols_path_ensemble = pre_dir / (f"group_cols_test_{ensemble_prefix}.parquet" if ensemble_prefix else "group_cols_test.parquet")
+                grp_df_ensemble = pd.read_parquet(group_cols_path_ensemble) if group_cols_path_ensemble.exists() else pd.DataFrame()
                 
                 try:
                     est = joblib_load(model_path)
@@ -186,16 +200,17 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
                         logger.warning(f"Predizione fallita per ensemble '{subdir}': {exc}")
                         return
 
-                y_true_series = pd.Series(y_test_orig if gm_original_scale else y_test)
+                # Use ensemble-specific y_test to ensure same length as predictions
+                y_true_series = pd.Series(y_test_ensemble_orig if gm_original_scale else y_test_ensemble)
                 if gm_original_scale:
                     y_pred_series = pd.Series(_inverse_predictions(y_pred))
                 else:
                     y_pred_series = pd.Series(y_pred)
 
                 for gb_col in gb_cols:
-                    if gb_col not in grp_df.columns:
+                    if gb_col not in grp_df_ensemble.columns:
                         continue
-                    groups = grp_df[gb_col].fillna("MISSING")
+                    groups = grp_df_ensemble[gb_col].fillna("MISSING")
                     gm_df = grouped_regression_metrics(
                         y_true=y_true_series,
                         y_pred=y_pred_series,
