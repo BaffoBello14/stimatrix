@@ -80,14 +80,16 @@ def tune_model(
             metrics = regression_metrics(y_true, y_pred)
             # Log trial metrics with hierarchical structure: tuning/{model}/{metric}
             # This creates line charts showing optimization progress over trials
+            # Use custom step to avoid conflicts with main training steps
             log_dict = {
+                f"tuning/{model_key}/trial": trial_number,  # Custom step metric
                 f"tuning/{model_key}/r2": metrics.get("r2", 0.0),
                 f"tuning/{model_key}/rmse": metrics.get("rmse", 0.0),
                 f"tuning/{model_key}/mae": metrics.get("mae", 0.0),
                 f"tuning/{model_key}/mape": metrics.get("mape", 0.0),
                 f"tuning/{model_key}/mse": metrics.get("mse", 0.0),
             }
-            wandb_manager.log(log_dict, step=trial_number)
+            wandb_manager.log(log_dict)  # Let W&B auto-increment global step
         except Exception:
             pass  # Fail silently to not break tuning
 
@@ -176,8 +178,9 @@ def tune_model(
                 if wandb_manager is not None:
                     try:
                         wandb_manager.log({
+                            f"tuning/{model_key}/trial": trial.number,  # Custom step metric
                             f"tuning/{model_key}/{primary_metric.replace('neg_', '')}": abs(final_score),
-                        }, step=trial.number)
+                        })  # Let W&B auto-increment global step
                     except Exception:
                         pass
                 return final_score

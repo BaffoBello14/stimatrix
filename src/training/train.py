@@ -296,6 +296,16 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as e:
             logger.warning(f"Baseline fallita per {model_key}: {e}")
 
+        # Define custom step for tuning metrics (prevents W&B step ordering warnings)
+        if wb.state.enabled and wb.state.run is not None:
+            try:
+                wandb = wb.state.module
+                # Define trial as the x-axis for tuning metrics
+                wandb.define_metric(f"tuning/{model_key}/trial")
+                wandb.define_metric(f"tuning/{model_key}/*", step_metric=f"tuning/{model_key}/trial")
+            except Exception:
+                pass  # Fail silently if wandb not available
+
         try:
             tuning = tune_model(
                 model_key=model_key,
