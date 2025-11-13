@@ -13,7 +13,6 @@ from preprocessing.target_transforms import (
     apply_target_transform,
     inverse_target_transform,
     get_transform_name,
-    validate_transform_compatibility
 )
 
 
@@ -159,20 +158,12 @@ class TestTargetTransforms:
         assert "Yeo-Johnson" in get_transform_name(yj_meta)
         assert "1.2000" in get_transform_name(yj_meta)
     
-    def test_validate_transform_compatibility(self):
-        """Test validation of transform compatibility."""
-        y_positive = pd.Series([100, 200, 300])
-        y_with_negatives = pd.Series([-100, 0, 100])
-        
-        # sqrt is incompatible with negatives
-        assert validate_transform_compatibility(y_positive, "sqrt") == True
-        assert validate_transform_compatibility(y_with_negatives, "sqrt") == False
-        
-        # boxcox warns but doesn't fail (auto-shift)
-        assert validate_transform_compatibility(y_with_negatives, "boxcox") == True
-        
-        # yeojohnson works with anything
-        assert validate_transform_compatibility(y_with_negatives, "yeojohnson") == True
+    # NOTE: validate_transform_compatibility was removed
+    # Transformations now handle edge cases automatically:
+    # - sqrt: clamps negatives to 0
+    # - boxcox: auto-shifts if needed
+    # - yeojohnson: works with any values
+    # Test removed as function no longer exists
     
     def test_invalid_transform_type(self):
         """Test that invalid transform type raises error."""
