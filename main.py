@@ -23,7 +23,7 @@ def parse_args() -> argparse.Namespace:
         nargs="+",
         choices=["schema", "dataset", "preprocessing", "training", "evaluation", "ml", "all"],
         required=False,
-        help="Passi da eseguire (uno o più). Usa 'all' per tutti",
+        help="Passi da eseguire (uno o più). Usa 'all' per eseguire tutti i passi o 'ml' per eseguire solo preprocessing, training ed evaluation.",
     )
     args = parser.parse_args()
 
