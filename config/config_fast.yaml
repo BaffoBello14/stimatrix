@@ -1,26 +1,21 @@
 # ==========================================
-# CONFIGURAZIONE OTTIMIZZATA - STIMATRIX
+# CONFIGURAZIONE FAST - STIMATRIX
 # ==========================================
 # 
-# Obiettivi:
-# 1. ✅ Ridurre overfitting (gap train-test < 0.10)
-# 2. ✅ Migliorare MAPE (target < 35%)
-# 3. ✅ Migliorare RMSE (target < 26k€)
-# 4. ✅ Performance uniforme tra gruppi
+# Config per test rapidi e sviluppo.
+# Usa meno trial per hyperparameter tuning (20 vs 150)
+# e disabilita modelli secondari.
 #
-# Modifiche principali rispetto a config.yaml:
-# - Feature contestuali aggiunte automaticamente
-# - Regularizzazione AGGRESSIVA su tutti i modelli
-# - Outlier detection più stringente
-# - Early stopping abilitato
-# - Hyperparameter ranges ottimizzati
+# ⏱️ Tempo stimato: ~15-20 minuti (vs 2-3 ore config normale)
+# 📊 Performance: Leggermente inferiore al config.yaml
+# 🎯 Uso: Testing, debug, iterazione veloce
 # ==========================================
 
 # Logging Configuration
 logging:
   level: ${LOG_LEVEL:-INFO}
   format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-  file: ${LOG_FILE:-'logs/pipeline_optimized.log'}
+  file: ${LOG_FILE:-'logs/pipeline_fast.log'}
   console: ${LOG_CONSOLE:-true}
   rotate:
     enabled: ${LOG_ROTATE:-false}
@@ -36,12 +31,12 @@ execution:
 tracking:
   wandb:
     enabled: ${WANDB_ENABLED:-true}
-    project: ${WANDB_PROJECT:-'stimatrix-optimized'}
+    project: ${WANDB_PROJECT:-'stimatrix-fast'}
     entity: ${WANDB_ENTITY:-null}
-    group: ${WANDB_GROUP:-'optimization-v1'}
-    tags: ['optimized', 'regularized', 'contextual-features']
+    group: ${WANDB_GROUP:-'fast-test'}
+    tags: ['fast', 'test', 'development']
     mode: ${WANDB_MODE:-'online'}
-    name: 'opt_contextual_reg'
+    name: 'fast_test'
 
 # Paths Configuration
 paths:
@@ -405,14 +400,14 @@ training:
   seed: ${SEED:-42}
   n_jobs_default: ${N_JOBS:--1}
   timeout: ${TRAIN_TIMEOUT:-null}
-  trials_base: &trials_base 50
-  trials_advanced: &trials_advanced 150  # ✅ AUMENTATO da 100 per trovare miglior regularizzazione
+  trials_base: &trials_base 10   # ⚡ RIDOTTO per test rapidi
+  trials_advanced: &trials_advanced 20  # ⚡ RIDOTTO per test rapidi
   
   # Cross-validation robusta
   cv_when_no_val:
     enabled: true
     kind: kfold
-    n_splits: 10          # ✅ AUMENTATO da 5 per validation più robusta
+    n_splits: 5           # ⚡ RIDOTTO per test rapidi
     shuffle: true
 
   # ==========================================
@@ -488,7 +483,7 @@ training:
     # GRADIENT BOOSTING (sklearn) - REGULARIZZATO
     # ========================================
     gbr:
-      enabled: true
+      enabled: false  # ⚡ Disabilitato per test rapidi
       profile: tree
       trials: *trials_advanced
       base_params: {}
@@ -507,7 +502,7 @@ training:
     # HIST GRADIENT BOOSTING - REGULARIZZATO
     # ========================================
     hgbt:
-      enabled: true
+      enabled: false  # ⚡ Disabilitato per test rapidi
       profile: tree
       trials: *trials_advanced
       base_params: {}
@@ -568,14 +563,14 @@ training:
   # ==========================================
   ensembles:
     voting:
-      enabled: true
-      top_n: 5              # ✅ AUMENTATO da 3
+      enabled: false        # ⚡ Disabilitato per test rapidi
+      top_n: 5
       tune_weights: true
     stacking:
-      enabled: true
-      top_n: 7              # ✅ AUMENTATO da 5
+      enabled: true         # ⚡ Mantenuto ma con meno modelli
+      top_n: 4              # ⚡ RIDOTTO da 7 (max 4 modelli)
       final_estimator: "ridge"
-      cv_folds: 10          # ✅ AUMENTATO da 5
+      cv_folds: 5           # ⚡ RIDOTTO da 10
 
 # ==========================================
 # EVALUATION
