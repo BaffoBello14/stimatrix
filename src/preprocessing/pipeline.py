@@ -785,16 +785,34 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             if _df is not None and _df.isnull().any().any():
                 logger.warning(f"[tree] Residual NaN detected after fills in {name}")
         
-        # Optional numeric-only correlation prune
+        # FIX A: Correlation pruning ONLY on continuous numeric features (exclude OHE)
+        # OHE features are binary (0/1) and should NOT be pruned based on correlation
+        # They represent categorical information and high correlation is expected
         corr_thr = float(profiles_cfg.get("tree", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
-        X_tr_num = X_tr.select_dtypes(include=[np.number])
+        
+        # Identify OHE columns (suffix pattern or prefix pattern depending on encoder)
+        ohe_cols = [c for c in X_tr.columns if '__ohe_' in c or c.startswith('ohe_')]
+        logger.info(f"[tree] Identified {len(ohe_cols)} OHE features to preserve from correlation pruning")
+        
+        # Correlation pruning ONLY on numeric features that are NOT OHE
+        X_tr_num = X_tr.select_dtypes(include=[np.number]).drop(columns=ohe_cols, errors="ignore")
         X_tr_num_pruned, dropped_corr = remove_highly_correlated(X_tr_num, threshold=corr_thr)
-        logger.info(f"[tree] Pruning correlazioni numeriche: {len(dropped_corr)}")
-        kept_num_cols = X_tr_num_pruned.columns
-        X_tr_final = pd.concat([X_tr[kept_num_cols], X_tr.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
-        X_te_final = pd.concat([X_te[kept_num_cols], X_te.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        logger.info(f"[tree] Pruning correlazioni numeriche (excluding OHE): {len(dropped_corr)} dropped")
+        
+        # Recombine: pruned numeric + ALL OHE + non-numeric (target/freq/ordinal encoded)
+        kept_num_cols = X_tr_num_pruned.columns.tolist()
+        X_tr_ohe = X_tr[ohe_cols] if ohe_cols else pd.DataFrame(index=X_tr.index)
+        X_tr_other = X_tr.drop(columns=kept_num_cols + ohe_cols, errors="ignore")
+        X_tr_final = pd.concat([X_tr_num_pruned, X_tr_ohe, X_tr_other], axis=1)
+        
+        X_te_ohe = X_te[ohe_cols] if ohe_cols else pd.DataFrame(index=X_te.index)
+        X_te_other = X_te.drop(columns=kept_num_cols + ohe_cols, errors="ignore")
+        X_te_final = pd.concat([X_te[kept_num_cols], X_te_ohe, X_te_other], axis=1)
+        
         if X_va is not None:
-            X_va_final = pd.concat([X_va[kept_num_cols], X_va.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+            X_va_ohe = X_va[ohe_cols] if ohe_cols else pd.DataFrame(index=X_va.index)
+            X_va_other = X_va.drop(columns=kept_num_cols + ohe_cols, errors="ignore")
+            X_va_final = pd.concat([X_va[kept_num_cols], X_va_ohe, X_va_other], axis=1)
         else:
             X_va_final = None
         prefix = profiles_cfg.get("tree", {}).get("output_prefix", "tree")
@@ -826,6 +844,31 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
         # Coerce numeric-like strings to numeric
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
+        
+        # FIX B: Drop extreme high-cardinality categorical features
+        # Even CatBoost has limits - extreme cardinality (>500-1000) can cause:
+        # 1. Overfitting (memorization instead of generalization)
+        # 2. Training slowdown and memory overhead
+        # 3. Poor performance on unseen categories
+        extreme_card_threshold = int(config.get("encoding", {}).get("catboost_max_cardinality", 500))
+        cat_cols = X_tr.select_dtypes(include=['object', 'category']).columns
+        extreme_high_card = []
+        for col in cat_cols:
+            nunique = X_tr[col].nunique(dropna=True)
+            if nunique > extreme_card_threshold:
+                extreme_high_card.append(col)
+                logger.warning(
+                    f"[catboost] Dropping extreme high-cardinality column: {col} "
+                    f"({nunique} unique values > {extreme_card_threshold} threshold)"
+                )
+        
+        if extreme_high_card:
+            X_tr = X_tr.drop(columns=extreme_high_card)
+            X_te = X_te.drop(columns=extreme_high_card, errors="ignore")
+            if X_va is not None:
+                X_va = X_va.drop(columns=extreme_high_card, errors="ignore")
+            logger.info(f"[catboost] Dropped {len(extreme_high_card)} extreme high-cardinality columns")
+        
         # Drop non-descriptive
         X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
         logger.info(f"[catboost] Drop non descrittive: {len(removed_nd)}")

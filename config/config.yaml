@@ -119,6 +119,7 @@ encoding: &encoding_defaults
   frequency_encoding_range: [21, 100]
   ordinal_encoding_range: [101, 200]
   drop_above: 200
+  catboost_max_cardinality: 500  # FIX B: Max cardinality for CatBoost (drop if >500)
   
   target_encoder:
     smoothing: 5.0
