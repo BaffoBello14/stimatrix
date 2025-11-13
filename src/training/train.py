@@ -169,7 +169,6 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
     table_rows: List[Dict[str, Any]] = []
 
     # Per-model loop
-    model_step = 0  # Counter for W&B step tracking
     for model_key in selected_models:
         model_entry = models_cfg.get(model_key, {})
         prefix = model_entry.get("profile", None)
@@ -414,8 +413,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         for k, v in diag.items():
             final_metrics[f"overfit_{k}"] = v
         
-        wb.log_prefixed_metrics(f"final/{model_key}", final_metrics, step=model_step)
-        model_step += 1
+        wb.log_prefixed_metrics(f"final/{model_key}", final_metrics)
 
         model_id = f"{model_key}"
         model_dir = models_dir / model_id
@@ -704,6 +702,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         meta = {
             "type": "voting",
             "members": [k for k, _ in selected],
+            "profile": prefix,  # Save profile for evaluation
             "metrics_train": m_train,
             "metrics_test": m_test,
             "metrics_train_original": m_train_orig,
@@ -737,8 +736,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         for k, v in diag.items():
             ensemble_metrics[f"overfit_{k}"] = v
         
-        wb.log_prefixed_metrics(f"final/ensemble_voting", ensemble_metrics, step=model_step)
-        model_step += 1
+        wb.log_prefixed_metrics(f"final/ensemble_voting", ensemble_metrics)
 
         # Group metrics for ensemble voting
         if gm_enabled:
@@ -828,6 +826,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "type": "stacking",
             "members": [k for k, _ in selected],
             "final_estimator": final_est_key,
+            "profile": prefix,  # Save profile for evaluation
             "metrics_train": m_train,
             "metrics_test": m_test,
             "metrics_train_original": m_train_orig,
@@ -861,8 +860,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         for k, v in diag.items():
             ensemble_metrics[f"overfit_{k}"] = v
         
-        wb.log_prefixed_metrics(f"final/ensemble_stacking", ensemble_metrics, step=model_step)
-        model_step += 1
+        wb.log_prefixed_metrics(f"final/ensemble_stacking", ensemble_metrics)
 
         # Group metrics for stacking ensemble
         if gm_enabled:

@@ -156,16 +156,32 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
                 model_path = model_dir / "model.pkl"
                 if not model_path.exists():
                     return
+                
+                # Load ensemble metadata to get correct profile
+                ensemble_meta_path = model_dir / "metrics.json"
+                ensemble_prefix = prefix  # Default to global prefix
+                if ensemble_meta_path.exists():
+                    try:
+                        import json
+                        ensemble_meta = json.loads(ensemble_meta_path.read_text(encoding="utf-8"))
+                        ensemble_prefix = ensemble_meta.get("profile", prefix)
+                    except Exception:
+                        pass
+                
+                # Load X_test with correct profile
+                ensemble_data = _load_preprocessed_for_profile(pre_dir, ensemble_prefix)
+                X_test_ensemble = ensemble_data["X_test"]
+                
                 try:
                     est = joblib_load(model_path)
                 except Exception as exc:
                     logger.warning(f"Impossibile caricare il modello ensemble '{subdir}': {exc}")
                     return
                 try:
-                    y_pred = est.predict(X_test.values)
+                    y_pred = est.predict(X_test_ensemble.values)
                 except Exception:
                     try:
-                        y_pred = est.predict(X_test)
+                        y_pred = est.predict(X_test_ensemble)
                     except Exception as exc:
                         logger.warning(f"Predizione fallita per ensemble '{subdir}': {exc}")
                         return
