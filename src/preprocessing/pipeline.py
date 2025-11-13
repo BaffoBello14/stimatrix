@@ -15,7 +15,7 @@ from preprocessing.feature_extractors import extract_geometry_features, maybe_ex
 from preprocessing.outliers import OutlierConfig, detect_outliers
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
 from preprocessing.imputation import ImputationConfig, impute_missing, fit_imputers, transform_with_imputers
-from preprocessing.contextual_features import add_all_contextual_features
+from preprocessing.contextual_features_fixed import fit_transform_contextual_features
 from preprocessing.target_transforms import (
     apply_target_transform,
     inverse_target_transform,
@@ -293,16 +293,10 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         df = df.drop(columns=["AI_Prezzo_MQ"], errors="ignore")
         logger.info("Target=AI_Prezzo_Ridistribuito: rimossa colonna AI_Prezzo_MQ dalle feature")
 
-    # Add contextual features BEFORE split (uses target for aggregation)
-    # This captures market context: zone statistics, typology patterns, etc.
-    logger.info("🎯 Aggiunta feature contestuali (zona, tipologia, interazioni)...")
-    df = add_all_contextual_features(df, target_col=target_col, config=config)
-    logger.info(f"Feature contestuali aggiunte. Totale colonne: {len(df.columns)}")
-
     # Create combined for split key if needed
     Xy_full = df.copy()
 
-    # Temporal split FIRST to avoid leakage
+    # Temporal split FIRST to avoid leakage (contextual features AFTER split!)
     split_cfg_dict = config.get("temporal_split", {})
     # Support new schema with nested fraction/date keys and keep backward compatibility
     mode = split_cfg_dict.get("mode", "date")
@@ -321,6 +315,21 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     logger.info(
         f"Split temporale ({split_cfg.mode}) -> train={len(train_df)}, val={len(val_df)}, test={len(test_df)}"
     )
+
+    # ==========================================
+    # ADD CONTEXTUAL FEATURES (LEAK-FREE)
+    # ==========================================
+    # Fit ONLY on train, transform all splits
+    # This captures market context: zone statistics, typology patterns, etc.
+    # WITHOUT leaking test information into training!
+    logger.info("🎯 Aggiunta feature contestuali (zona, tipologia, interazioni) [LEAK-FREE]...")
+    train_df, val_df, test_df, contextual_stats = fit_transform_contextual_features(
+        train_df=train_df,
+        val_df=val_df,
+        test_df=test_df,
+        target_col=target_col
+    )
+    logger.info(f"✅ Feature contestuali aggiunte. Train cols: {len(train_df.columns)}")
 
     # Outlier detection ONLY on train target (optionally per category)
     out_cfg_dict = config.get("outliers", {})
