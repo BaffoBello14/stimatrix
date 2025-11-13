@@ -38,10 +38,10 @@ execution:
 tracking:
   wandb:
     enabled: ${WANDB_ENABLED:-true}
-    project: ${WANDB_PROJECT:-'stimatrix-optimized'}
+    project: ${WANDB_PROJECT:-'real-estate-price-prediction'}
     entity: ${WANDB_ENTITY:-null}
     group: ${WANDB_GROUP:-'optimization-v1'}
-    tags: ['optimized', 'regularized', 'contextual-features']
+    tags: []
     mode: ${WANDB_MODE:-'online'}
     name: 'opt_contextual_reg'
 
@@ -71,7 +71,7 @@ data_filters:
   mese_min: null      # Min mese 1-12 (null = no limit)
   mese_max: null      # Max mese 1-12
   
-  # Target (prezzo) - ⚠️ USARE CON CAUTELA! Limita generalizzazione
+  # Target (prezzo) - USARE CON CAUTELA! Limita generalizzazione
   prezzo_min: null       # Min prezzo € (null = no limit)
   prezzo_max: null       # Max prezzo €
   prezzo_mq_min: null    # Min €/m² (null = no limit)
@@ -95,27 +95,6 @@ data_filters:
   max_missing_ratio: null  # Max % missing per record (es. 0.5 = max 50% missing)
   remove_outliers_iqr: false  # Rimuovi outliers IQR sul prezzo
   iqr_factor: 1.5         # Fattore IQR (se remove_outliers_iqr=true)
-
-# Esempi per sperimentazione:
-#
-# Esperimento "Mid-Range":
-#   experiment_name: "midrange_50k_150k"
-#   description: "Immobili mid-range 50k-150k€"
-#   prezzo_min: 50000
-#   prezzo_max: 150000
-#
-# Esperimento "Luxury":
-#   experiment_name: "luxury_segment"
-#   description: "Segmento luxury >200k, >3k€/m²"
-#   prezzo_min: 200000
-#   prezzo_mq_min: 3000
-#   zone_incluse: ['C1', 'C2', 'D2']
-#
-# Esperimento "Large Properties":
-#   experiment_name: "large_properties"
-#   description: "Immobili grandi 100-300m²"
-#   superficie_min: 100
-#   superficie_max: 300
 
 # Temporal and zone filtering
 temporal_filter:
@@ -144,10 +123,10 @@ database:
 
 # Target configuration - MIGLIORATO
 target:
-  column_candidates: ['AI_Prezzo_Ridistribuito']  # ✅ Solo prezzo redistribuito (prezzo/mq rimosso)
+  column_candidates: ['AI_Prezzo_Ridistribuito']
   
   # Yeo-Johnson è più flessibile di log per distribuzioni eterogenee
-  transform: 'yeojohnson'  # ✅ CAMBIATO da 'log' - trova automaticamente lambda ottimale
+  transform: 'yeojohnson'
   
   # Fallback se yeojohnson da problemi
   # transform: 'log'
@@ -156,7 +135,7 @@ target:
 # Outlier detection - PIÙ AGGRESSIVO
 outliers:
   method: 'ensemble'
-  z_thresh: 2.5           # ✅ RIDOTTO da 3.0 - più aggressivo
+  z_thresh: 2.5          # ✅ RIDOTTO da 3.0
   iqr_factor: 1.0         # ✅ RIDOTTO da 1.2
   iso_forest_contamination: 0.08  # ✅ AUMENTATO da 0.05
   group_by_col: 'AI_ZonaOmi'
