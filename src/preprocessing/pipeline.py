@@ -15,7 +15,7 @@ from preprocessing.feature_extractors import extract_geometry_features, maybe_ex
 from preprocessing.outliers import OutlierConfig, detect_outliers
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
 from preprocessing.imputation import ImputationConfig, fit_imputers, transform_with_imputers
-from preprocessing.contextual_features_fixed import fit_transform_contextual_features
+from preprocessing.contextual_features import fit_transform_contextual_features
 from preprocessing.target_transforms import (
     apply_target_transform,
     inverse_target_transform,
