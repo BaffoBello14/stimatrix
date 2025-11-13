@@ -109,6 +109,15 @@ def tune_model(
                 n_splits = int((cv_config or {}).get("n_splits", 5))
                 shuffle = bool((cv_config or {}).get("shuffle", False))
                 if kind == "kfold":
+                    # WARNING: KFold with shuffle may cause temporal leakage for time-series data
+                    if shuffle and (hasattr(X_train, 'columns') and 'TemporalKey' in X_train.columns):
+                        from utils.logger import get_logger
+                        logger = get_logger(__name__)
+                        logger.warning(
+                            "⚠️  TEMPORAL LEAKAGE RISK: Using KFold with shuffle=True on time-series data "
+                            "(detected TemporalKey column). This may cause future data to leak into training folds. "
+                            "Consider using TimeSeriesSplit (kind='timeseries') instead for proper temporal validation."
+                        )
                     splitter = KFold(n_splits=n_splits, shuffle=shuffle, random_state=seed if shuffle else None)
                 else:
                     splitter = TimeSeriesSplit(n_splits=n_splits)
@@ -175,6 +184,17 @@ def tune_model(
                 return final_score
             # Use temporal split instead of random split to avoid data leakage
             # Maintain chronological order for time-series data
+            
+            # CRITICAL: Verify temporal order is maintained for time-series data
+            # If TemporalKey exists, ensure data is sorted chronologically
+            if hasattr(X_train, 'columns') and 'TemporalKey' in X_train.columns:
+                if not X_train['TemporalKey'].is_monotonic_increasing:
+                    raise ValueError(
+                        "❌ TEMPORAL LEAKAGE RISK: X_train must be sorted by TemporalKey for temporal split in tuning. "
+                        "Detected non-monotonic TemporalKey sequence. "
+                        "This would cause random leakage of future data into training."
+                    )
+            
             split_point = int(len(X_train) * tuning_split_fraction)
             if hasattr(X_train, 'iloc'):  # DataFrame
                 X_tr = X_train.iloc[:split_point]

@@ -392,6 +392,24 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     logger.info(
         f"Split temporale ({split_cfg.mode}) -> train={len(train_df)}, val={len(val_df)}, test={len(test_df)}"
     )
+    
+    # CRITICAL: Verify temporal order is preserved after split
+    if "TemporalKey" in train_df.columns:
+        if not train_df["TemporalKey"].is_monotonic_increasing:
+            raise ValueError(
+                "❌ TEMPORAL LEAKAGE RISK: Train set lost temporal order after split! "
+                "TemporalKey must be monotonically increasing to prevent future data leaking into training."
+            )
+        logger.info(
+            f"✅ Temporal order verified: Train [{train_df['TemporalKey'].min()} → {train_df['TemporalKey'].max()}], "
+            f"Test [{test_df['TemporalKey'].min()} → {test_df['TemporalKey'].max()}]"
+        )
+        # Verify no overlap between train and test temporal ranges
+        if train_df["TemporalKey"].max() >= test_df["TemporalKey"].min():
+            logger.warning(
+                f"⚠️  Temporal overlap detected: Train max ({train_df['TemporalKey'].max()}) >= "
+                f"Test min ({test_df['TemporalKey'].min()}). This may indicate temporal leakage!"
+            )
 
     # ==========================================
     # ADD CONTEXTUAL FEATURES (LEAK-FREE)

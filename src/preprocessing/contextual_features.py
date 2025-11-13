@@ -157,13 +157,6 @@ def transform_contextual_features(
     if 'zone_price' in stats and zone_col in df.columns:
         zone_price_df = pd.DataFrame.from_dict(stats['zone_price'], orient='index')
         df = df.merge(zone_price_df, left_on=zone_col, right_index=True, how='left')
-        
-        # ❌ REMOVED: Derived features that require target instance (not usable in production)
-        # - price_vs_zone_mean_ratio
-        # - price_vs_zone_median_ratio
-        # - price_zone_zscore
-        # - price_zone_iqr_position
-        # - price_zone_range_position
     
     if 'zone_surface' in stats and zone_col in df.columns and surface_col in df.columns:
         zone_surface_df = pd.DataFrame.from_dict(stats['zone_surface'], orient='index')
@@ -183,8 +176,7 @@ def transform_contextual_features(
             how='left'
         )
         
-        # ❌ REMOVED: price_vs_type_zone_mean (requires target instance)
-        # ✅ KEEP: type_zone_rarity (uses count, not target instance)
+        # ✅ type_zone_rarity: uses count, not target instance (LEAK-FREE)
         df['type_zone_rarity'] = 1.0 / (df['type_zone_count'] + 1)
     
     if 'type_price' in stats and type_col in df.columns:
@@ -203,11 +195,8 @@ def transform_contextual_features(
         df['surface_vs_type_zone_mean'] = df[surface_col] / (df['type_zone_surface_mean'] + 1e-8)
     
     # ==========================================
-    # 3. INTERACTION FEATURES (non target-based only!)
+    # 3. INTERACTION FEATURES (LEAK-FREE: no target-based features!)
     # ==========================================
-    # ❌ REMOVED: prezzo_mq (requires target instance)
-    # ❌ REMOVED: prezzo_mq_vs_zone (requires target instance)
-    
     if surface_col in df.columns:
         df['log_superficie'] = np.log1p(df[surface_col])
     
@@ -223,9 +212,7 @@ def transform_contextual_features(
         temporal_price_df = pd.DataFrame.from_dict(stats['temporal_price'], orient='index')
         df = df.merge(temporal_price_df, left_on='year_month', right_index=True, how='left')
         
-        # ❌ REMOVED: price_vs_temporal_mean (requires target instance)
-        
-        # Seasonality
+        # Seasonality (LEAK-FREE)
         df['quarter'] = ((df[month_col] - 1) // 3) + 1
         
         # Months from start
