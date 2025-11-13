@@ -132,15 +132,6 @@ def apply_data_filters(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame
     if filters.get('prezzo_max') and 'AI_Prezzo_Ridistribuito' in df.columns:
         df = df[df['AI_Prezzo_Ridistribuito'] <= filters['prezzo_max']]
     
-    # Prezzo/mq (calcola al volo se necessario)
-    if (filters.get('prezzo_mq_min') or filters.get('prezzo_mq_max')) and 'AI_Prezzo_Ridistribuito' in df.columns and 'AI_Superficie' in df.columns:
-        df['_tmp_prezzo_mq'] = df['AI_Prezzo_Ridistribuito'] / (df['AI_Superficie'] + 1e-8)
-        if filters.get('prezzo_mq_min'):
-            df = df[df['_tmp_prezzo_mq'] >= filters['prezzo_mq_min']]
-        if filters.get('prezzo_mq_max'):
-            df = df[df['_tmp_prezzo_mq'] <= filters['prezzo_mq_max']]
-        df = df.drop(columns=['_tmp_prezzo_mq'])
-    
     # Caratteristiche immobile
     if filters.get('superficie_min') and 'AI_Superficie' in df.columns:
         df = df[df['AI_Superficie'] >= filters['superficie_min']]
