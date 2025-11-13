@@ -14,7 +14,8 @@ src_path = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_path))
 
 from utils.logger import setup_logger, get_logger
-from utils.io import load_yaml, save_json
+from utils.config import load_config
+from utils.io import save_json
 from preprocessing.pipeline import run_preprocessing
 from training.train import run_training
 
@@ -37,14 +38,15 @@ def main():
     print("=" * 80)
     print()
     
-    # Setup logger
-    setup_logger("ML_Pipeline", level="INFO")
-    logger = get_logger(__name__)
-    
     # Load config
     config_path = "config/config_optimized.yaml"
+    
+    # Setup logger
+    setup_logger(config_path)
+    logger = get_logger(__name__)
+    
     logger.info(f"📄 Loading config: {config_path}")
-    config = load_yaml(config_path)
+    config = load_config(config_path)
     
     # ==========================================
     # STEP 1: PREPROCESSING (with LEAK-FREE contextual features)
