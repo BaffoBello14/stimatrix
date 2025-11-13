@@ -23,14 +23,14 @@ def parse_args() -> argparse.Namespace:
         nargs="+",
         choices=["schema", "dataset", "preprocessing", "training", "evaluation", "ml", "all"],
         required=False,
-        help="Passi da eseguire (uno o più). Usa 'all' per tutti",
+        help="Passi da eseguire (uno o più). Usa 'all' per eseguire tutti i passi o 'ml' per eseguire solo preprocessing, training ed evaluation.",
     )
     parser.add_argument("--force-reload", action="store_true", help="Forza rielaborazione anche se gli output esistono")
     args = parser.parse_args()
 
     # Mapping speciale per shorthand
     if args.config.strip().lower() == "fast":
-        args.config = "config/config_fast_test.yaml"
+        args.config = "config/config_fast.yaml"
 
     return args
 
