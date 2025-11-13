@@ -133,17 +133,10 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         try:
             prep_info = json.loads(prep_info_path.read_text(encoding="utf-8"))
             transform_metadata = prep_info.get("target_transformation", {"transform": "none"})
-            # Backward compatibility with old log_transformation format
-            if transform_metadata.get("transform") == "none":
-                old_log_flag = ((prep_info.get("log_transformation", {}) or {}).get("applied", False))
-                if old_log_flag:
-                    transform_metadata = {"transform": "log"}
-                    logger.warning("⚠️  Using legacy log_transformation format from preprocessing_info.json")
         except Exception as e:
             logger.warning(f"Could not load preprocessing_info.json: {e}")
             transform_metadata = {"transform": "none"}
     
-    # Helper flag for backward compatibility
     log_applied_global = transform_metadata.get("transform") != "none"
 
     # Raccogli definizioni per-modello

@@ -18,7 +18,6 @@ execution:
   # ["all"] esegue tutti i passi
   # ["ml"] esegue solo preprocessing + training + evaluation
   steps: ["all"]
-  # Se true, forza la rielaborazione anche se gli output intermedi esistono già
   force_reload: true
 
 # Experiment tracking (Weights & Biases)
@@ -74,7 +73,7 @@ target:
   
   # Target transformation (applied to reduce skewness and improve model performance)
   # Options: 'none', 'log', 'log10', 'sqrt', 'boxcox', 'yeojohnson'
-  transform: 'log'  # CAMBIATO: da boxcox a log (più stabile, meno gap train-test)
+  transform: 'log'
   
   # Optional: offset for log10 transform (y -> log10(y + offset))
   log10_offset: 1.0
@@ -101,7 +100,7 @@ outliers:
 imputation:
   numeric_strategy: 'median'      # 'median' | 'mean'
   categorical_strategy: 'most_frequent'
-  group_by_col: 'AI_ZonaOmi'  # CAMBIATO: da TipologiaEdilizia a ZonaOmi (più predittivo)
+  group_by_col: 'AI_ZonaOmi'
 
 # Categorical encoding - Multi-strategy based on cardinality
 encoding: &encoding_defaults

@@ -14,13 +14,12 @@ from utils.io import save_json
 from preprocessing.feature_extractors import extract_geometry_features, maybe_extract_json_features, create_missing_pattern_flags
 from preprocessing.outliers import OutlierConfig, detect_outliers
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
-from preprocessing.imputation import ImputationConfig, impute_missing, fit_imputers, transform_with_imputers
+from preprocessing.imputation import ImputationConfig, fit_imputers, transform_with_imputers
 from preprocessing.contextual_features_fixed import fit_transform_contextual_features
 from preprocessing.target_transforms import (
     apply_target_transform,
     inverse_target_transform,
     get_transform_name,
-    validate_transform_compatibility,
     boxcox_transform,
     yeojohnson_transform,
 )
@@ -233,14 +232,6 @@ def apply_target_transform_from_config(config: Dict[str, Any], y: pd.Series) -> 
     # Get transform type (new config format)
     transform_type = target_cfg.get("transform", "none")
     
-    # Backward compatibility: check old log_transform flag
-    if transform_type == "none" and target_cfg.get("log_transform", False):
-        transform_type = "log"
-        logger.warning("⚠️  Using legacy 'log_transform: true'. Consider updating to 'transform: log'")
-    
-    # Validate compatibility
-    validate_transform_compatibility(y, transform_type)
-    
     # Apply transformation
     kwargs = {}
     if transform_type == "log10":
@@ -385,7 +376,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     # Temporal split FIRST to avoid leakage (contextual features AFTER split!)
     split_cfg_dict = config.get("temporal_split", {})
-    # Support new schema with nested fraction/date keys and keep backward compatibility
     mode = split_cfg_dict.get("mode", "date")
     frac = split_cfg_dict.get("fraction", {})
     date = split_cfg_dict.get("date", {})
@@ -526,16 +516,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     base_test = X_test.copy(deep=False)
     base_val = X_val.copy(deep=False) if X_val is not None else None
 
-    # Optional profile-level thresholds
+    # Profile configuration
     profiles_cfg = config.get("profiles", {})
-    # Provide fallback defaults only if profiles is completely missing from config
-    if not profiles_cfg:
-        profiles_cfg = {
-            "scaled": {"enabled": True, "output_prefix": "scaled"},
-            "tree": {"enabled": False, "output_prefix": "tree"},
-            "catboost": {"enabled": False, "output_prefix": "catboost"},
-        }
-    # NA threshold for dropping non-descriptive columns
     na_thr = float(config.get("drop_non_descriptive", {}).get("na_threshold", 0.98))
     logger.info(f"Profili attivi: {[k for k,v in profiles_cfg.items() if v.get('enabled', False)]}")
 
@@ -584,8 +566,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         numc_cfg = config.get("numeric_coercion", {})
         enabled = bool(numc_cfg.get("enabled", True))
         threshold = float(numc_cfg.get("threshold", 0.95))
-        # Accept both new key 'blacklist_globs' and legacy 'blacklist_patterns'
-        patterns = [str(p) for p in (numc_cfg.get("blacklist_globs") or numc_cfg.get("blacklist_patterns") or [
+        patterns = [str(p) for p in (numc_cfg.get("blacklist_globs") or [
             "II_*",
             "AI_Id*",
             "Foglio",
@@ -779,7 +760,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if X_va is not None:
             X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
         
-        # Fill any remaining NaN values to ensure compatibility with all sklearn models
+        # Fill remaining NaN values
         for _df in (X_tr, X_te, X_va):
             if _df is not None:
                 # Fill numeric NaN values with 0
@@ -843,7 +824,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if X_va is not None:
             X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
         
-        # Fill any remaining NaN values to ensure compatibility with all sklearn models
+        # Fill remaining NaN values
         for _df in (X_tr, X_te, X_va):
             if _df is not None:
                 # Fill numeric NaN values with 0
@@ -902,48 +883,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if first_profile_saved is None:
             first_profile_saved = prefix
 
-    # Backward-compatible symlinks (copy) to default filenames using first enabled profile
-    if first_profile_saved is not None:
-        X_train_bc = pd.read_parquet(pre_dir / f"X_train_{first_profile_saved}.parquet")
-        X_test_bc = pd.read_parquet(pre_dir / f"X_test_{first_profile_saved}.parquet")
-        y_train_bc = pd.read_parquet(pre_dir / f"y_train_{first_profile_saved}.parquet")[target_col]
-        y_test_bc = pd.read_parquet(pre_dir / f"y_test_{first_profile_saved}.parquet")[target_col]
-        frames = [X_train_bc.assign(**{target_col: y_train_bc})]
-        # Include validation only if present in this run and file has expected target column
-        if base_val is not None and (pre_dir / f"X_val_{first_profile_saved}.parquet").exists() and (pre_dir / f"y_val_{first_profile_saved}.parquet").exists():
-            try:
-                X_val_bc = pd.read_parquet(pre_dir / f"X_val_{first_profile_saved}.parquet")
-                y_val_df = pd.read_parquet(pre_dir / f"y_val_{first_profile_saved}.parquet")
-                if target_col in y_val_df.columns:
-                    y_val_bc = y_val_df[target_col]
-                    frames.append(X_val_bc.assign(**{target_col: y_val_bc}))
-                else:
-                    logger.warning(
-                        f"Back-compat: y_val_{first_profile_saved}.parquet manca la colonna target '{target_col}'. Val set ignorato nella combinazione."
-                    )
-            except Exception as _e:
-                logger.warning(
-                    f"Back-compat: impossibile leggere i file di validation per il profilo '{first_profile_saved}': {_e}. Val set ignorato."
-                )
-        frames.append(X_test_bc.assign(**{target_col: y_test_bc}))
-        combined = pd.concat(frames, axis=0)
-        out_path = pre_dir / paths.get("preprocessed_filename", "preprocessed.parquet")
-        combined.to_parquet(out_path, index=False)
-        # Default names without suffix
-        (pre_dir / "X_train.parquet").write_bytes((pre_dir / f"X_train_{first_profile_saved}.parquet").read_bytes())
-        (pre_dir / "X_test.parquet").write_bytes((pre_dir / f"X_test_{first_profile_saved}.parquet").read_bytes())
-        (pre_dir / "y_train.parquet").write_bytes((pre_dir / f"y_train_{first_profile_saved}.parquet").read_bytes())
-        (pre_dir / "y_test.parquet").write_bytes((pre_dir / f"y_test_{first_profile_saved}.parquet").read_bytes())
-        if (pre_dir / f"X_val_{first_profile_saved}.parquet").exists():
-            (pre_dir / "X_val.parquet").write_bytes((pre_dir / f"X_val_{first_profile_saved}.parquet").read_bytes())
-        if (pre_dir / f"y_val_{first_profile_saved}.parquet").exists():
-            (pre_dir / "y_val.parquet").write_bytes((pre_dir / f"y_val_{first_profile_saved}.parquet").read_bytes())
-        # Default copies for original-scale targets
-        if (pre_dir / f"y_test_orig_{first_profile_saved}.parquet").exists():
-            (pre_dir / "y_test_orig.parquet").write_bytes((pre_dir / f"y_test_orig_{first_profile_saved}.parquet").read_bytes())
-        if (pre_dir / f"y_val_orig_{first_profile_saved}.parquet").exists():
-            (pre_dir / "y_val_orig.parquet").write_bytes((pre_dir / f"y_val_orig_{first_profile_saved}.parquet").read_bytes())
-        logger.info(f"Back-compat: copiati file del profilo '{first_profile_saved}' nei nomi default e combinati in {out_path}")
 
     # Report
     save_report(

@@ -147,7 +147,7 @@ def save_shap_plots(out_dir: str, shap_bundle: Dict[str, Any], model_name: str) 
     out_dir_path = ess(out_dir)
     out_dir_path.mkdir(parents=True, exist_ok=True)
     plot_base = out_dir_path / f"shap_{model_name}"
-    # Try modern beeswarm plot; if it fails, fall back to legacy summary_plot
+    # Beeswarm plot
     try:
         shap.plots.beeswarm(shap_bundle["values"], max_display=shap_bundle.get("max_display", 30), show=False)
         __import__("matplotlib.pyplot").pyplot.savefig(f"{plot_base}_beeswarm.png", bbox_inches="tight", dpi=200)
@@ -159,7 +159,7 @@ def save_shap_plots(out_dir: str, shap_bundle: Dict[str, Any], model_name: str) 
             __import__("matplotlib.pyplot").pyplot.close()
         except Exception:
             pass
-    # Try modern bar plot; if it fails, fall back to legacy summary_plot bar
+    # Bar plot
     try:
         shap.plots.bar(shap_bundle["values"], max_display=shap_bundle.get("max_display", 30), show=False)
         __import__("matplotlib.pyplot").pyplot.savefig(f"{plot_base}_bar.png", bbox_inches="tight", dpi=200)

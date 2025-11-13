@@ -71,10 +71,6 @@ def run_evaluation(config: Dict[str, Any]) -> Dict[str, Any]:
             if profiles:
                 prefix = profiles[0]
             transform_metadata = prep_info.get("target_transformation", {"transform": "none"}) or {"transform": "none"}
-            if transform_metadata.get("transform", "none") == "none":
-                legacy_log = bool(((prep_info.get("log_transformation", {}) or {}).get("applied", False)))
-                if legacy_log:
-                    transform_metadata = {"transform": "log"}
         except Exception as exc:
             logger.warning(f"Impossibile leggere preprocessing_info.json: {exc}")
 

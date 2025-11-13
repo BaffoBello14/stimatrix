@@ -109,8 +109,6 @@ def apply_target_transform(
         _, lambda_fitted = stats.boxcox(shifted)
         metadata["lambda"] = float(lambda_fitted)
         metadata["shift"] = float(shift)
-        metadata["boxcox_lambda"] = metadata["lambda"]  # backward compatibility
-        metadata["boxcox_shift"] = metadata["shift"]
         y_transformed = boxcox_transform(original, lambda_fitted, shift)
         logger.info(
             "✨ Target: Box-Cox transformation applied (λ=%.4f, shift=%.4f)",
@@ -123,7 +121,6 @@ def apply_target_transform(
         _, lambda_fitted = stats.yeojohnson(original)
         metadata["lambda"] = float(lambda_fitted)
         metadata["shift"] = 0.0
-        metadata["yeojohnson_lambda"] = metadata["lambda"]  # backward compatibility
         y_transformed = yeojohnson_transform(original, lambda_fitted)
         logger.info("✨ Target: Yeo-Johnson transformation applied (λ=%.4f)", lambda_fitted)
     
@@ -256,29 +253,3 @@ def get_transform_name(metadata: Dict[str, Any]) -> str:
         return f"Unknown ({transform_type})"
 
 
-def validate_transform_compatibility(y: pd.Series | np.ndarray, transform_type: str) -> bool:
-    """
-    Check if target variable is compatible with the requested transformation.
-    
-    Returns:
-        True if compatible, False otherwise (with warning logged)
-    """
-    y_values = y.values if isinstance(y, pd.Series) else np.asarray(y)
-    
-    if transform_type == "sqrt":
-        if np.any(y_values < 0):
-            logger.warning(
-                f"⚠️  sqrt transformation requested but target has {(y_values < 0).sum()} "
-                f"negative values. Consider 'yeojohnson' instead."
-            )
-            return False
-    
-    elif transform_type == "boxcox":
-        if np.any(y_values <= 0):
-            logger.warning(
-                f"⚠️  Box-Cox transformation requested but target has {(y_values <= 0).sum()} "
-                f"non-positive values. Will apply automatic shift or consider 'yeojohnson'."
-            )
-            # Not returning False because we can auto-shift
-    
-    return True

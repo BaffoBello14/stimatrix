@@ -29,7 +29,7 @@ logging:
 
 # Execution Configuration
 execution:
-  steps: ["preprocessing", "training", "evaluation"]  # Skip schema/dataset se già presenti
+  steps: ["preprocessing", "training", "evaluation"]
   force_reload: true
 
 # Experiment tracking (Weights & Biases)
@@ -115,7 +115,7 @@ data_filters:
 #   superficie_min: 100
 #   superficie_max: 300
 
-# Temporal and zone filtering (INVARIATO - già ottimale)
+# Temporal and zone filtering
 temporal_filter:
   enabled: true
   min_year: 2022
@@ -161,7 +161,7 @@ outliers:
   min_group_size: 20      # ✅ RIDOTTO da 30
   fallback_strategy: 'global'
 
-# Missing value imputation (INVARIATO)
+# Missing value imputation
 imputation:
   numeric_strategy: 'median'
   categorical_strategy: 'most_frequent'
@@ -181,7 +181,7 @@ encoding: &encoding_defaults
     min_samples_leaf: 10  # ✅ AUMENTATO da 1
     # noise: 0.01         # Opzionale: aggiungi rumore per regularizzazione
 
-# Temporal split configuration (INVARIATO)
+# Temporal split configuration
 temporal_split:
   year_col: 'A_AnnoStipula'
   month_col: 'A_MeseStipula'
@@ -237,11 +237,11 @@ pca: &pca_defaults
 correlation: &correlation_defaults
   numeric_threshold: 0.98  # ✅ AUMENTATO da 0.95 (mantiene più feature)
 
-# Non-descriptive columns pruning (INVARIATO)
+# Non-descriptive columns pruning
 drop_non_descriptive:
   na_threshold: 0.80
 
-# Feature extraction toggles (INVARIATO)
+# Feature extraction toggles
 feature_extraction:
   geometry: false
   json: false
@@ -298,10 +298,10 @@ feature_pruning:
     - 'A_NumeroRepertorio'          # Metadata notaio
     - 'A_IdNotaio'                  # ID univoco, troppi unique
     - 'PC_PoligonoMetricoSrid'      # Constant (sempre stesso SRID)
-    - 'PC_PoligonoMetrico'          # WKT grezzo (già processato)
-    - 'AI_IndirizzoGeometry'        # Geometry raw (già processato)
+    - 'PC_PoligonoMetrico'          # WKT grezzo (processato da feature extraction)
+    - 'AI_IndirizzoGeometry'        # Geometry raw (processato da feature extraction)
     - 'OZ_IdComune'                 # Constant (singolo comune)
-    - 'A_ImmobiliPrincipaliConSuperficieValorizzata'  # Già in config
+    - 'A_ImmobiliPrincipaliConSuperficieValorizzata'  # Metadata
     
     # === Codici catastali (8 colonne - poco predittivi) === #
     - 'PC_Foglio'                   # Codice catastale (troppi unique)
@@ -309,13 +309,13 @@ feature_pruning:
     - 'PC_SezioneUrbana'            # Codice (molti missing)
     - 'PC_SezioneAmministrativa'    # Codice (molti missing)
     - 'PC_SezioneAggraria'          # Quasi sempre missing
-    - 'OZ_CodiceZona'               # Codice (già abbiamo AI_ZonaOmi)
+    - 'OZ_CodiceZona'               # Codice (ridondante con AI_ZonaOmi)
     - 'OZ_DescrizioneZona'          # Testo (ridondante con CodiceZona)
-    - 'AI_Subalterno'               # Codice catastale (già in config)
+    - 'AI_Subalterno'               # Codice catastale (non predittivo)
     
-    # === Colonne già processate o poco predittive (7 colonne) === #
-    - 'AI_Piano'                    # Raw (già estratte floor features dal preprocessing)
-    - 'AI_Civico'                   # Raw (già estratto AI_Civico_num)
+    # === Colonne processate o poco predittive (7 colonne) === #
+    - 'AI_Piano'                    # Raw (estratte floor features dal preprocessing)
+    - 'AI_Civico'                   # Raw (estratto AI_Civico_num)
     - 'AI_Rendita'                  # Alta correlazione con Prezzo (risk leakage)
     - 'A_AcquirentiCount'           # Poco predittivo
     - 'A_VenditoriCount'            # Poco predittivo
@@ -331,19 +331,19 @@ feature_pruning:
     # - 'C2_ClasseEnergetica'       # Ridondante con C1
     # - 'C2_EPGlNren'               # Ridondante con C1
 
-# Scaling configuration (INVARIATO)
+# Scaling configuration
 scaling: &scaling_defaults
   scaler_type: 'standard'
   with_mean: true
   with_std: true
 
-# Winsorization (INVARIATO)
+# Winsorization
 winsorization: &winsor_defaults
   enabled: true
   lower_quantile: 0.01
   upper_quantile: 0.99
 
-# Profiles (INVARIATI - già ottimali)
+# Profiles
 profiles:
   scaled:
     enabled: false
@@ -363,7 +363,7 @@ profiles:
     output_prefix: 'catboost'
     correlation: *correlation_defaults
 
-# Diagnostics configuration (INVARIATO)
+# Diagnostics configuration
 diagnostics:
   residual_analysis:
     enabled: true
@@ -387,7 +387,7 @@ diagnostics:
     alert_threshold: 0.15
     save_report: true
 
-# Uncertainty quantification (INVARIATO)
+# Uncertainty quantification
 uncertainty:
   prediction_intervals:
     enabled: true
@@ -554,7 +554,7 @@ training:
       enabled: false
 
   # ==========================================
-  # SHAP (INVARIATO)
+  # SHAP
   # ==========================================
   shap:
     enabled: true
@@ -578,7 +578,7 @@ training:
       cv_folds: 10          # ✅ AUMENTATO da 5
 
 # ==========================================
-# EVALUATION (INVARIATO)
+# EVALUATION
 # ==========================================
 evaluation:
   group_metrics:
