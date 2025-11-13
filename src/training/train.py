@@ -77,9 +77,14 @@ def _load_xy(pre_dir: Path, prefix: Optional[str]) -> Tuple[pd.DataFrame, pd.Ser
 
 
 def _profile_for(model_key: str, cfg: Dict[str, Any]) -> Optional[str]:
-    m = cfg.get("training", {}).get("profile_map", {})
-    pf = m.get(model_key, None)
-    return pf
+    """
+    Get the preprocessing profile for a given model.
+    
+    FIX BUG2: Read directly from models config, not from non-existent profile_map.
+    """
+    models_cfg = cfg.get("training", {}).get("models", {})
+    model_cfg = models_cfg.get(model_key, {})
+    return model_cfg.get("profile", None)
 
 
 def _catboost_cat_features(pre_dir: Path, prefix: str, X: pd.DataFrame) -> List[int]:

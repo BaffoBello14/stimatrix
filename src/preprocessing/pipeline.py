@@ -749,6 +749,15 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         
         plan = plan_encodings(X_tr, profile_config)
         X_tr, encoders = fit_apply_encoders(X_tr, y_train, plan, profile_config)
+        
+        # FIX BUG1: Track OHE columns for exclusion from correlation pruning
+        # sklearn OneHotEncoder names columns as: originalname_value (e.g., AI_ZonaOmi_B1)
+        # We need to identify them to preserve them from correlation pruning
+        ohe_generated_cols = []
+        if encoders.one_hot is not None and encoders.one_hot_input_cols:
+            # Get all OHE feature names from sklearn encoder
+            ohe_generated_cols = list(encoders.one_hot.get_feature_names_out(encoders.one_hot_input_cols))
+        
         # Persist encoders
         _prof_dir = artifacts_dir / profiles_cfg.get("tree", {}).get("output_prefix", "tree")
         _prof_dir.mkdir(parents=True, exist_ok=True)
@@ -790,8 +799,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         # They represent categorical information and high correlation is expected
         corr_thr = float(profiles_cfg.get("tree", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
         
-        # Identify OHE columns (suffix pattern or prefix pattern depending on encoder)
-        ohe_cols = [c for c in X_tr.columns if '__ohe_' in c or c.startswith('ohe_')]
+        # Use OHE columns tracked during encoding
+        ohe_cols = [c for c in ohe_generated_cols if c in X_tr.columns]
         logger.info(f"[tree] Identified {len(ohe_cols)} OHE features to preserve from correlation pruning")
         
         # Correlation pruning ONLY on numeric features that are NOT OHE
