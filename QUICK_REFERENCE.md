@@ -83,14 +83,15 @@ pytest -k "leakage"
 
 ### **Se MAPE > 50% o R² < 0.75:**
 
-**1. Filtro outlier più aggressivo**
+**1. Filtra outlier prezzi**
 ```yaml
 # config/config.yaml
 data_filters:
-  prezzo_min: 20000
+  anno_min: 2022
+  prezzo_min: 20000  # Aggiungi filtro prezzo
   prezzo_max: 500000
-  superficie_min: 10
-  superficie_max: 300
+  zone_escluse: ['E1', 'E2', 'E3', 'R1']
+  tipologie_escluse: ['4']
 
 outliers:
   iso_forest_contamination: 0.15  # Da 0.08

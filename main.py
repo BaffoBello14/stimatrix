@@ -30,7 +30,7 @@ def parse_args() -> argparse.Namespace:
 
     # Mapping speciale per shorthand
     if args.config.strip().lower() == "fast":
-        args.config = "config/config_fast_test.yaml"
+        args.config = "config/config_fast.yaml"
 
     return args
 
