@@ -72,22 +72,22 @@ def tune_model(
         sampler = optuna.samplers.TPESampler(seed=seed)
 
     def _log_trial_to_wandb(trial_number: int, y_true: np.ndarray, y_pred: np.ndarray, trial_params: Dict[str, Any]) -> None:
-        """Helper to log trial metrics to W&B"""
+        """Helper to log trial metrics to W&B during hyperparameter tuning"""
         if wandb_manager is None:
             return
         try:
             # Compute full metrics for this trial
             metrics = regression_metrics(y_true, y_pred)
-            # Log trial metrics with cleaner structure: {model}/{metric}
+            # Log trial metrics with hierarchical structure: tuning/{model}/{metric}
+            # This creates line charts showing optimization progress over trials
             log_dict = {
-                f"{model_key}/trial_number": trial_number,
-                f"{model_key}/r2": metrics.get("r2", 0.0),
-                f"{model_key}/rmse": metrics.get("rmse", 0.0),
-                f"{model_key}/mae": metrics.get("mae", 0.0),
-                f"{model_key}/mape": metrics.get("mape", 0.0),
-                f"{model_key}/mse": metrics.get("mse", 0.0),
+                f"tuning/{model_key}/r2": metrics.get("r2", 0.0),
+                f"tuning/{model_key}/rmse": metrics.get("rmse", 0.0),
+                f"tuning/{model_key}/mae": metrics.get("mae", 0.0),
+                f"tuning/{model_key}/mape": metrics.get("mape", 0.0),
+                f"tuning/{model_key}/mse": metrics.get("mse", 0.0),
             }
-            wandb_manager.log(log_dict)
+            wandb_manager.log(log_dict, step=trial_number)
         except Exception:
             pass  # Fail silently to not break tuning
 
@@ -172,13 +172,12 @@ def tune_model(
                     y_pred = est.predict(X_va)
                     scores.append(select_primary_value(primary_metric, y_va, y_pred))
                 final_score = float(np.mean(scores)) if scores else -np.inf
-                # Log CV trial (simplified: only aggregate score)
+                # Log CV trial (aggregate score across folds)
                 if wandb_manager is not None:
                     try:
                         wandb_manager.log({
-                            f"{model_key}/trial_number": trial.number,
-                            f"{model_key}/{primary_metric.replace('neg_', '')}": abs(final_score),
-                        })
+                            f"tuning/{model_key}/{primary_metric.replace('neg_', '')}": abs(final_score),
+                        }, step=trial.number)
                     except Exception:
                         pass
                 return final_score
