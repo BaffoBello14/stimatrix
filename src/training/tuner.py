@@ -78,7 +78,7 @@ def tune_model(
         try:
             # Compute full metrics for this trial
             metrics = regression_metrics(y_true, y_pred)
-            # Log trial metrics
+            # Log trial metrics (without step parameter - let W&B auto-increment)
             log_dict = {
                 f"tuning/{model_key}/trial_number": trial_number,
                 f"tuning/{model_key}/{primary_metric}": metrics.get(primary_metric.replace("neg_", ""), 0.0),
@@ -91,7 +91,7 @@ def tune_model(
             # for k, v in trial_params.items():
             #     if isinstance(v, (int, float, bool)):
             #         log_dict[f"tuning/{model_key}/hp_{k}"] = v
-            wandb_manager.log(log_dict, step=trial_number)
+            wandb_manager.log(log_dict)  # No step parameter - auto-increment by W&B
         except Exception:
             pass  # Fail silently to not break tuning
 
@@ -173,7 +173,7 @@ def tune_model(
                         wandb_manager.log({
                             f"tuning/{model_key}/trial_number": trial.number,
                             f"tuning/{model_key}/{primary_metric}_cv": final_score,
-                        }, step=trial.number)
+                        })  # No step parameter - auto-increment by W&B
                     except Exception:
                         pass
                 return final_score
