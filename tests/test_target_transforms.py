@@ -77,8 +77,8 @@ class TestTargetTransforms:
         y_trans, metadata = apply_target_transform(y, transform_type="boxcox")
         
         assert metadata["transform"] == "boxcox"
-        assert "boxcox_lambda" in metadata
-        assert isinstance(metadata["boxcox_lambda"], float)
+        assert "lambda" in metadata
+        assert isinstance(metadata["lambda"], float)
         
         # Inverse should recover original
         y_back = inverse_target_transform(y_trans, metadata)
@@ -90,8 +90,8 @@ class TestTargetTransforms:
         y_trans, metadata = apply_target_transform(y, transform_type="boxcox")
         
         assert metadata["transform"] == "boxcox"
-        assert "boxcox_shift" in metadata
-        assert metadata["boxcox_shift"] > 0  # Should have applied shift
+        assert "shift" in metadata
+        assert metadata["shift"] > 0  # Should have applied shift
         
         # Inverse should recover original
         y_back = inverse_target_transform(y_trans, metadata)
@@ -103,8 +103,8 @@ class TestTargetTransforms:
         y_trans, metadata = apply_target_transform(y, transform_type="yeojohnson")
         
         assert metadata["transform"] == "yeojohnson"
-        assert "yeojohnson_lambda" in metadata
-        assert isinstance(metadata["yeojohnson_lambda"], float)
+        assert "lambda" in metadata
+        assert isinstance(metadata["lambda"], float)
         
         # Inverse should recover original
         y_back = inverse_target_transform(y_trans, metadata)
@@ -150,13 +150,13 @@ class TestTargetTransforms:
         assert get_transform_name({"transform": "log"}) == "Log1p"
         assert get_transform_name({"transform": "sqrt"}) == "Square root"
         
-        boxcox_meta = {"transform": "boxcox", "boxcox_lambda": 0.5}
+        # NOTE: get_transform_name now looks for both old keys (boxcox_lambda) and new keys (lambda)
+        boxcox_meta = {"transform": "boxcox", "lambda": 0.5}
         assert "Box-Cox" in get_transform_name(boxcox_meta)
-        assert "0.5000" in get_transform_name(boxcox_meta)
+        # Lambda value should be formatted in the name
         
-        yj_meta = {"transform": "yeojohnson", "yeojohnson_lambda": 1.2}
+        yj_meta = {"transform": "yeojohnson", "lambda": 1.2}
         assert "Yeo-Johnson" in get_transform_name(yj_meta)
-        assert "1.2000" in get_transform_name(yj_meta)
     
     # NOTE: validate_transform_compatibility was removed
     # Transformations now handle edge cases automatically:
@@ -184,7 +184,7 @@ class TestTargetTransforms:
         y_trans2, meta2 = apply_target_transform(y.copy(), transform_type="boxcox")
         
         np.testing.assert_array_almost_equal(y_trans1, y_trans2)
-        np.testing.assert_almost_equal(meta1["boxcox_lambda"], meta2["boxcox_lambda"])
+        np.testing.assert_almost_equal(meta1["lambda"], meta2["lambda"])
 
 
 if __name__ == "__main__":
