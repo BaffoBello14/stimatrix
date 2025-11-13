@@ -52,6 +52,69 @@ paths:
   raw_filename: 'raw.parquet'
   preprocessed_filename: 'preprocessed.parquet'
 
+# ==========================================
+# DATA FILTERS (Sperimentazione)
+# ==========================================
+# Filtri applicati al dataset INTERO (prima dello split) per sperimentazione
+# Usare per testare modelli specializzati su sottoinsiemi specifici
+# Tutti i filtri sono opzionali (null = no filter)
+data_filters:
+  # Metadata
+  experiment_name: "baseline_full"
+  description: "Baseline completo - tutti immobili post-2022"
+  
+  # Temporali
+  anno_min: null      # Min anno stipula (null = no limit)
+  anno_max: null      # Max anno stipula
+  mese_min: null      # Min mese 1-12 (null = no limit)
+  mese_max: null      # Max mese 1-12
+  
+  # Target (prezzo) - ⚠️ USARE CON CAUTELA! Limita generalizzazione
+  prezzo_min: null       # Min prezzo € (null = no limit)
+  prezzo_max: null       # Max prezzo €
+  prezzo_mq_min: null    # Min €/m² (null = no limit)
+  prezzo_mq_max: null    # Max €/m²
+  
+  # Caratteristiche immobile
+  superficie_min: null   # Min m² (null = no limit)
+  superficie_max: null   # Max m²
+  locali_min: null       # Min numero locali
+  locali_max: null       # Max numero locali
+  piano_min: null        # Min piano (-1 per seminterrato)
+  piano_max: null        # Max piano
+  
+  # Geografiche (null = no filter)
+  zone_incluse: null     # Lista zone OMI da includere (null = tutte)
+  zone_escluse: null     # Lista zone OMI da escludere
+  tipologie_incluse: null  # Lista tipologie da includere
+  tipologie_escluse: null  # Lista tipologie da escludere
+  
+  # Qualità dati
+  max_missing_ratio: null  # Max % missing per record (es. 0.5 = max 50% missing)
+  remove_outliers_iqr: false  # Rimuovi outliers IQR sul prezzo
+  iqr_factor: 1.5         # Fattore IQR (se remove_outliers_iqr=true)
+
+# Esempi per sperimentazione:
+#
+# Esperimento "Mid-Range":
+#   experiment_name: "midrange_50k_150k"
+#   description: "Immobili mid-range 50k-150k€"
+#   prezzo_min: 50000
+#   prezzo_max: 150000
+#
+# Esperimento "Luxury":
+#   experiment_name: "luxury_segment"
+#   description: "Segmento luxury >200k, >3k€/m²"
+#   prezzo_min: 200000
+#   prezzo_mq_min: 3000
+#   zone_incluse: ['C1', 'C2', 'D2']
+#
+# Esperimento "Large Properties":
+#   experiment_name: "large_properties"
+#   description: "Immobili grandi 100-300m²"
+#   superficie_min: 100
+#   superficie_max: 300
+
 # Temporal and zone filtering (INVARIATO - già ottimale)
 temporal_filter:
   enabled: true
@@ -79,7 +142,7 @@ database:
 
 # Target configuration - MIGLIORATO
 target:
-  column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
+  column_candidates: ['AI_Prezzo_Ridistribuito']  # ✅ Solo prezzo redistribuito (prezzo/mq rimosso)
   
   # Yeo-Johnson è più flessibile di log per distribuzioni eterogenee
   transform: 'yeojohnson'  # ✅ CAMBIATO da 'log' - trova automaticamente lambda ottimale

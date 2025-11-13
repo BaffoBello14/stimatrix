@@ -96,6 +96,123 @@ def convert_datetime_columns_to_strings(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def apply_data_filters(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
+    """
+    Applica filtri al dataset INTERO (prima dello split).
+    
+    Usato per sperimentazione: filtrare sottoinsiemi specifici e
+    valutare se modelli specializzati performano meglio.
+    
+    Args:
+        df: DataFrame raw
+        config: Config con sezione 'data_filters'
+    
+    Returns:
+        DataFrame filtrato
+    """
+    filters = config.get('data_filters', {})
+    if not filters or not any(v is not None for k, v in filters.items() if k not in ['description', 'experiment_name']):
+        # No filters active
+        return df
+    
+    initial_rows = len(df)
+    
+    # Temporali
+    if filters.get('anno_min') and 'A_AnnoStipula' in df.columns:
+        df = df[df['A_AnnoStipula'] >= filters['anno_min']]
+    if filters.get('anno_max') and 'A_AnnoStipula' in df.columns:
+        df = df[df['A_AnnoStipula'] <= filters['anno_max']]
+    if filters.get('mese_min') and 'A_MeseStipula' in df.columns:
+        df = df[df['A_MeseStipula'] >= filters['mese_min']]
+    if filters.get('mese_max') and 'A_MeseStipula' in df.columns:
+        df = df[df['A_MeseStipula'] <= filters['mese_max']]
+    
+    # Target (prezzo)
+    if filters.get('prezzo_min') and 'AI_Prezzo_Ridistribuito' in df.columns:
+        df = df[df['AI_Prezzo_Ridistribuito'] >= filters['prezzo_min']]
+    if filters.get('prezzo_max') and 'AI_Prezzo_Ridistribuito' in df.columns:
+        df = df[df['AI_Prezzo_Ridistribuito'] <= filters['prezzo_max']]
+    
+    # Prezzo/mq (calcola al volo se necessario)
+    if (filters.get('prezzo_mq_min') or filters.get('prezzo_mq_max')) and 'AI_Prezzo_Ridistribuito' in df.columns and 'AI_Superficie' in df.columns:
+        df['_tmp_prezzo_mq'] = df['AI_Prezzo_Ridistribuito'] / (df['AI_Superficie'] + 1e-8)
+        if filters.get('prezzo_mq_min'):
+            df = df[df['_tmp_prezzo_mq'] >= filters['prezzo_mq_min']]
+        if filters.get('prezzo_mq_max'):
+            df = df[df['_tmp_prezzo_mq'] <= filters['prezzo_mq_max']]
+        df = df.drop(columns=['_tmp_prezzo_mq'])
+    
+    # Caratteristiche immobile
+    if filters.get('superficie_min') and 'AI_Superficie' in df.columns:
+        df = df[df['AI_Superficie'] >= filters['superficie_min']]
+    if filters.get('superficie_max') and 'AI_Superficie' in df.columns:
+        df = df[df['AI_Superficie'] <= filters['superficie_max']]
+    
+    if filters.get('locali_min') and 'AI_NumeroLocali' in df.columns:
+        df = df[df['AI_NumeroLocali'] >= filters['locali_min']]
+    if filters.get('locali_max') and 'AI_NumeroLocali' in df.columns:
+        df = df[df['AI_NumeroLocali'] <= filters['locali_max']]
+    
+    if filters.get('piano_min') and 'AI_Piano' in df.columns:
+        df = df[df['AI_Piano'] >= filters['piano_min']]
+    if filters.get('piano_max') and 'AI_Piano' in df.columns:
+        df = df[df['AI_Piano'] <= filters['piano_max']]
+    
+    # Geografiche
+    if filters.get('zone_incluse') and 'AI_ZonaOmi' in df.columns:
+        df = df[df['AI_ZonaOmi'].isin(filters['zone_incluse'])]
+    if filters.get('zone_escluse') and 'AI_ZonaOmi' in df.columns:
+        df = df[~df['AI_ZonaOmi'].isin(filters['zone_escluse'])]
+    
+    if filters.get('tipologie_incluse') and 'AI_IdTipologiaEdilizia' in df.columns:
+        df = df[df['AI_IdTipologiaEdilizia'].isin(filters['tipologie_incluse'])]
+    if filters.get('tipologie_escluse') and 'AI_IdTipologiaEdilizia' in df.columns:
+        df = df[~df['AI_IdTipologiaEdilizia'].isin(filters['tipologie_escluse'])]
+    
+    # Qualità dati
+    if filters.get('max_missing_ratio'):
+        missing_ratio = df.isnull().sum(axis=1) / len(df.columns)
+        df = df[missing_ratio <= filters['max_missing_ratio']]
+    
+    if filters.get('remove_outliers_iqr') and 'AI_Prezzo_Ridistribuito' in df.columns:
+        Q1 = df['AI_Prezzo_Ridistribuito'].quantile(0.25)
+        Q3 = df['AI_Prezzo_Ridistribuito'].quantile(0.75)
+        IQR = Q3 - Q1
+        iqr_factor = filters.get('iqr_factor', 1.5)
+        lower = Q1 - iqr_factor * IQR
+        upper = Q3 + iqr_factor * IQR
+        df = df[(df['AI_Prezzo_Ridistribuito'] >= lower) & 
+                (df['AI_Prezzo_Ridistribuito'] <= upper)]
+    
+    final_rows = len(df)
+    removed = initial_rows - final_rows
+    pct_removed = (removed / initial_rows * 100) if initial_rows > 0 else 0
+    
+    # Log e warnings
+    experiment_name = filters.get('experiment_name', 'custom')
+    description = filters.get('description', 'Filtered dataset')
+    
+    logger.info(f"📊 Data Filters Applied: {experiment_name}")
+    logger.info(f"   Description: {description}")
+    logger.info(f"   Initial rows: {initial_rows:,}")
+    logger.info(f"   Final rows: {final_rows:,}")
+    logger.info(f"   Removed: {removed:,} ({pct_removed:.1f}%)")
+    
+    # Warning se troppi dati rimossi
+    if pct_removed > 70:
+        logger.warning(f"⚠️  Warning: {pct_removed:.1f}% dei dati rimossi! Dataset molto ristretto.")
+    if final_rows < 500:
+        logger.warning(f"⚠️  Warning: Solo {final_rows} campioni rimanenti! Potrebbe essere insufficiente.")
+    
+    # Log filtri attivi
+    active_filters = [k for k, v in filters.items() 
+                      if v is not None and k not in ['description', 'experiment_name', 'iqr_factor']]
+    if active_filters:
+        logger.info(f"   Active filters: {', '.join(active_filters)}")
+    
+    return df
+
+
 def choose_target(df: pd.DataFrame, config: Dict[str, Any]) -> str:
     # Prefer redistributed price if present
     preferred = config.get("target", {}).get("column_candidates", [
@@ -146,6 +263,9 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     df = pd.read_parquet(raw_files[0])
     logger.info(f"Caricamento raw completato: rows={len(df)}, cols={len(df.columns)}")
+
+    # Apply data filters for experimentation (if configured)
+    df = apply_data_filters(df, config)
 
     # Apply temporal and zone filtering to reduce drift
     temporal_cfg = config.get("temporal_filter", {})
@@ -256,42 +376,9 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         df["TemporalKey"] = df["A_AnnoStipula"].astype(int) * 100 + df["A_MeseStipula"].astype(int)
         logger.info("Creata colonna TemporalKey (A_AnnoStipula*100 + A_MeseStipula)")
 
-    # Optionally compute AI_Prezzo_MQ if requested among target candidates
-    try:
-        tgt_cfg = config.get("target", {}) or {}
-        tgt_candidates = list(tgt_cfg.get("column_candidates", [
-            "AI_Prezzo_Ridistribuito",
-        ]) or [])
-    except Exception:
-        tgt_candidates = ["AI_Prezzo_Ridistribuito"]
-    if "AI_Prezzo_MQ" in tgt_candidates:
-        if "AI_Prezzo_Ridistribuito" in df.columns and "AI_Superficie" in df.columns:
-            superficie = pd.to_numeric(df["AI_Superficie"], errors="coerce")
-            prezzo = pd.to_numeric(df["AI_Prezzo_Ridistribuito"], errors="coerce")
-            with np.errstate(divide='ignore', invalid='ignore'):
-                mq = prezzo / superficie
-            # Invalidate zero/negative or NaN superficie to avoid infinities
-            mq = mq.where(superficie > 0)
-            # Remove non-finite values
-            mq = mq.replace([np.inf, -np.inf], np.nan)
-            df["AI_Prezzo_MQ"] = mq
-            logger.info("Derivata colonna AI_Prezzo_MQ = AI_Prezzo_Ridistribuito / AI_Superficie")
-        else:
-            logger.warning(
-                "AI_Prezzo_MQ richiesto tra i candidati ma mancano colonne base (AI_Prezzo_Ridistribuito o AI_Superficie)"
-            )
-
-    # Decide target
+    # Decide target (sempre AI_Prezzo_Ridistribuito ora)
     target_col = choose_target(df, config)
     logger.info(f"Target selezionato: {target_col}")
-    # If using per-m² target, drop redistributed absolute price to avoid leakage and reduce noise
-    if target_col == "AI_Prezzo_MQ" and "AI_Prezzo_Ridistribuito" in df.columns:
-        df = df.drop(columns=["AI_Prezzo_Ridistribuito"], errors="ignore")
-        logger.info("Target=AI_Prezzo_MQ: rimossa colonna AI_Prezzo_Ridistribuito dalle feature")
-        # If using absolute redistributed price as target, drop per-m² price to avoid leakage and collinearity
-    elif target_col == "AI_Prezzo_Ridistribuito" and "AI_Prezzo_MQ" in df.columns:
-        df = df.drop(columns=["AI_Prezzo_MQ"], errors="ignore")
-        logger.info("Target=AI_Prezzo_Ridistribuito: rimossa colonna AI_Prezzo_MQ dalle feature")
 
     # Create combined for split key if needed
     Xy_full = df.copy()

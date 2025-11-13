@@ -70,8 +70,7 @@ database:
 
 # Target configuration
 target:
-  # Choose among ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
-  column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
+  column_candidates: ['AI_Prezzo_Ridistribuito']  # Solo prezzo redistribuito
   
   # Target transformation (applied to reduce skewness and improve model performance)
   # Options: 'none', 'log', 'log10', 'sqrt', 'boxcox', 'yeojohnson'
