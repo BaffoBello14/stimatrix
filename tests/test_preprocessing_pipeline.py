@@ -19,7 +19,7 @@ from preprocessing.pipeline import (
 )
 from preprocessing.transformers import temporal_split, temporal_key
 from preprocessing.outliers import detect_outliers, OutlierConfig
-from preprocessing.imputation import impute_missing, ImputationConfig
+from preprocessing.imputation import fit_imputers, transform_with_imputers, ImputationConfig
 
 
 class TestTargetSelection:
@@ -235,7 +235,9 @@ class TestImputationLogic:
             group_by_col=None
         )
     
-        df_imputed = impute_missing(df, config)
+        # Fit on df and transform
+        fitted_imputers = fit_imputers(df, config)
+        df_imputed = transform_with_imputers(df, fitted_imputers)
         
         assert not df_imputed["numeric_col"].isna().any()
         # Median of [1, 2, 4] is 2
@@ -254,7 +256,9 @@ class TestImputationLogic:
             group_by_col=None
         )
 
-        df_imputed = impute_missing(df, config)
+        # Fit on df and transform
+        fitted_imputers = fit_imputers(df, config)
+        df_imputed = transform_with_imputers(df, fitted_imputers)
         
         assert not df_imputed["cat_col"].isna().any()
         # Most frequent is "A"
@@ -273,7 +277,9 @@ class TestImputationLogic:
             group_by_col="group_col"
         )
 
-        df_imputed = impute_missing(df, config)
+        # Fit on df and transform
+        fitted_imputers = fit_imputers(df, config)
+        df_imputed = transform_with_imputers(df, fitted_imputers)
         
         assert not df_imputed["numeric_col"].isna().any()
         # Group 1: mean of [1, 2] = 1.5

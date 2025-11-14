@@ -1,0 +1,14 @@
+{
+  "80%": {
+    "coverage": 0.7953795379537953,
+    "average_width": 126214.75280284119,
+    "average_width_pct": 215889.6371635609,
+    "target_coverage": 0.8
+  },
+  "90%": {
+    "coverage": 0.8679867986798679,
+    "average_width": 163724.65957933164,
+    "average_width_pct": 277603.0637244239,
+    "target_coverage": 0.9
+  }
+}

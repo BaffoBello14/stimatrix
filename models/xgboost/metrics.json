@@ -1,0 +1,70 @@
+{
+  "model_key": "xgboost",
+  "prefix": "tree",
+  "primary_metric": "neg_mean_absolute_percentage_error",
+  "best_primary_value": -0.12276800828500141,
+  "best_params": {
+    "n_estimators": 911,
+    "max_depth": 5,
+    "learning_rate": 0.030540219414709177,
+    "subsample": 0.7958067628709456,
+    "colsample_bytree": 0.8150216555493145,
+    "min_child_weight": 6.505562773908768,
+    "reg_alpha": 2.507588970698255,
+    "reg_lambda": 1.0170509664519252,
+    "gamma": 4.967814343301184
+  },
+  "metrics_train": {
+    "r2": 0.9888583130417893,
+    "mse": 6.640291141754805,
+    "rmse": 2.576876237182299,
+    "mae": 1.9015974066205379,
+    "mape": 0.030816167977945067,
+    "explained_variance": 0.9888583224930133,
+    "medae": 1.421038971467052
+  },
+  "metrics_test": {
+    "r2": 0.8285942407267382,
+    "mse": 107.80953689018041,
+    "rmse": 10.383137141065816,
+    "mae": 7.621680792614015,
+    "mape": 0.12037678716541556,
+    "explained_variance": 0.8286132921090824,
+    "medae": 5.415730930622118
+  },
+  "metrics_train_original": {
+    "r2": 0.9838467753674662,
+    "mse": 57888715.62817224,
+    "rmse": 7608.463420965645,
+    "mae": 4650.6270047856015,
+    "mape": 0.10374835876736392,
+    "explained_variance": 0.9840623631430779,
+    "medae": 2398.823196765996,
+    "mape_floor": 0.10209753433166507
+  },
+  "metrics_test_original": {
+    "r2": 0.7797619485970992,
+    "mse": 1107677898.060577,
+    "rmse": 33281.79529503445,
+    "mae": 20525.74424591729,
+    "mape": 0.5674886457840875,
+    "explained_variance": 0.7804322969125852,
+    "medae": 10248.921875,
+    "mape_floor": 0.5672438072618243
+  },
+  "smearing_factor": null,
+  "overfit": {
+    "gap_r2": 0.16026407231505113,
+    "gap_explained_variance": 0.1602450303839309,
+    "ratio_rmse": 4.02935033947122,
+    "delta_rmse": 7.806260903883517,
+    "ratio_mse": 16.235664158196833,
+    "delta_mse": 101.16924574842561,
+    "ratio_mae": 4.008041221595395,
+    "delta_mae": 5.720083385993477,
+    "ratio_mape": 3.9062867015642064,
+    "delta_mape": 0.08956061918747049,
+    "ratio_medae": 3.8111065490561646,
+    "delta_medae": 3.994691959155066
+  }
+}

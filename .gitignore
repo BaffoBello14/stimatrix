@@ -68,7 +68,7 @@ data/raw/
 data/preprocessed/
 
 # Model artifacts
-models/
+#models/
 *.pkl
 *.pickle
 *.joblib
@@ -88,6 +88,7 @@ mlruns/
 
 # SHAP artifacts (can be very large)
 shap/
+**/shap_sample.parquet
 **/shap_values.npy
 **/shap/*.png
 **/shap/*.html
@@ -149,7 +150,6 @@ credentials/
 # Test artifacts
 **/test_output/
 **/test_temp_*
-test_lightgbm_fix.py
 tmp/
 temp/
 

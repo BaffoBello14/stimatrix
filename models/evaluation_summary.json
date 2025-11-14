@@ -1,0 +1,126 @@
+{
+  "top_models": [
+    {
+      "Model": "Optimized_rf",
+      "Category": "Optimized",
+      "Test_RMSE": 10.003262541751466,
+      "Test_R2": 0.840906819419949
+    },
+    {
+      "Model": "Baseline_rf",
+      "Category": "Baseline",
+      "Test_RMSE": 10.068748155148976,
+      "Test_R2": 0.8388170180508167
+    },
+    {
+      "Model": "Optimized_catboost",
+      "Category": "Optimized",
+      "Test_RMSE": 10.264315505666628,
+      "Test_R2": 0.8324948301068971
+    },
+    {
+      "Model": "Optimized_xgboost",
+      "Category": "Optimized",
+      "Test_RMSE": 10.383137141065816,
+      "Test_R2": 0.8285942407267382
+    },
+    {
+      "Model": "Ensemble_voting",
+      "Category": "Ensemble",
+      "Test_RMSE": 10.441555281825789,
+      "Test_R2": 0.8266600711125269
+    },
+    {
+      "Model": "Optimized_hgbt",
+      "Category": "Optimized",
+      "Test_RMSE": 10.492986989024535,
+      "Test_R2": 0.8249482332036843
+    },
+    {
+      "Model": "Ensemble_stacking",
+      "Category": "Ensemble",
+      "Test_RMSE": 10.49851085418166,
+      "Test_R2": 0.8247638782860153
+    },
+    {
+      "Model": "Optimized_gbr",
+      "Category": "Optimized",
+      "Test_RMSE": 10.535852793774923,
+      "Test_R2": 0.823515073715106
+    },
+    {
+      "Model": "Baseline_lightgbm",
+      "Category": "Baseline",
+      "Test_RMSE": 10.652554992488993,
+      "Test_R2": 0.8195836885838279
+    },
+    {
+      "Model": "Baseline_gbr",
+      "Category": "Baseline",
+      "Test_RMSE": 10.780419629567003,
+      "Test_R2": 0.8152265524440705
+    }
+  ],
+  "test_metrics": [
+    {
+      "model": "catboost",
+      "r2": 0.8324948301068971,
+      "rmse": 10.264315505666628,
+      "mae": 7.434716647539312,
+      "r2_orig": 0.7429382080857864,
+      "rmse_orig": 35956.65908260966,
+      "mae_orig": 20032.55318663068,
+      "mape_floor_orig": 0.5819366405053731
+    },
+    {
+      "model": "xgboost",
+      "r2": 0.8285942407267382,
+      "rmse": 10.383137141065816,
+      "mae": 7.621680792614015,
+      "r2_orig": 0.7797619485970992,
+      "rmse_orig": 33281.79529503445,
+      "mae_orig": 20525.74424591729,
+      "mape_floor_orig": 0.5672438072618243
+    },
+    {
+      "model": "lightgbm",
+      "r2": 0.8141718620460126,
+      "rmse": 10.811143270627023,
+      "mae": 7.838768037258968,
+      "r2_orig": 0.7222591631416098,
+      "rmse_orig": 37374.934221552954,
+      "mae_orig": 21707.580652576067,
+      "mape_floor_orig": 0.6724883688542319
+    },
+    {
+      "model": "gbr",
+      "r2": 0.823515073715106,
+      "rmse": 10.535852793774923,
+      "mae": 7.764452501861603,
+      "r2_orig": 0.7625246917646051,
+      "rmse_orig": 34559.6867324482,
+      "mae_orig": 20907.636902097347,
+      "mape_floor_orig": 0.634649596023066
+    },
+    {
+      "model": "hgbt",
+      "r2": 0.8249482332036843,
+      "rmse": 10.492986989024535,
+      "mae": 7.692175681898153,
+      "r2_orig": 0.7550189225937003,
+      "rmse_orig": 35101.59388641935,
+      "mae_orig": 20851.195309453848,
+      "mape_floor_orig": 0.6183309667396373
+    },
+    {
+      "model": "rf",
+      "r2": 0.840906819419949,
+      "rmse": 10.003262541751466,
+      "mae": 7.465455854274725,
+      "r2_orig": 0.7326423328098025,
+      "rmse_orig": 36669.660463530934,
+      "mae_orig": 20336.770517302193,
+      "mape_floor_orig": 0.55678734601611
+    }
+  ]
+}

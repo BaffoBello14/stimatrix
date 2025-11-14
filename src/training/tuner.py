@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, TYPE_CHECKING
 
 import numpy as np
 import optuna
@@ -10,8 +10,11 @@ from sklearn.base import RegressorMixin
 from sklearn.model_selection import KFold, TimeSeriesSplit
 
 from .model_zoo import build_estimator
-from .metrics import select_primary_value
+from .metrics import select_primary_value, regression_metrics
 from .constants import CATBOOST_KEY, XGBOOST_KEY, LIGHTGBM_KEY, DEFAULT_TUNING_SPLIT_FRACTION
+
+if TYPE_CHECKING:
+    from utils.wandb_utils import WandbTracker
 
 
 @dataclass
@@ -53,6 +56,7 @@ def tune_model(
     cat_features: Optional[List[int]] = None,
     cv_config: Optional[Dict[str, Any]] = None,
     tuning_split_fraction: float = DEFAULT_TUNING_SPLIT_FRACTION,  # fraction for temporal split (consistent with preprocessing)
+    wandb_manager: Optional['WandbTracker'] = None,  # for per-trial logging
 ) -> TuningResult:
     direction = "maximize"
 
@@ -66,6 +70,28 @@ def tune_model(
         sampler = optuna.samplers.TPESampler(seed=seed)
     else:
         sampler = optuna.samplers.TPESampler(seed=seed)
+
+    def _log_trial_to_wandb(trial_number: int, y_true: np.ndarray, y_pred: np.ndarray, trial_params: Dict[str, Any]) -> None:
+        """Helper to log trial metrics to W&B during hyperparameter tuning"""
+        if wandb_manager is None:
+            return
+        try:
+            # Compute full metrics for this trial
+            metrics = regression_metrics(y_true, y_pred)
+            # Log trial metrics with hierarchical structure: tuning/{model}/{metric}
+            # This creates line charts showing optimization progress over trials
+            # Use custom step to avoid conflicts with main training steps
+            log_dict = {
+                f"tuning/{model_key}/trial": trial_number,  # Custom step metric
+                f"tuning/{model_key}/r2": metrics.get("r2", 0.0),
+                f"tuning/{model_key}/rmse": metrics.get("rmse", 0.0),
+                f"tuning/{model_key}/mae": metrics.get("mae", 0.0),
+                f"tuning/{model_key}/mape": metrics.get("mape", 0.0),
+                f"tuning/{model_key}/mse": metrics.get("mse", 0.0),
+            }
+            wandb_manager.log(log_dict)  # Let W&B auto-increment global step
+        except Exception:
+            pass  # Fail silently to not break tuning
 
     def objective(trial: optuna.Trial) -> float:
         params = _apply_suggestions(trial, search_space or {}, base_params or {})
@@ -85,6 +111,15 @@ def tune_model(
                 n_splits = int((cv_config or {}).get("n_splits", 5))
                 shuffle = bool((cv_config or {}).get("shuffle", False))
                 if kind == "kfold":
+                    # WARNING: KFold with shuffle may cause temporal leakage for time-series data
+                    if shuffle and (hasattr(X_train, 'columns') and 'TemporalKey' in X_train.columns):
+                        from utils.logger import get_logger
+                        logger = get_logger(__name__)
+                        logger.warning(
+                            "⚠️  TEMPORAL LEAKAGE RISK: Using KFold with shuffle=True on time-series data "
+                            "(detected TemporalKey column). This may cause future data to leak into training folds. "
+                            "Consider using TimeSeriesSplit (kind='timeseries') instead for proper temporal validation."
+                        )
                     splitter = KFold(n_splits=n_splits, shuffle=shuffle, random_state=seed if shuffle else None)
                 else:
                     splitter = TimeSeriesSplit(n_splits=n_splits)
@@ -138,9 +173,30 @@ def tune_model(
                             est.fit(X_tr, y_tr)
                     y_pred = est.predict(X_va)
                     scores.append(select_primary_value(primary_metric, y_va, y_pred))
-                return float(np.mean(scores)) if scores else -np.inf
+                final_score = float(np.mean(scores)) if scores else -np.inf
+                # Log CV trial (aggregate score across folds)
+                if wandb_manager is not None:
+                    try:
+                        wandb_manager.log({
+                            f"tuning/{model_key}/trial": trial.number,  # Custom step metric
+                            f"tuning/{model_key}/{primary_metric.replace('neg_', '')}": abs(final_score),
+                        })  # Let W&B auto-increment global step
+                    except Exception:
+                        pass
+                return final_score
             # Use temporal split instead of random split to avoid data leakage
             # Maintain chronological order for time-series data
+            
+            # CRITICAL: Verify temporal order is maintained for time-series data
+            # If TemporalKey exists, ensure data is sorted chronologically
+            if hasattr(X_train, 'columns') and 'TemporalKey' in X_train.columns:
+                if not X_train['TemporalKey'].is_monotonic_increasing:
+                    raise ValueError(
+                        "❌ TEMPORAL LEAKAGE RISK: X_train must be sorted by TemporalKey for temporal split in tuning. "
+                        "Detected non-monotonic TemporalKey sequence. "
+                        "This would cause random leakage of future data into training."
+                    )
+            
             split_point = int(len(X_train) * tuning_split_fraction)
             if hasattr(X_train, 'iloc'):  # DataFrame
                 X_tr = X_train.iloc[:split_point]
@@ -156,6 +212,8 @@ def tune_model(
             else:
                 est.fit(X_tr, y_tr)
             y_pred = est.predict(X_va)
+            # Log trial to W&B
+            _log_trial_to_wandb(trial.number, y_va, y_pred, params)
             return select_primary_value(primary_metric, y_va, y_pred)
         else:
             # Con validation esterna: abilita early stopping dove supportato
@@ -200,6 +258,8 @@ def tune_model(
                 else:
                     est.fit(X_train, y_train)
             y_pred = est.predict(X_val)
+            # Log trial to W&B
+            _log_trial_to_wandb(trial.number, y_val, y_pred, params)
             return select_primary_value(primary_metric, y_val, y_pred)
 
     study = optuna.create_study(direction=direction, sampler=sampler)

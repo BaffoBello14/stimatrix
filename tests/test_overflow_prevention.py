@@ -127,8 +127,8 @@ class TestOverflowPrevention:
         
         # Lambda should be the same (deterministic)
         np.testing.assert_almost_equal(
-            meta_arr["boxcox_lambda"],
-            meta_ser["boxcox_lambda"]
+            meta_arr["lambda"],
+            meta_ser["lambda"]
         )
         
         # Inverse should give same results

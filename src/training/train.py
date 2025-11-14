@@ -77,9 +77,12 @@ def _load_xy(pre_dir: Path, prefix: Optional[str]) -> Tuple[pd.DataFrame, pd.Ser
 
 
 def _profile_for(model_key: str, cfg: Dict[str, Any]) -> Optional[str]:
-    m = cfg.get("training", {}).get("profile_map", {})
-    pf = m.get(model_key, None)
-    return pf
+    """
+    Get the preprocessing profile for a given model.
+    """
+    models_cfg = cfg.get("training", {}).get("models", {})
+    model_cfg = models_cfg.get(model_key, {})
+    return model_cfg.get("profile", None)
 
 
 def _catboost_cat_features(pre_dir: Path, prefix: str, X: pd.DataFrame) -> List[int]:
@@ -133,17 +136,10 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         try:
             prep_info = json.loads(prep_info_path.read_text(encoding="utf-8"))
             transform_metadata = prep_info.get("target_transformation", {"transform": "none"})
-            # Backward compatibility with old log_transformation format
-            if transform_metadata.get("transform") == "none":
-                old_log_flag = ((prep_info.get("log_transformation", {}) or {}).get("applied", False))
-                if old_log_flag:
-                    transform_metadata = {"transform": "log"}
-                    logger.warning("⚠️  Using legacy log_transformation format from preprocessing_info.json")
         except Exception as e:
             logger.warning(f"Could not load preprocessing_info.json: {e}")
             transform_metadata = {"transform": "none"}
     
-    # Helper flag for backward compatibility
     log_applied_global = transform_metadata.get("transform") != "none"
 
     # Raccogli definizioni per-modello
@@ -174,6 +170,9 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
 
     results: Dict[str, Any] = {"models": {}, "ensembles": {}, "baselines": {}}
     table_rows: List[Dict[str, Any]] = []
+    
+    # Track model performance for W&B summary and comparison
+    model_comparison_data: List[Dict[str, Any]] = []
 
     # Per-model loop
     for model_key in selected_models:
@@ -295,6 +294,16 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as e:
             logger.warning(f"Baseline fallita per {model_key}: {e}")
 
+        # Define custom step for tuning metrics (prevents W&B step ordering warnings)
+        if wb.state.enabled and wb.state.run is not None:
+            try:
+                wandb = wb.state.module
+                # Define trial as the x-axis for tuning metrics
+                wandb.define_metric(f"tuning/{model_key}/trial")
+                wandb.define_metric(f"tuning/{model_key}/*", step_metric=f"tuning/{model_key}/trial")
+            except Exception:
+                pass  # Fail silently if wandb not available
+
         try:
             tuning = tune_model(
                 model_key=model_key,
@@ -312,6 +321,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
                 cat_features=cat_features,
                 cv_config=(tr_cfg.get("cv_when_no_val", {}) if X_val is None else None),
                 tuning_split_fraction=tuning_split_fraction,
+                wandb_manager=wb,
             )
         except ImportError as e:
             logger.warning(f"Dipendenza mancante per modello {model_key}: {e}. Skip del modello.")
@@ -400,8 +410,24 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             m_test_orig = m_test_orig or None
             m_train_orig = m_train_orig or None
         diag = overfit_diagnostics(m_train, m_test)
-        wb.log_prefixed_metrics(f"model/{model_key}", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
-        wb.log_prefixed_metrics(f"model/{model_key}", {f"overfit_{k}": v for k, v in diag.items()})
+        
+        # Collect model performance for final comparison (no individual scatter logs)
+        # Use original scale metrics if available for better interpretability
+        test_metrics = m_test_orig if m_test_orig is not None else m_test
+        train_metrics = m_train_orig if m_train_orig is not None else m_train
+        
+        model_comparison_data.append({
+            "model_name": model_key,
+            "model_type": "optimized",
+            "test_r2": test_metrics.get("r2", 0.0),
+            "test_rmse": test_metrics.get("rmse", 0.0),
+            "test_mae": test_metrics.get("mae", 0.0),
+            "test_mape": test_metrics.get("mape", 0.0),
+            "train_r2": train_metrics.get("r2", 0.0),
+            "train_rmse": train_metrics.get("rmse", 0.0),
+            "overfit_r2_delta": diag.get("r2_delta", 0.0),
+            "overfit_rmse_pct": diag.get("rmse_pct", 0.0),
+        })
 
         model_id = f"{model_key}"
         model_dir = models_dir / model_id
@@ -690,6 +716,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         meta = {
             "type": "voting",
             "members": [k for k, _ in selected],
+            "profile": prefix,  # Save profile for evaluation
             "metrics_train": m_train,
             "metrics_test": m_test,
             "metrics_train_original": m_train_orig,
@@ -705,7 +732,23 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "Test_R2": m_test.get("r2"),
         })
         logger.info(f"[voting] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
-        wb.log_prefixed_metrics("ensemble/voting", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
+        
+        # Collect ensemble performance for final comparison
+        test_metrics_ens = m_test_orig if (m_test_orig and isinstance(m_test_orig, dict)) else m_test
+        train_metrics_ens = m_train_orig if (m_train_orig and isinstance(m_train_orig, dict)) else m_train
+        
+        model_comparison_data.append({
+            "model_name": "voting",
+            "model_type": "ensemble",
+            "test_r2": test_metrics_ens.get("r2", 0.0),
+            "test_rmse": test_metrics_ens.get("rmse", 0.0),
+            "test_mae": test_metrics_ens.get("mae", 0.0),
+            "test_mape": test_metrics_ens.get("mape", 0.0),
+            "train_r2": train_metrics_ens.get("r2", 0.0),
+            "train_rmse": train_metrics_ens.get("rmse", 0.0),
+            "overfit_r2_delta": diag.get("r2_delta", 0.0),
+            "overfit_rmse_pct": diag.get("rmse_pct", 0.0),
+        })
 
         # Group metrics for ensemble voting
         if gm_enabled:
@@ -795,6 +838,7 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "type": "stacking",
             "members": [k for k, _ in selected],
             "final_estimator": final_est_key,
+            "profile": prefix,  # Save profile for evaluation
             "metrics_train": m_train,
             "metrics_test": m_test,
             "metrics_train_original": m_train_orig,
@@ -810,7 +854,23 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
             "Test_R2": m_test.get("r2"),
         })
         logger.info(f"[stacking] test r2={m_test['r2']:.4f} rmse={m_test['rmse']:.4f}")
-        wb.log_prefixed_metrics("ensemble/stacking", {**{f"train_{k}": v for k, v in m_train.items()}, **{f"test_{k}": v for k, v in m_test.items()}})
+        
+        # Collect ensemble performance for final comparison
+        test_metrics_ens = m_test_orig if (m_test_orig and isinstance(m_test_orig, dict)) else m_test
+        train_metrics_ens = m_train_orig if (m_train_orig and isinstance(m_train_orig, dict)) else m_train
+        
+        model_comparison_data.append({
+            "model_name": "stacking",
+            "model_type": "ensemble",
+            "test_r2": test_metrics_ens.get("r2", 0.0),
+            "test_rmse": test_metrics_ens.get("rmse", 0.0),
+            "test_mae": test_metrics_ens.get("mae", 0.0),
+            "test_mape": test_metrics_ens.get("mape", 0.0),
+            "train_r2": train_metrics_ens.get("r2", 0.0),
+            "train_rmse": train_metrics_ens.get("rmse", 0.0),
+            "overfit_r2_delta": diag.get("r2_delta", 0.0),
+            "overfit_rmse_pct": diag.get("rmse_pct", 0.0),
+        })
 
         # Group metrics for stacking ensemble
         if gm_enabled:
@@ -891,6 +951,93 @@ def run_training(config: Dict[str, Any]) -> Dict[str, Any]:
         wb.log_artifact(models_dir, name="models_dir", type="models", description="All trained models and metrics")
     except Exception:
         pass
+    
+    # ========================================
+    # W&B FINAL SUMMARY, TABLE & CHARTS
+    # ========================================
+    if model_comparison_data and wb.state.enabled and wb.state.run is not None:
+        try:
+            # Sort by test_r2 descending to find best model
+            sorted_models = sorted(model_comparison_data, key=lambda x: x.get("test_r2", 0.0), reverse=True)
+            best_model = sorted_models[0] if sorted_models else None
+            
+            # 1. UPDATE SUMMARY WITH BEST MODEL (no charts, just key-value pairs)
+            if best_model:
+                summary_dict = {
+                    "best_model_name": best_model["model_name"],
+                    "best_model_type": best_model["model_type"],
+                    "best_test_r2": best_model["test_r2"],
+                    "best_test_rmse": best_model["test_rmse"],
+                    "best_test_mae": best_model["test_mae"],
+                    "best_test_mape": best_model["test_mape"],
+                    "best_train_r2": best_model["train_r2"],
+                    "best_overfit_r2_delta": best_model["overfit_r2_delta"],
+                    "best_overfit_rmse_pct": best_model["overfit_rmse_pct"],
+                }
+                # Add per-model summary entries (flat structure for easy comparison)
+                for model_data in model_comparison_data:
+                    model_name = model_data["model_name"]
+                    summary_dict[f"{model_name}_test_r2"] = model_data["test_r2"]
+                    summary_dict[f"{model_name}_test_rmse"] = model_data["test_rmse"]
+                    summary_dict[f"{model_name}_train_r2"] = model_data["train_r2"]
+                    summary_dict[f"{model_name}_overfit_r2_delta"] = model_data["overfit_r2_delta"]
+                    summary_dict[f"{model_name}_overfit_rmse_pct"] = model_data["overfit_rmse_pct"]
+                
+                wb.state.run.summary.update(summary_dict)
+                logger.info(f"✅ W&B Summary updated with best model: {best_model['model_name']} (R²={best_model['test_r2']:.4f})")
+            
+            # 2. CREATE COMPARISON TABLE
+            try:
+                wandb = wb.state.module
+                comparison_table = wandb.Table(
+                    columns=["Model", "Type", "Test_R²", "Test_RMSE", "Test_MAE", "Test_MAPE", "Train_R²", "Overfit_R²Δ", "Overfit_RMSE%"],
+                    data=[
+                        [
+                            m["model_name"],
+                            m["model_type"],
+                            round(m["test_r2"], 4),
+                            round(m["test_rmse"], 2),
+                            round(m["test_mae"], 2),
+                            round(m["test_mape"], 4),
+                            round(m["train_r2"], 4),
+                            round(m["overfit_r2_delta"], 4),
+                            round(m["overfit_rmse_pct"], 2),
+                        ]
+                        for m in sorted_models
+                    ]
+                )
+                wb.log({"model_comparison_table": comparison_table})
+                logger.info("✅ W&B Comparison Table logged")
+            except Exception as e:
+                logger.warning(f"Failed to create comparison table: {e}")
+            
+            # 3. CREATE BAR CHARTS FOR VISUAL COMPARISON
+            try:
+                wandb = wb.state.module
+                # Bar chart for Test R²
+                r2_chart = wandb.plot.bar(
+                    comparison_table,
+                    "Model",
+                    "Test_R²",
+                    title="Model Performance Comparison: Test R²"
+                )
+                wb.log({"performance_r2_chart": r2_chart})
+                
+                # Bar chart for Test RMSE
+                rmse_chart = wandb.plot.bar(
+                    comparison_table,
+                    "Model",
+                    "Test_RMSE",
+                    title="Model Performance Comparison: Test RMSE"
+                )
+                wb.log({"performance_rmse_chart": rmse_chart})
+                
+                logger.info("✅ W&B Bar Charts logged")
+            except Exception as e:
+                logger.warning(f"Failed to create bar charts: {e}")
+                
+        except Exception as e:
+            logger.warning(f"Failed to create W&B final summary/charts: {e}")
 
     logger.info("Training/Tuning/Evaluation completati.")
     wb.finish()

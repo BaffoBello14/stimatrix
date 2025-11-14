@@ -14,12 +14,12 @@ from utils.io import save_json
 from preprocessing.feature_extractors import extract_geometry_features, maybe_extract_json_features, create_missing_pattern_flags
 from preprocessing.outliers import OutlierConfig, detect_outliers
 from preprocessing.encoders import plan_encodings, fit_apply_encoders, transform_with_encoders
-from preprocessing.imputation import ImputationConfig, impute_missing, fit_imputers, transform_with_imputers
+from preprocessing.imputation import ImputationConfig, fit_imputers, transform_with_imputers
+from preprocessing.contextual_features import fit_transform_contextual_features
 from preprocessing.target_transforms import (
     apply_target_transform,
     inverse_target_transform,
     get_transform_name,
-    validate_transform_compatibility,
     boxcox_transform,
     yeojohnson_transform,
 )
@@ -95,6 +95,114 @@ def convert_datetime_columns_to_strings(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def apply_data_filters(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
+    """
+    Applica filtri al dataset INTERO (prima dello split).
+    
+    Usato per sperimentazione: filtrare sottoinsiemi specifici e
+    valutare se modelli specializzati performano meglio.
+    
+    Args:
+        df: DataFrame raw
+        config: Config con sezione 'data_filters'
+    
+    Returns:
+        DataFrame filtrato
+    """
+    filters = config.get('data_filters', {})
+    if not filters or not any(v is not None for k, v in filters.items() if k not in ['description', 'experiment_name']):
+        # No filters active
+        return df
+    
+    initial_rows = len(df)
+    
+    # Temporali
+    if filters.get('anno_min') and 'A_AnnoStipula' in df.columns:
+        df = df[df['A_AnnoStipula'] >= filters['anno_min']]
+    if filters.get('anno_max') and 'A_AnnoStipula' in df.columns:
+        df = df[df['A_AnnoStipula'] <= filters['anno_max']]
+    if filters.get('mese_min') and 'A_MeseStipula' in df.columns:
+        df = df[df['A_MeseStipula'] >= filters['mese_min']]
+    if filters.get('mese_max') and 'A_MeseStipula' in df.columns:
+        df = df[df['A_MeseStipula'] <= filters['mese_max']]
+    
+    # Target (prezzo)
+    if filters.get('prezzo_min') and 'AI_Prezzo_Ridistribuito' in df.columns:
+        df = df[df['AI_Prezzo_Ridistribuito'] >= filters['prezzo_min']]
+    if filters.get('prezzo_max') and 'AI_Prezzo_Ridistribuito' in df.columns:
+        df = df[df['AI_Prezzo_Ridistribuito'] <= filters['prezzo_max']]
+    
+    # Caratteristiche immobile
+    if filters.get('superficie_min') and 'AI_Superficie' in df.columns:
+        df = df[df['AI_Superficie'] >= filters['superficie_min']]
+    if filters.get('superficie_max') and 'AI_Superficie' in df.columns:
+        df = df[df['AI_Superficie'] <= filters['superficie_max']]
+    
+    if filters.get('locali_min') and 'AI_NumeroLocali' in df.columns:
+        df = df[df['AI_NumeroLocali'] >= filters['locali_min']]
+    if filters.get('locali_max') and 'AI_NumeroLocali' in df.columns:
+        df = df[df['AI_NumeroLocali'] <= filters['locali_max']]
+    
+    if filters.get('piano_min') and 'AI_Piano' in df.columns:
+        df = df[df['AI_Piano'] >= filters['piano_min']]
+    if filters.get('piano_max') and 'AI_Piano' in df.columns:
+        df = df[df['AI_Piano'] <= filters['piano_max']]
+    
+    # Geografiche
+    if filters.get('zone_incluse') and 'AI_ZonaOmi' in df.columns:
+        df = df[df['AI_ZonaOmi'].isin(filters['zone_incluse'])]
+    if filters.get('zone_escluse') and 'AI_ZonaOmi' in df.columns:
+        df = df[~df['AI_ZonaOmi'].isin(filters['zone_escluse'])]
+    
+    if filters.get('tipologie_incluse') and 'AI_IdTipologiaEdilizia' in df.columns:
+        df = df[df['AI_IdTipologiaEdilizia'].isin(filters['tipologie_incluse'])]
+    if filters.get('tipologie_escluse') and 'AI_IdTipologiaEdilizia' in df.columns:
+        df = df[~df['AI_IdTipologiaEdilizia'].isin(filters['tipologie_escluse'])]
+    
+    # Qualità dati
+    if filters.get('max_missing_ratio'):
+        missing_ratio = df.isnull().sum(axis=1) / len(df.columns)
+        df = df[missing_ratio <= filters['max_missing_ratio']]
+    
+    if filters.get('remove_outliers_iqr') and 'AI_Prezzo_Ridistribuito' in df.columns:
+        Q1 = df['AI_Prezzo_Ridistribuito'].quantile(0.25)
+        Q3 = df['AI_Prezzo_Ridistribuito'].quantile(0.75)
+        IQR = Q3 - Q1
+        iqr_factor = filters.get('iqr_factor', 1.5)
+        lower = Q1 - iqr_factor * IQR
+        upper = Q3 + iqr_factor * IQR
+        df = df[(df['AI_Prezzo_Ridistribuito'] >= lower) & 
+                (df['AI_Prezzo_Ridistribuito'] <= upper)]
+    
+    final_rows = len(df)
+    removed = initial_rows - final_rows
+    pct_removed = (removed / initial_rows * 100) if initial_rows > 0 else 0
+    
+    # Log e warnings
+    experiment_name = filters.get('experiment_name', 'custom')
+    description = filters.get('description', 'Filtered dataset')
+    
+    logger.info(f"📊 Data Filters Applied: {experiment_name}")
+    logger.info(f"   Description: {description}")
+    logger.info(f"   Initial rows: {initial_rows:,}")
+    logger.info(f"   Final rows: {final_rows:,}")
+    logger.info(f"   Removed: {removed:,} ({pct_removed:.1f}%)")
+    
+    # Warning se troppi dati rimossi
+    if pct_removed > 70:
+        logger.warning(f"⚠️  Warning: {pct_removed:.1f}% dei dati rimossi! Dataset molto ristretto.")
+    if final_rows < 500:
+        logger.warning(f"⚠️  Warning: Solo {final_rows} campioni rimanenti! Potrebbe essere insufficiente.")
+    
+    # Log filtri attivi
+    active_filters = [k for k, v in filters.items() 
+                      if v is not None and k not in ['description', 'experiment_name', 'iqr_factor']]
+    if active_filters:
+        logger.info(f"   Active filters: {', '.join(active_filters)}")
+    
+    return df
+
+
 def choose_target(df: pd.DataFrame, config: Dict[str, Any]) -> str:
     # Prefer redistributed price if present
     preferred = config.get("target", {}).get("column_candidates", [
@@ -114,14 +222,6 @@ def apply_target_transform_from_config(config: Dict[str, Any], y: pd.Series) -> 
     
     # Get transform type (new config format)
     transform_type = target_cfg.get("transform", "none")
-    
-    # Backward compatibility: check old log_transform flag
-    if transform_type == "none" and target_cfg.get("log_transform", False):
-        transform_type = "log"
-        logger.warning("⚠️  Using legacy 'log_transform: true'. Consider updating to 'transform: log'")
-    
-    # Validate compatibility
-    validate_transform_compatibility(y, transform_type)
     
     # Apply transformation
     kwargs = {}
@@ -145,6 +245,45 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
     df = pd.read_parquet(raw_files[0])
     logger.info(f"Caricamento raw completato: rows={len(df)}, cols={len(df.columns)}")
+
+    # Apply data filters for experimentation (if configured)
+    df = apply_data_filters(df, config)
+
+    # Apply temporal and zone filtering to reduce drift
+    temporal_cfg = config.get("temporal_filter", {})
+    if temporal_cfg.get("enabled", False):
+        initial_rows = len(df)
+        
+        # Filter by year
+        min_year = temporal_cfg.get("min_year")
+        if min_year and "A_AnnoStipula" in df.columns:
+            df = df[df["A_AnnoStipula"] >= min_year]
+            logger.info(f"Filtro temporale: A_AnnoStipula >= {min_year} → {len(df)} righe ({len(df)/initial_rows*100:.1f}%)")
+        
+        # Optional: filter by month
+        min_month = temporal_cfg.get("min_month")
+        if min_month and "A_MeseStipula" in df.columns:
+            df = df[df["A_MeseStipula"] >= min_month]
+            logger.info(f"Filtro mese: A_MeseStipula >= {min_month} → {len(df)} righe")
+        
+        # Filter out problematic zones
+        exclude_zones = temporal_cfg.get("exclude_zones", [])
+        if exclude_zones and "AI_ZonaOmi" in df.columns:
+            df = df[~df["AI_ZonaOmi"].isin(exclude_zones)]
+            logger.info(f"Filtro zone: escluse {exclude_zones} → {len(df)} righe ({len(df)/initial_rows*100:.1f}%)")
+        
+        # Filter out problematic building types
+        exclude_tipologie = temporal_cfg.get("exclude_tipologie", [])
+        if exclude_tipologie and "AI_IdTipologiaEdilizia" in df.columns:
+            df = df[~df["AI_IdTipologiaEdilizia"].isin(exclude_tipologie)]
+            logger.info(f"Filtro tipologie: escluse {exclude_tipologie} → {len(df)} righe ({len(df)/initial_rows*100:.1f}%)")
+        
+        removed_rows = initial_rows - len(df)
+        logger.info(f"✅ Temporal filter: rimossi {removed_rows} campioni ({removed_rows/initial_rows*100:.1f}%)")
+        if "AI_ZonaOmi" in df.columns:
+            logger.info(f"   Dataset finale: {len(df)} righe su {df['AI_ZonaOmi'].nunique()} zone OMI")
+        if "AI_IdTipologiaEdilizia" in df.columns:
+            logger.info(f"   Tipologie residenziali: {sorted(df['AI_IdTipologiaEdilizia'].unique())}")
 
     # Convert datetime columns to strings once to prevent NaT-related issues downstream
     df = convert_datetime_columns_to_strings(df)
@@ -219,49 +358,15 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         df["TemporalKey"] = df["A_AnnoStipula"].astype(int) * 100 + df["A_MeseStipula"].astype(int)
         logger.info("Creata colonna TemporalKey (A_AnnoStipula*100 + A_MeseStipula)")
 
-    # Optionally compute AI_Prezzo_MQ if requested among target candidates
-    try:
-        tgt_cfg = config.get("target", {}) or {}
-        tgt_candidates = list(tgt_cfg.get("column_candidates", [
-            "AI_Prezzo_Ridistribuito",
-        ]) or [])
-    except Exception:
-        tgt_candidates = ["AI_Prezzo_Ridistribuito"]
-    if "AI_Prezzo_MQ" in tgt_candidates:
-        if "AI_Prezzo_Ridistribuito" in df.columns and "AI_Superficie" in df.columns:
-            superficie = pd.to_numeric(df["AI_Superficie"], errors="coerce")
-            prezzo = pd.to_numeric(df["AI_Prezzo_Ridistribuito"], errors="coerce")
-            with np.errstate(divide='ignore', invalid='ignore'):
-                mq = prezzo / superficie
-            # Invalidate zero/negative or NaN superficie to avoid infinities
-            mq = mq.where(superficie > 0)
-            # Remove non-finite values
-            mq = mq.replace([np.inf, -np.inf], np.nan)
-            df["AI_Prezzo_MQ"] = mq
-            logger.info("Derivata colonna AI_Prezzo_MQ = AI_Prezzo_Ridistribuito / AI_Superficie")
-        else:
-            logger.warning(
-                "AI_Prezzo_MQ richiesto tra i candidati ma mancano colonne base (AI_Prezzo_Ridistribuito o AI_Superficie)"
-            )
-
-    # Decide target
+    # Decide target (sempre AI_Prezzo_Ridistribuito ora)
     target_col = choose_target(df, config)
     logger.info(f"Target selezionato: {target_col}")
-    # If using per-m² target, drop redistributed absolute price to avoid leakage and reduce noise
-    if target_col == "AI_Prezzo_MQ" and "AI_Prezzo_Ridistribuito" in df.columns:
-        df = df.drop(columns=["AI_Prezzo_Ridistribuito"], errors="ignore")
-        logger.info("Target=AI_Prezzo_MQ: rimossa colonna AI_Prezzo_Ridistribuito dalle feature")
-        # If using absolute redistributed price as target, drop per-m² price to avoid leakage and collinearity
-    elif target_col == "AI_Prezzo_Ridistribuito" and "AI_Prezzo_MQ" in df.columns:
-        df = df.drop(columns=["AI_Prezzo_MQ"], errors="ignore")
-        logger.info("Target=AI_Prezzo_Ridistribuito: rimossa colonna AI_Prezzo_MQ dalle feature")
 
     # Create combined for split key if needed
     Xy_full = df.copy()
 
-    # Temporal split FIRST to avoid leakage
+    # Temporal split FIRST to avoid leakage (contextual features AFTER split!)
     split_cfg_dict = config.get("temporal_split", {})
-    # Support new schema with nested fraction/date keys and keep backward compatibility
     mode = split_cfg_dict.get("mode", "date")
     frac = split_cfg_dict.get("fraction", {})
     date = split_cfg_dict.get("date", {})
@@ -278,6 +383,39 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     logger.info(
         f"Split temporale ({split_cfg.mode}) -> train={len(train_df)}, val={len(val_df)}, test={len(test_df)}"
     )
+    
+    # CRITICAL: Verify temporal order is preserved after split
+    if "TemporalKey" in train_df.columns:
+        if not train_df["TemporalKey"].is_monotonic_increasing:
+            raise ValueError(
+                "❌ TEMPORAL LEAKAGE RISK: Train set lost temporal order after split! "
+                "TemporalKey must be monotonically increasing to prevent future data leaking into training."
+            )
+        logger.info(
+            f"✅ Temporal order verified: Train [{train_df['TemporalKey'].min()} → {train_df['TemporalKey'].max()}], "
+            f"Test [{test_df['TemporalKey'].min()} → {test_df['TemporalKey'].max()}]"
+        )
+        # Verify no overlap between train and test temporal ranges
+        if train_df["TemporalKey"].max() >= test_df["TemporalKey"].min():
+            logger.warning(
+                f"⚠️  Temporal overlap detected: Train max ({train_df['TemporalKey'].max()}) >= "
+                f"Test min ({test_df['TemporalKey'].min()}). This may indicate temporal leakage!"
+            )
+
+    # ==========================================
+    # ADD CONTEXTUAL FEATURES (LEAK-FREE)
+    # ==========================================
+    # Fit ONLY on train, transform all splits
+    # This captures market context: zone statistics, typology patterns, etc.
+    # WITHOUT leaking test information into training!
+    logger.info("🎯 Aggiunta feature contestuali (zona, tipologia, interazioni) [LEAK-FREE]...")
+    train_df, val_df, test_df, contextual_stats = fit_transform_contextual_features(
+        train_df=train_df,
+        val_df=val_df,
+        test_df=test_df,
+        target_col=target_col
+    )
+    logger.info(f"✅ Feature contestuali aggiunte. Train cols: {len(train_df.columns)}")
 
     # Outlier detection ONLY on train target (optionally per category)
     out_cfg_dict = config.get("outliers", {})
@@ -309,17 +447,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     if not val_df.empty:
         y_val = val_df[target_col].astype(float)
         X_val = val_df.drop(columns=[target_col])
-
-    # Optionally drop AI_Superficie from features based on configuration
-    include_ai_superficie_flag = bool(prune_cfg.get("include_ai_superficie", True))
-    if not include_ai_superficie_flag:
-        drop_cols = [c for c in ["AI_Superficie"] if c in X_train.columns]
-        if drop_cols:
-            X_train = X_train.drop(columns=drop_cols, errors="ignore")
-            X_test = X_test.drop(columns=drop_cols, errors="ignore")
-            if X_val is not None:
-                X_val = X_val.drop(columns=drop_cols, errors="ignore")
-            logger.info("Rimossa colonna AI_Superficie dalle feature per configurazione")
 
     # Preserve original-scale targets for evaluation
     y_test_orig = y_test.copy()
@@ -398,16 +525,8 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
     base_test = X_test.copy(deep=False)
     base_val = X_val.copy(deep=False) if X_val is not None else None
 
-    # Optional profile-level thresholds
+    # Profile configuration
     profiles_cfg = config.get("profiles", {})
-    # Provide fallback defaults only if profiles is completely missing from config
-    if not profiles_cfg:
-        profiles_cfg = {
-            "scaled": {"enabled": True, "output_prefix": "scaled"},
-            "tree": {"enabled": False, "output_prefix": "tree"},
-            "catboost": {"enabled": False, "output_prefix": "catboost"},
-        }
-    # NA threshold for dropping non-descriptive columns
     na_thr = float(config.get("drop_non_descriptive", {}).get("na_threshold", 0.98))
     logger.info(f"Profili attivi: {[k for k,v in profiles_cfg.items() if v.get('enabled', False)]}")
 
@@ -456,8 +575,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         numc_cfg = config.get("numeric_coercion", {})
         enabled = bool(numc_cfg.get("enabled", True))
         threshold = float(numc_cfg.get("threshold", 0.95))
-        # Accept both new key 'blacklist_globs' and legacy 'blacklist_patterns'
-        patterns = [str(p) for p in (numc_cfg.get("blacklist_globs") or numc_cfg.get("blacklist_patterns") or [
+        patterns = [str(p) for p in (numc_cfg.get("blacklist_globs") or [
             "II_*",
             "AI_Id*",
             "Foglio",
@@ -631,6 +749,14 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         
         plan = plan_encodings(X_tr, profile_config)
         X_tr, encoders = fit_apply_encoders(X_tr, y_train, plan, profile_config)
+        
+        # sklearn OneHotEncoder names columns as: originalname_value (e.g., AI_ZonaOmi_B1)
+        # We need to identify them to preserve them from correlation pruning
+        ohe_generated_cols = []
+        if encoders.one_hot is not None and encoders.one_hot_input_cols:
+            # Get all OHE feature names from sklearn encoder
+            ohe_generated_cols = list(encoders.one_hot.get_feature_names_out(encoders.one_hot_input_cols))
+        
         # Persist encoders
         _prof_dir = artifacts_dir / profiles_cfg.get("tree", {}).get("output_prefix", "tree")
         _prof_dir.mkdir(parents=True, exist_ok=True)
@@ -651,7 +777,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if X_va is not None:
             X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
         
-        # Fill any remaining NaN values to ensure compatibility with all sklearn models
+        # Fill remaining NaN values
         for _df in (X_tr, X_te, X_va):
             if _df is not None:
                 # Fill numeric NaN values with 0
@@ -667,16 +793,33 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             if _df is not None and _df.isnull().any().any():
                 logger.warning(f"[tree] Residual NaN detected after fills in {name}")
         
-        # Optional numeric-only correlation prune
+        # OHE features are binary (0/1) and should NOT be pruned based on correlation
+        # They represent categorical information and high correlation is expected
         corr_thr = float(profiles_cfg.get("tree", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
-        X_tr_num = X_tr.select_dtypes(include=[np.number])
+        
+        # Use OHE columns tracked during encoding
+        ohe_cols = [c for c in ohe_generated_cols if c in X_tr.columns]
+        logger.info(f"[tree] Identified {len(ohe_cols)} OHE features to preserve from correlation pruning")
+        
+        # Correlation pruning ONLY on numeric features that are NOT OHE
+        X_tr_num = X_tr.select_dtypes(include=[np.number]).drop(columns=ohe_cols, errors="ignore")
         X_tr_num_pruned, dropped_corr = remove_highly_correlated(X_tr_num, threshold=corr_thr)
-        logger.info(f"[tree] Pruning correlazioni numeriche: {len(dropped_corr)}")
-        kept_num_cols = X_tr_num_pruned.columns
-        X_tr_final = pd.concat([X_tr[kept_num_cols], X_tr.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
-        X_te_final = pd.concat([X_te[kept_num_cols], X_te.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+        logger.info(f"[tree] Pruning correlazioni numeriche (excluding OHE): {len(dropped_corr)} dropped")
+        
+        # Recombine: pruned numeric + ALL OHE + non-numeric (target/freq/ordinal encoded)
+        kept_num_cols = X_tr_num_pruned.columns.tolist()
+        X_tr_ohe = X_tr[ohe_cols] if ohe_cols else pd.DataFrame(index=X_tr.index)
+        X_tr_other = X_tr.drop(columns=kept_num_cols + ohe_cols, errors="ignore")
+        X_tr_final = pd.concat([X_tr_num_pruned, X_tr_ohe, X_tr_other], axis=1)
+        
+        X_te_ohe = X_te[ohe_cols] if ohe_cols else pd.DataFrame(index=X_te.index)
+        X_te_other = X_te.drop(columns=kept_num_cols + ohe_cols, errors="ignore")
+        X_te_final = pd.concat([X_te[kept_num_cols], X_te_ohe, X_te_other], axis=1)
+        
         if X_va is not None:
-            X_va_final = pd.concat([X_va[kept_num_cols], X_va.drop(columns=kept_num_cols, errors="ignore").select_dtypes(exclude=[np.number])], axis=1)
+            X_va_ohe = X_va[ohe_cols] if ohe_cols else pd.DataFrame(index=X_va.index)
+            X_va_other = X_va.drop(columns=kept_num_cols + ohe_cols, errors="ignore")
+            X_va_final = pd.concat([X_va[kept_num_cols], X_va_ohe, X_va_other], axis=1)
         else:
             X_va_final = None
         prefix = profiles_cfg.get("tree", {}).get("output_prefix", "tree")
@@ -708,6 +851,27 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
 
         # Coerce numeric-like strings to numeric
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
+        
+        # Drop extreme high-cardinality categorical features
+        extreme_card_threshold = int(config.get("encoding", {}).get("catboost_max_cardinality", 500))
+        cat_cols = X_tr.select_dtypes(include=['object', 'category']).columns
+        extreme_high_card = []
+        for col in cat_cols:
+            nunique = X_tr[col].nunique(dropna=True)
+            if nunique > extreme_card_threshold:
+                extreme_high_card.append(col)
+                logger.warning(
+                    f"[catboost] Dropping extreme high-cardinality column: {col} "
+                    f"({nunique} unique values > {extreme_card_threshold} threshold)"
+                )
+        
+        if extreme_high_card:
+            X_tr = X_tr.drop(columns=extreme_high_card)
+            X_te = X_te.drop(columns=extreme_high_card, errors="ignore")
+            if X_va is not None:
+                X_va = X_va.drop(columns=extreme_high_card, errors="ignore")
+            logger.info(f"[catboost] Dropped {len(extreme_high_card)} extreme high-cardinality columns")
+        
         # Drop non-descriptive
         X_tr, removed_nd = drop_non_descriptive(X_tr, na_threshold=na_thr)
         logger.info(f"[catboost] Drop non descrittive: {len(removed_nd)}")
@@ -715,7 +879,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if X_va is not None:
             X_va = X_va.drop(columns=[c for c in removed_nd if c in X_va.columns], errors="ignore")
         
-        # Fill any remaining NaN values to ensure compatibility with all sklearn models
+        # Fill remaining NaN values
         for _df in (X_tr, X_te, X_va):
             if _df is not None:
                 # Fill numeric NaN values with 0
@@ -774,48 +938,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         if first_profile_saved is None:
             first_profile_saved = prefix
 
-    # Backward-compatible symlinks (copy) to default filenames using first enabled profile
-    if first_profile_saved is not None:
-        X_train_bc = pd.read_parquet(pre_dir / f"X_train_{first_profile_saved}.parquet")
-        X_test_bc = pd.read_parquet(pre_dir / f"X_test_{first_profile_saved}.parquet")
-        y_train_bc = pd.read_parquet(pre_dir / f"y_train_{first_profile_saved}.parquet")[target_col]
-        y_test_bc = pd.read_parquet(pre_dir / f"y_test_{first_profile_saved}.parquet")[target_col]
-        frames = [X_train_bc.assign(**{target_col: y_train_bc})]
-        # Include validation only if present in this run and file has expected target column
-        if base_val is not None and (pre_dir / f"X_val_{first_profile_saved}.parquet").exists() and (pre_dir / f"y_val_{first_profile_saved}.parquet").exists():
-            try:
-                X_val_bc = pd.read_parquet(pre_dir / f"X_val_{first_profile_saved}.parquet")
-                y_val_df = pd.read_parquet(pre_dir / f"y_val_{first_profile_saved}.parquet")
-                if target_col in y_val_df.columns:
-                    y_val_bc = y_val_df[target_col]
-                    frames.append(X_val_bc.assign(**{target_col: y_val_bc}))
-                else:
-                    logger.warning(
-                        f"Back-compat: y_val_{first_profile_saved}.parquet manca la colonna target '{target_col}'. Val set ignorato nella combinazione."
-                    )
-            except Exception as _e:
-                logger.warning(
-                    f"Back-compat: impossibile leggere i file di validation per il profilo '{first_profile_saved}': {_e}. Val set ignorato."
-                )
-        frames.append(X_test_bc.assign(**{target_col: y_test_bc}))
-        combined = pd.concat(frames, axis=0)
-        out_path = pre_dir / paths.get("preprocessed_filename", "preprocessed.parquet")
-        combined.to_parquet(out_path, index=False)
-        # Default names without suffix
-        (pre_dir / "X_train.parquet").write_bytes((pre_dir / f"X_train_{first_profile_saved}.parquet").read_bytes())
-        (pre_dir / "X_test.parquet").write_bytes((pre_dir / f"X_test_{first_profile_saved}.parquet").read_bytes())
-        (pre_dir / "y_train.parquet").write_bytes((pre_dir / f"y_train_{first_profile_saved}.parquet").read_bytes())
-        (pre_dir / "y_test.parquet").write_bytes((pre_dir / f"y_test_{first_profile_saved}.parquet").read_bytes())
-        if (pre_dir / f"X_val_{first_profile_saved}.parquet").exists():
-            (pre_dir / "X_val.parquet").write_bytes((pre_dir / f"X_val_{first_profile_saved}.parquet").read_bytes())
-        if (pre_dir / f"y_val_{first_profile_saved}.parquet").exists():
-            (pre_dir / "y_val.parquet").write_bytes((pre_dir / f"y_val_{first_profile_saved}.parquet").read_bytes())
-        # Default copies for original-scale targets
-        if (pre_dir / f"y_test_orig_{first_profile_saved}.parquet").exists():
-            (pre_dir / "y_test_orig.parquet").write_bytes((pre_dir / f"y_test_orig_{first_profile_saved}.parquet").read_bytes())
-        if (pre_dir / f"y_val_orig_{first_profile_saved}.parquet").exists():
-            (pre_dir / "y_val_orig.parquet").write_bytes((pre_dir / f"y_val_orig_{first_profile_saved}.parquet").read_bytes())
-        logger.info(f"Back-compat: copiati file del profilo '{first_profile_saved}' nei nomi default e combinati in {out_path}")
 
     # Report
     save_report(
@@ -841,4 +963,4 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         logger.warning(f"Impossibile salvare preprocessing_info.json: {_e}")
 
     logger.info(f"Preprocessing completato. Output in {pre_dir}")
-    return out_path
+    return pre_dir

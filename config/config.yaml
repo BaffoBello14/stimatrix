@@ -1,9 +1,26 @@
-# Configurazione Preprocessing Pipeline
-# =================================
+# ==========================================
+# CONFIGURAZIONE PRINCIPALE - STIMATRIX
+# ==========================================
+# 
+# Config completo per training production-ready.
+# 
+# Caratteristiche:
+# - 150 trial per hyperparameter tuning
+# - Tutti i modelli principali abilitati (RF, CatBoost, XGBoost, LightGBM, GBR, HGBT)
+# - Ensemble (Voting + Stacking con CV 10-fold)
+# - Feature contestuali production-ready (no data leakage)
+# - Regularizzazione per prevenire overfitting
+# - Outlier detection robusto
+#
+# ⏱️ Tempo stimato: ~2-3 ore
+# 🎯 Uso: Training finale, production deployment, benchmark
+#
+# Per test rapidi: usa config_fast.yaml (20 trial, ~20 minuti)
+# ==========================================
 
 # Logging Configuration
 logging:
-  level: ${LOG_LEVEL:-INFO}
+  level: ${LOG_LEVEL:-INFO}  # DEBUG | INFO | WARNING | ERROR | CRITICAL
   format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
   file: ${LOG_FILE:-'logs/pipeline.log'}
   console: ${LOG_CONSOLE:-true}
@@ -14,21 +31,17 @@ logging:
 
 # Execution Configuration
 execution:
-  # Passi della pipeline da eseguire: [schema, dataset, preprocessing, training, evaluation] oppure ["all"]
-  steps: ["all"]
-  # Se true, forza la rielaborazione anche se gli output intermedi esistono già
-  force_reload: true
+  steps: ["preprocessing", "training", "evaluation"]  # all | schema | dataset | preprocessing | training | evaluation
 
 # Experiment tracking (Weights & Biases)
 tracking:
   wandb:
     enabled: ${WANDB_ENABLED:-true}
-    project: ${WANDB_PROJECT:-'stimatrix'}
+    project: ${WANDB_PROJECT:-'real-estate-price-prediction'}
     entity: ${WANDB_ENTITY:-null}
     group: ${WANDB_GROUP:-null}
     tags: []
     mode: ${WANDB_MODE:-'online'}  # online | offline | disabled
-    name: null
 
 # Paths Configuration
 paths:
@@ -39,95 +52,111 @@ paths:
   raw_filename: 'raw.parquet'
   preprocessed_filename: 'preprocessed.parquet'
 
-# Database Configuration (for data retrieval)
+# ==========================================
+# DATA FILTERS (Optional - Experimental)
+# ==========================================
+# Filtri applicati al dataset INTERO (prima dello split) per sperimentazione.
+# Tutti i filtri sono opzionali (null = no filter).
+# Usa per testare modelli specializzati su sottoinsiemi specifici.
+data_filters:
+  # Anno stipula
+  anno_min: 2022  # Anno minimo (null = no limit)
+  anno_max: null  # Anno massimo (null = no limit)
+  
+  # Prezzo (€) - usare con cautela, limita generalizzazione
+  prezzo_min: null  # Prezzo minimo (null = no limit)
+  prezzo_max: null  # Prezzo massimo (null = no limit)
+  
+  # Zone OMI da escludere
+  zone_escluse:  # Lista zone da escludere (null = tutte incluse)
+    - 'E1'
+    - 'E2'
+    - 'E3'
+    - 'R1'
+  
+  # Tipologie edilizie da escludere
+  tipologie_escluse:  # Lista tipologie da escludere (null = tutte incluse)
+    - '4'  # Ville
+
+# Database Configuration (se usi step schema/dataset)
 database:
   schema_name: null
-  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV', 'C1', 'C2']  # C1=attiimmobili_cened1, C2=attiimmobili_cened2
-  # Custom alias mapping for specific tables/views (optional)
-  # If not specified, defaults are used for known views (C1, C2)
+  selected_aliases: ['A', 'AI', 'PC', 'ISC', 'II', 'PC_OZ', 'OZ', 'OV', 'C1', 'C2']
   custom_aliases:
     attiimmobili_cened1: 'C1'
     attiimmobili_cened2: 'C2'
   use_poi: true
   use_ztl: true
-  output_format: 'parquet'
-  compression: 'snappy'
+  output_format: 'parquet'  # parquet | csv
+  compression: 'snappy'  # snappy | gzip | none
 
 # Target configuration
 target:
-  # Choose among ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
-  column_candidates: ['AI_Prezzo_Ridistribuito', 'AI_Prezzo_MQ']
-  
-  # Target transformation (applied to reduce skewness and improve model performance)
-  # Options: 'none', 'log', 'log10', 'sqrt', 'boxcox', 'yeojohnson'
-  transform: 'boxcox'  # Recommended: boxcox or yeojohnson for price data
-  
-  # Optional: offset for log10 transform (y -> log10(y + offset))
+  column_candidates: ['AI_Prezzo_Ridistribuito']
+  transform: 'yeojohnson'  # none | log | log10 | sqrt | boxcox | yeojohnson
   log10_offset: 1.0
-  
-  # Transformation guide:
-  # - 'none': No transformation
-  # - 'log': log(1+y) - handles zeros, best for right-skewed data
-  # - 'log10': log10(y + offset) - similar to log but different scale
-  # - 'sqrt': sqrt(y) - milder than log, requires y >= 0
-  # - 'boxcox': Automatically finds optimal lambda, requires y > 0 (auto-shifts if needed)
-  # - 'yeojohnson': Like Box-Cox but works with any y (recommended for flexibility)
 
 # Outlier detection
 outliers:
-  method: 'ensemble'       # 'iqr' | 'zscore' | 'iso_forest' | 'ensemble'
-  z_thresh: 3.0
-  iqr_factor: 1.5
-  iso_forest_contamination: 0.02
-  group_by_col: 'AI_IdTipologiaEdilizia'
-  min_group_size: 30       # minimum samples per group to apply group-wise outlier detection
-  fallback_strategy: 'global'  # 'skip' keeps all small groups; 'global' applies global detection
+  method: 'ensemble'  # ensemble | iqr | zscore | iso_forest
+  z_thresh: 2.5
+  iqr_factor: 1.0
+  iso_forest_contamination: 0.08
+  group_by_col: 'AI_ZonaOmi'
+  min_group_size: 20
+  fallback_strategy: 'global'  # global | skip
 
 # Missing value imputation
 imputation:
-  numeric_strategy: 'median'      # 'median' | 'mean'
-  categorical_strategy: 'most_frequent'
-  group_by_col: 'AI_IdTipologiaEdilizia'
+  numeric_strategy: 'median'  # median | mean
+  categorical_strategy: 'most_frequent'  # most_frequent | constant
+  group_by_col: 'AI_ZonaOmi'
 
-# Categorical encoding - Multi-strategy based on cardinality
+# Categorical encoding
 encoding: &encoding_defaults
-  # Strategy selection by number of unique values:
-  one_hot_max: 10                     # ≤10 unique → One-Hot Encoding
-  target_encoding_range: [11, 30]     # 11-30 → Target Encoding (with smoothing)
-  frequency_encoding_range: [31, 100] # 31-100 → Frequency Encoding
-  ordinal_encoding_range: [101, 200]  # 101-200 → Ordinal Encoding
-  drop_above: 200                     # >200 unique → DROP (too high cardinality)
+  one_hot_max: 8
+  target_encoding_range: [9, 20]
+  frequency_encoding_range: [21, 100]
+  ordinal_encoding_range: [101, 200]
+  drop_above: 200
+  catboost_max_cardinality: 500
   
-  # Target encoding configuration (requires y_train)
   target_encoder:
-    smoothing: 1.0              # Bayesian smoothing for rare categories
-    min_samples_leaf: 1         # Minimum samples per leaf for target encoding
+    smoothing: 5.0
+    min_samples_leaf: 10
 
 # Temporal split configuration
 temporal_split:
   year_col: 'A_AnnoStipula'
   month_col: 'A_MeseStipula'
-  mode: 'fraction'      # 'date' | 'fraction'
+  mode: 'fraction'  # fraction | date
   fraction:
-    train: 0.7          # fraction of time-ordered data for train
-    valid: 0.2          # fraction of time-ordered data for validation (0 disables val)
+    train: 0.7
+    valid: 0.2
   date:
-    test_start_year: 2023 # used only if mode=='date'
-    test_start_month: 1   # used only if mode=='date'
+    test_start_year: 2023
+    test_start_month: 1
 
 # Numeric coercion configuration
 numeric_coercion:
   enabled: true
   threshold: 0.95
   blacklist_globs:
-    - 'II_*'
-    - 'AI_Id*'
-    - 'Foglio'
-    - 'Particella*'
-    - 'Subalterno'
-    - 'SezioneAmministrativa'
-    - 'ZonaOmi'
+    - '*Id'
+    - '*_Id*'
+    - 'Foglio*'
+    - '*Particella*'
+    - '*Subalterno*'
+    - '*Sezione*'
     - '*COD*'
+    - '*Codice*'
+    - 'AI_ZonaOmi'
+    - 'OZ_CodiceZona'
+    - '*IdCategoriaCatastale*'
+    - '*IdTipologiaEdilizia*'
+    - '*Repertorio*'
+    - 'II_IdIstatZonaCensuaria'
+    - 'ISC_Id'
 
 # PCA configuration
 pca: &pca_defaults
@@ -136,9 +165,8 @@ pca: &pca_defaults
   random_state: 42
 
 # Correlation pruning
-# La correlazione viene calcolata solo sulle colonne numeriche, non sulle OHE
 correlation: &correlation_defaults
-  numeric_threshold: 0.95
+  numeric_threshold: 0.98
 
 # Non-descriptive columns pruning
 drop_non_descriptive:
@@ -146,47 +174,99 @@ drop_non_descriptive:
 
 # Feature extraction toggles
 feature_extraction:
-  geometry: true
-  json: true
+  geometry: false
+  json: false
 
-# Feature pruning
+# Feature pruning - data-driven (~56 colonne)
 feature_pruning:
   drop_columns:
-    - 'A_ImmobiliPrincipaliConSuperficieValorizzata'
+    # ID e chiavi esterne (12 colonne)
+    - 'A_Id'
+    - 'AI_Id'
+    - 'AI_IdAtto'
+    - 'AI_IdParticellaCatastale'
+    - 'AI_IdImmobile'
+    - 'PC_Id'
+    - 'PC_IdSezioneCensuaria'
+    - 'ISC_Id'
+    - 'II_IdIstatZonaCensuaria'
+    - 'OZ_Id'
+    - 'PC_OZ_IdParticella'
+    - 'PC_OZ_IdZona'
+    
+    # Superficie ridondanti (5 colonne - correlazione > 0.98)
     - 'AI_SuperficieCalcolata'
     - 'AI_SuperficieVisuraTotale'
     - 'AI_SuperficieVisuraTotaleE'
     - 'AI_SuperficieVisuraTotaleAttuale'
     - 'AI_SuperficieVisuraTotaleEAttuale'
+    
+    # Indicatori Istat ridondanti (7 colonne - correlazione > 0.95)
+    - 'II_ST2_B'
+    - 'II_ST21'
+    - 'II_ST29'
+    - 'II_ST31'
+    - 'II_ST32'
+    - 'II_ST22'
+    - 'II_ST26'
+    
+    # OmiValori ridondanti (4 colonne)
+    - 'OV_ValoreMercatoMax_normale'
+    - 'OV_ValoreMercatoMax_ottimo'
+    - 'OV_ValoreMercatoMin_scadente'
+    - 'OV_ValoreMercatoMax_scadente'
+    
+    # Metadata e colonne tecniche (13 colonne)
+    - 'A_Semestre'
+    - 'OZ_IdAnnoSemestre'
+    - 'A_DataStipula'
+    - 'A_DataRegistrazione'
+    - 'A_TotaleFabbricati'
+    - 'A_TotaleImmobili'
+    - 'A_NumeroRepertorio'
+    - 'A_IdNotaio'
+    - 'PC_PoligonoMetricoSrid'
+    - 'PC_PoligonoMetrico'
+    - 'AI_IndirizzoGeometry'
+    - 'OZ_IdComune'
+    - 'A_ImmobiliPrincipaliConSuperficieValorizzata'
+    
+    # Codici catastali (8 colonne)
+    - 'PC_Foglio'
+    - 'PC_Particella'
+    - 'PC_SezioneUrbana'
+    - 'PC_SezioneAmministrativa'
+    - 'PC_SezioneAggraria'
+    - 'OZ_CodiceZona'
+    - 'OZ_DescrizioneZona'
+    - 'AI_Subalterno'
+    
+    # Colonne processate o poco predittive (7 colonne)
+    - 'AI_Piano'
+    - 'AI_Civico'
+    - 'AI_Rendita'
     - 'A_AcquirentiCount'
     - 'A_VenditoriCount'
     - 'A_EtaMediaAcquirenti'
     - 'A_EtaMediaVenditori'
     - 'A_AcquirentiVenditoriStessoCognome'
     - 'A_VenditoriEredita'
-    - 'AI_Subalterno'
-    - 'AI_Piano'
-    - 'AI_Rendita'
-  # Keep AI_Superficie as a feature (set to false to drop from X)
-  include_ai_superficie: true
 
 # Scaling configuration
 scaling: &scaling_defaults
-  scaler_type: 'standard'   # 'standard' | 'robust' | 'none'
+  scaler_type: 'standard'  # standard | minmax | robust
   with_mean: true
   with_std: true
 
-# Winsorization (quantile clipping on numeric features)
+# Winsorization
 winsorization: &winsor_defaults
   enabled: true
   lower_quantile: 0.01
   upper_quantile: 0.99
 
-# Profiles: generate multiple datasets tailored to model families
-# SEMPLIFICATO: Solo 2 profili necessari per modelli tree-based
+# Profiles
 profiles:
   scaled:
-    # Disabilitato: non più necessario dopo rimozione modelli lineari
     enabled: false
     output_prefix: 'scaled'
     encoding: *encoding_defaults
@@ -195,26 +275,23 @@ profiles:
     pca: *pca_defaults
     correlation: *correlation_defaults
   tree:
-    # Profilo principale per XGBoost, LightGBM, Random Forest, GBR, HGBT
     enabled: true
     output_prefix: 'tree'
     encoding: *encoding_defaults
     correlation: *correlation_defaults
   catboost:
-    # Profilo specifico per CatBoost (mantiene categoriche native)
     enabled: true
     output_prefix: 'catboost'
     correlation: *correlation_defaults
 
 # Diagnostics configuration
 diagnostics:
-  # Residual analysis (per-group error analysis)
   residual_analysis:
     enabled: true
     by_groups:
       - AI_ZonaOmi
       - AI_IdCategoriaCatastale
-      - price_quartile  # Automatic quartile grouping
+      - price_quartile
     save_worst_predictions: true
     top_n_worst: 50
     plots:
@@ -223,228 +300,170 @@ diagnostics:
       - residual_distribution
       - qq_plot
   
-  # Drift detection (train vs test distribution shift)
   drift_detection:
     enabled: true
     methods:
-      - psi        # Population Stability Index
-      - ks_test    # Kolmogorov-Smirnov test
-    alert_threshold: 0.15  # PSI > 0.15 = significant drift
+      - psi
+      - ks_test
+    alert_threshold: 0.15
     save_report: true
 
 # Uncertainty quantification
 uncertainty:
-  # Prediction intervals (bootstrap-based)
   prediction_intervals:
     enabled: true
-    method: 'residual_bootstrap'
+    method: 'residual_bootstrap'  # residual_bootstrap | quantile_regression
     n_bootstraps: 100
-    confidence_levels: [0.8, 0.9]  # 80% and 90% confidence intervals
+    confidence_levels: [0.8, 0.9]
 
-# Training configuration
+# ==========================================
+# TRAINING CONFIGURATION
+# ==========================================
 training:
-  # Opzioni globali
-  primary_metric: "neg_root_mean_squared_error" # 'r2' | 'neg_root_mean_squared_error' | 'neg_mean_squared_error' | 'neg_mean_absolute_error' | 'neg_mean_absolute_percentage_error'
+  primary_metric: "neg_mean_absolute_percentage_error"  # neg_mape | r2 | neg_rmse | neg_mae
   report_metrics: ["r2", "rmse", "mse", "mae", "mape"]
-  sampler: "auto"   # auto (OptunaHub) | tpe
+  sampler: "auto"  # auto | tpe | random | cmaes
   seed: ${SEED:-42}
   n_jobs_default: ${N_JOBS:--1}
   timeout: ${TRAIN_TIMEOUT:-null}
   trials_base: &trials_base 50
-  trials_advanced: &trials_advanced 100
-  # Cross-validation usata quando non esiste un validation set esterno (valid_fraction=0)
+  trials_advanced: &trials_advanced 150
+  
   cv_when_no_val:
     enabled: true
-    kind: kfold   # 'timeseries' | 'kfold'
-    n_splits: 5
-    shuffle: true     # usato solo per kfold
+    kind: kfold  # kfold | stratified | timeseries
+    n_splits: 10
+    shuffle: true
 
-  # Definizione per-modello (schema minimale)
-  # SEMPLIFICATO: Solo modelli tree-based, i migliori per dati immobiliari
+  # ==========================================
+  # MODELS
+  # ==========================================
   models:
-    # ========================================
-    # MODELLI LINEARI: DISABILITATI
-    # ========================================
-    linear:
-      enabled: false
-      profile: scaled
-      trials: 1
-      base_params: {}
-      fit_params: {}
-      search_space: {}
-    ridge:
-      enabled: false
-      profile: scaled
-      trials: *trials_base
-      base_params: {}
-      fit_params: {}
-      search_space:
-        alpha: {type: float, low: 0.000001, high: 1000.0, log: true}
-    lasso:
-      enabled: false
-      profile: scaled
-      trials: *trials_base
-      base_params: {}
-      fit_params: {}
-      search_space:
-        alpha: {type: float, low: 0.0001, high: 10.0, log: true}
-    elasticnet:
-      enabled: false
-      profile: scaled
-      trials: *trials_base
-      base_params: {}
-      fit_params: {}
-      search_space:
-        alpha: {type: float, low: 0.0001, high: 10.0, log: true}
-        l1_ratio: {type: float, low: 0.0, high: 1.0}
-    # ========================================
-    # KNN: DISABILITATO
-    # Lento e poco performante con molte feature
-    # ========================================
-    knn:
-      enabled: false
-      profile: scaled
-      trials: *trials_base
-      base_params: {}
-      fit_params: {}
-      search_space:
-        n_neighbors: {type: int, low: 3, high: 50}
-        weights: {type: categorical, choices: ["uniform", "distance"]}
-        p: {type: int, low: 1, high: 2}
-    # ========================================
-    # SVR: DISABILITATO
-    # Lento su dataset grandi, poco performante
-    # ========================================
-    svr:
-      enabled: false
-      profile: scaled
-      trials: *trials_base
-      base_params: {}
-      fit_params: {}
-      search_space:
-        kernel: {type: categorical, choices: ["rbf", "poly", "sigmoid"]}
-        C: {type: float, low: 0.01, high: 1000.0, log: true}
-        epsilon: {type: float, low: 0.001, high: 1.0, log: true}
-        gamma: {type: float, low: 0.0001, high: 10.0, log: true}
-        degree: {type: int, low: 2, high: 5}
-        coef0: {type: float, low: 0.0, high: 1.0}
-    # ========================================
-    # DECISION TREE SINGOLO: DISABILITATO
-    # ========================================
-    dt:
-      enabled: false
-      profile: tree
-      trials: *trials_advanced
-      base_params: {}
-      fit_params: {}
-      search_space:
-        max_depth: {type: int, low: 3, high: 30}
-        min_samples_split: {type: int, low: 2, high: 20}
-        min_samples_leaf: {type: int, low: 1, high: 20}
-        max_features: {type: categorical, choices: ["sqrt", "log2", null]}
-        min_impurity_decrease: {type: float, low: 0.0, high: 0.01}
-    # ========================================
-    # MODELLI TREE-BASED: ABILITATI ✅
-    # I migliori per dati immobiliari complessi
-    # ========================================
-    rf:
-      # Random Forest: robusto, veloce, ottimo baseline
-      enabled: true
-      profile: tree
-      trials: *trials_advanced
-      base_params: {}
-      fit_params: {}
-      search_space:
-        n_estimators: {type: int, low: 200, high: 1200}
-        max_depth: {type: int, low: 4, high: 40}
-        min_samples_split: {type: int, low: 2, high: 20}
-        min_samples_leaf: {type: int, low: 1, high: 20}
-        max_features: {type: categorical, choices: ["sqrt", "log2", null]}
-        bootstrap: {type: categorical, choices: [true, false]}
-    gbr:
-      # Gradient Boosting (sklearn): buone performance ma più lento
-      enabled: true
-      profile: tree
-      trials: *trials_advanced
-      base_params: {}
-      fit_params: {}
-      search_space:
-        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-        n_estimators: {type: int, low: 200, high: 1500}
-        max_depth: {type: int, low: 2, high: 8}
-        subsample: {type: float, low: 0.5, high: 1.0}
-        min_samples_leaf: {type: int, low: 1, high: 20}
-        max_features: {type: categorical, choices: ["sqrt", "log2", null]}
-        min_samples_split: {type: int, low: 2, high: 20}
-        min_impurity_decrease: {type: float, low: 0.0, high: 0.01}
-    hgbt:
-      # HistGradientBoosting: veloce e performante, supporta NaN nativamente
-      enabled: true
-      profile: tree
-      trials: *trials_advanced
-      base_params: {}
-      fit_params: {}
-      search_space:
-        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-        max_depth: {type: int, low: 2, high: 16}
-        max_leaf_nodes: {type: int, low: 7, high: 255}
-        l2_regularization: {type: float, low: 0.000001, high: 10.0, log: true}
-        max_bins: {type: int, low: 64, high: 255}
-        min_samples_leaf: {type: int, low: 1, high: 50}
-    xgboost:
-      # XGBoost: solitamente il migliore per problemi tabular
-      enabled: true
-      profile: tree
-      trials: *trials_advanced
-      base_params: {}
-      fit_params: {}
-      search_space:
-        n_estimators: {type: int, low: 300, high: 1500}
-        max_depth: {type: int, low: 3, high: 8}
-        learning_rate: {type: float, low: 0.01, high: 0.1, log: true}
-        subsample: {type: float, low: 0.6, high: 0.9}
-        colsample_bytree: {type: float, low: 0.6, high: 0.9}
-        min_child_weight: {type: float, low: 1.0, high: 10.0, log: true}
-        reg_alpha: {type: float, low: 1e-4, high: 10.0, log: true}
-        reg_lambda: {type: float, low: 1e-4, high: 10.0, log: true}
-        gamma: {type: float, low: 1e-4, high: 10.0, log: true}
-    lightgbm:
-      # LightGBM: molto veloce, ottimo per dataset grandi
-      enabled: true
-      profile: tree
-      trials: *trials_advanced
-      base_params: {}
-      fit_params: {}
-      search_space:
-        n_estimators: {type: int, low: 300, high: 1500}
-        max_depth: {type: categorical, choices: [-1, 4, 5, 6, 7, 8]}
-        learning_rate: {type: float, low: 0.01, high: 0.1, log: true}
-        num_leaves: {type: int, low: 16, high: 63}
-        subsample: {type: float, low: 0.6, high: 0.9}
-        colsample_bytree: {type: float, low: 0.6, high: 0.9}
-        reg_alpha: {type: float, low: 1e-4, high: 10.0, log: true}
-        reg_lambda: {type: float, low: 1e-4, high: 10.0, log: true}
-        min_child_samples: {type: int, low: 20, high: 200}
-        min_split_gain: {type: float, low: 0.0, high: 1.0}
+    # CatBoost
     catboost:
-      # CatBoost: ottima gestione categoriche, no preprocessing necessario
       enabled: true
       profile: catboost
       trials: *trials_advanced
       base_params:
-        allow_writing_files: false  # Disabilita creazione cartella catboost_info
+        allow_writing_files: false
+        iterations: 800
+        verbose: False
       fit_params:
         cat_features: __categorical_indices__
       search_space:
-        depth: {type: int, low: 4, high: 10}
-        learning_rate: {type: float, low: 0.001, high: 0.3, log: true}
-        l2_leaf_reg: {type: float, low: 1.0, high: 15.0}
-        bagging_temperature: {type: float, low: 0.0, high: 5.0}
-        border_count: {type: int, low: 16, high: 255}
-        random_strength: {type: float, low: 0.0, high: 2.0}
-        rsm: {type: float, low: 0.5, high: 1.0}
+        depth: {type: int, low: 4, high: 7}
+        learning_rate: {type: float, low: 0.01, high: 0.12, log: true}
+        l2_leaf_reg: {type: float, low: 3.0, high: 30.0}
+        bagging_temperature: {type: float, low: 0.0, high: 1.5}
+        border_count: {type: int, low: 32, high: 128}
+        random_strength: {type: float, low: 0.0, high: 1.0}
+        rsm: {type: float, low: 0.5, high: 0.85}
+        min_data_in_leaf: {type: int, low: 20, high: 80}
+        max_ctr_complexity: {type: int, low: 1, high: 3}
 
-  # SHAP feature importance
+    # XGBoost
+    xgboost:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {}
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 400, high: 1200}
+        max_depth: {type: int, low: 3, high: 6}
+        learning_rate: {type: float, low: 0.005, high: 0.05, log: true}
+        subsample: {type: float, low: 0.6, high: 0.85}
+        colsample_bytree: {type: float, low: 0.6, high: 0.85}
+        min_child_weight: {type: float, low: 5.0, high: 20.0}
+        reg_alpha: {type: float, low: 0.1, high: 50.0, log: true}
+        reg_lambda: {type: float, low: 1.0, high: 100.0, log: true}
+        gamma: {type: float, low: 0.0, high: 5.0}
+
+    # LightGBM
+    lightgbm:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {}
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 400, high: 1200}
+        max_depth: {type: categorical, choices: [4, 5, 6]}
+        learning_rate: {type: float, low: 0.01, high: 0.08, log: true}
+        num_leaves: {type: int, low: 16, high: 40}
+        subsample: {type: float, low: 0.65, high: 0.85}
+        colsample_bytree: {type: float, low: 0.65, high: 0.85}
+        reg_alpha: {type: float, low: 0.1, high: 50.0, log: true}
+        reg_lambda: {type: float, low: 1.0, high: 100.0, log: true}
+        min_child_samples: {type: int, low: 50, high: 200}
+        min_split_gain: {type: float, low: 0.0, high: 0.5}
+
+    # Gradient Boosting (sklearn)
+    gbr:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {}
+      fit_params: {}
+      search_space:
+        learning_rate: {type: float, low: 0.01, high: 0.08, log: true}
+        n_estimators: {type: int, low: 300, high: 1000}
+        max_depth: {type: int, low: 2, high: 6}
+        subsample: {type: float, low: 0.6, high: 0.9}
+        min_samples_leaf: {type: int, low: 20, high: 60}
+        max_features: {type: categorical, choices: ["sqrt", "log2", null]}
+        min_samples_split: {type: int, low: 10, high: 40}
+        min_impurity_decrease: {type: float, low: 0.0, high: 0.005}
+
+    # HistGradientBoosting
+    hgbt:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {}
+      fit_params: {}
+      search_space:
+        learning_rate: {type: float, low: 0.01, high: 0.15, log: true}
+        max_depth: {type: int, low: 3, high: 10}
+        max_leaf_nodes: {type: int, low: 15, high: 100}
+        l2_regularization: {type: float, low: 0.1, high: 10.0, log: true}
+        max_bins: {type: int, low: 64, high: 200}
+        min_samples_leaf: {type: int, low: 20, high: 80}
+
+    # Random Forest
+    rf:
+      enabled: true
+      profile: tree
+      trials: *trials_advanced
+      base_params: {}
+      fit_params: {}
+      search_space:
+        n_estimators: {type: int, low: 300, high: 1000}
+        max_depth: {type: int, low: 6, high: 30}
+        min_samples_split: {type: int, low: 10, high: 40}
+        min_samples_leaf: {type: int, low: 5, high: 25}
+        max_features: {type: categorical, choices: ["sqrt", "log2", null]}
+        bootstrap: {type: categorical, choices: [true]}
+
+    # Modelli disabilitati
+    linear:
+      enabled: false
+    ridge:
+      enabled: false
+    lasso:
+      enabled: false
+    elasticnet:
+      enabled: false
+    knn:
+      enabled: false
+    svr:
+      enabled: false
+    dt:
+      enabled: false
+
+  # ==========================================
+  # SHAP
+  # ==========================================
   shap:
     enabled: true
     sample_size: 500
@@ -452,20 +471,23 @@ training:
     save_plots: true
     save_values: true
 
-  # Ensemble settings
+  # ==========================================
+  # ENSEMBLE
+  # ==========================================
   ensembles:
     voting:
       enabled: true
-      top_n: 3
+      top_n: 5
       tune_weights: true
     stacking:
       enabled: true
-      top_n: 5
-      # Meta-learner: Ridge è ideale (semplice, previene overfitting, interpretabile)
-      final_estimator: "ridge"
-      cv_folds: 5
+      top_n: 7
+      final_estimator: "ridge"  # ridge | lasso | elasticnet | linear
+      cv_folds: 10
 
-# Evaluation configuration
+# ==========================================
+# EVALUATION
+# ==========================================
 evaluation:
   group_metrics:
     enabled: true
@@ -474,9 +496,8 @@ evaluation:
     original_scale: true
     report_metrics: ['r2', 'rmse', 'mse', 'mae', 'mape', 'medae']
     price_band:
-      method: 'quantile'   # 'quantile' | 'fixed'
+      method: 'quantile'  # quantile | equal_width | custom
       quantiles: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-      # fixed_edges: [0, 100000, 200000, 400000, 800000, 1600000, .inf]
       mape_floor: 1000.0
       merge_small_bins: true
       label_prefix: 'PREZZO_'

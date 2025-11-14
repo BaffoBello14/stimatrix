@@ -93,7 +93,12 @@ class WandbTracker:
         # Build run name if not provided
         resolved_name = run_name or self.wandb_cfg.get("name")
         if not resolved_name:
-            resolved_name = f"{job_type}_{time.strftime('%Y%m%d_%H%M%S')}"
+            # Generate descriptive run name
+            config_type = "fast" if "fast" in project.lower() else "full"
+            target_cfg = self.config.get("target", {})
+            transform = target_cfg.get("transform", "none")
+            timestamp = time.strftime('%m%d_%H%M')
+            resolved_name = f"{config_type}_{transform}_{timestamp}"
 
         init_kwargs: Dict[str, Any] = {
             "project": project,

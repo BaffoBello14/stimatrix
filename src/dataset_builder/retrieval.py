@@ -94,7 +94,6 @@ class DatasetBuilder:
             "OV_ValoreMercatoMin_normale",
             "OV_ValoreMercatoMax_normale",
             "AI_Prezzo_Ridistribuito",
-            "AI_Prezzo_MQ",
         }
         for i in range(len(cols)):
             if cols[i] in to_drop:
@@ -216,17 +215,6 @@ class DatasetBuilder:
             )
         df = df.merge(prezzi[["A_Id", "coefficiente"]], on="A_Id", how="left")
         df["AI_Prezzo_Ridistribuito"] = df["prezzo_stimato_immobile"] * df["coefficiente"]
-        # Compute price per square meter when possible
-        try:
-            superficie = pd.to_numeric(df["AI_Superficie"], errors="coerce")
-            prezzo_r = pd.to_numeric(df["AI_Prezzo_Ridistribuito"], errors="coerce")
-            with np.errstate(divide='ignore', invalid='ignore'):
-                prezzo_mq = prezzo_r / superficie
-            prezzo_mq = prezzo_mq.where(superficie > 0)
-            prezzo_mq = prezzo_mq.replace([np.inf, -np.inf], np.nan)
-            df["AI_Prezzo_MQ"] = prezzo_mq
-        except Exception:
-            df["AI_Prezzo_MQ"] = np.nan
         df.drop(columns=["prezzo_m2", "prezzo_stimato_immobile", "coefficiente"], inplace=True)
         stats = {
             "properties_processed": len(df),
