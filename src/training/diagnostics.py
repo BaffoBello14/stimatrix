@@ -421,8 +421,9 @@ def prediction_intervals(
         # Average interval width
         avg_width = np.mean(upper_bound - lower_bound)
         
-        # Interval width as % of prediction
-        avg_width_pct = np.mean(100 * (upper_bound - lower_bound) / (y_test_pred + 1e-8))
+        # Interval width as % of actual price (not prediction)
+        # Use y_test instead of y_test_pred to avoid explosion when predictions are very small
+        avg_width_pct = 100.0 * avg_width / np.mean(y_test)
         
         intervals[f"{int(conf_level*100)}%"] = {
             "coverage": float(coverage),
