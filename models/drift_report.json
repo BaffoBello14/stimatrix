@@ -1,0 +1,1912 @@
+{
+  "features": {
+    "A_AnnoStipula": {
+      "psi": 4.166822955854074,
+      "ks_statistic": 0.9616724738675958,
+      "ks_pvalue": 6.748663295466024e-307
+    },
+    "A_MeseStipula": {
+      "psi": 4.95136018204153,
+      "ks_statistic": 0.6276754604280737,
+      "ks_pvalue": 2.1638975274728847e-99
+    },
+    "A_RegPart": {
+      "psi": 1.4095955196714238,
+      "ks_statistic": 0.11315581533265323,
+      "ks_pvalue": 0.002144228919726548
+    },
+    "A_Numero": {
+      "psi": 6.900930639851229,
+      "ks_statistic": 1.0,
+      "ks_pvalue": 1e-323
+    },
+    "AI_Foglio": {
+      "psi": 0.13667704135003722,
+      "ks_statistic": 0.14922452922245932,
+      "ks_pvalue": 1.386673337748876e-05
+    },
+    "AI_Latitudine": {
+      "psi": 0.08692858158240228,
+      "ks_statistic": 0.11013968494908226,
+      "ks_pvalue": 0.003068050982103194
+    },
+    "AI_Longitudine": {
+      "psi": 0.10725223001828196,
+      "ks_statistic": 0.07690639646343927,
+      "ks_pvalue": 0.08376703187036226
+    },
+    "AI_QuotaFavore": {
+      "psi": 0.0,
+      "ks_statistic": 0.007487757237645118,
+      "ks_pvalue": 1.0
+    },
+    "AI_ConsistenzaValore": {
+      "psi": 0.04484171095081043,
+      "ks_statistic": 0.06969298223998607,
+      "ks_pvalue": 0.14700251765614009
+    },
+    "II_P1": {
+      "psi": 0.09391532555712216,
+      "ks_statistic": 0.11290775667910245,
+      "ks_pvalue": 0.0022093672291195725
+    },
+    "II_P14": {
+      "psi": 0.04250407332802549,
+      "ks_statistic": 0.06325331388290646,
+      "ks_pvalue": 0.23169149675955555
+    },
+    "II_P15": {
+      "psi": 0.07643733734089514,
+      "ks_statistic": 0.06274569716802442,
+      "ks_pvalue": 0.23967170795701073
+    },
+    "II_P16": {
+      "psi": 0.14613830013620346,
+      "ks_statistic": 0.048410863983362,
+      "ks_pvalue": 0.5493812603229281
+    },
+    "II_P17": {
+      "psi": 0.06685821861860408,
+      "ks_statistic": 0.10600482646572273,
+      "ks_pvalue": 0.004936681716989729
+    },
+    "II_P18": {
+      "psi": 0.02253153446453181,
+      "ks_statistic": 0.07714459848174962,
+      "ks_pvalue": 0.08214766538993755
+    },
+    "II_P19": {
+      "psi": 0.10143971175977845,
+      "ks_statistic": 0.10348317061671324,
+      "ks_pvalue": 0.006538564415464632
+    },
+    "II_P20": {
+      "psi": 0.05224870566207495,
+      "ks_statistic": 0.06392192230671549,
+      "ks_pvalue": 0.22148900858301093
+    },
+    "II_P21": {
+      "psi": 0.19189626915073327,
+      "ks_statistic": 0.09961936960246548,
+      "ks_pvalue": 0.009925694134734821
+    },
+    "II_P22": {
+      "psi": 0.14104122042368003,
+      "ks_statistic": 0.08310786280220854,
+      "ks_pvalue": 0.04940572945956192
+    },
+    "II_P23": {
+      "psi": 0.0332700554229618,
+      "ks_statistic": 0.044538849106413876,
+      "ks_pvalue": 0.6542884047298606
+    },
+    "II_P24": {
+      "psi": 0.05616967291274047,
+      "ks_statistic": 0.050247483683161745,
+      "ks_pvalue": 0.5015423876944125
+    },
+    "II_P25": {
+      "psi": 0.10897208783962894,
+      "ks_statistic": 0.1055596351073634,
+      "ks_pvalue": 0.005189953231761464
+    },
+    "II_P26": {
+      "psi": 0.11697930943637126,
+      "ks_statistic": 0.1297675312578545,
+      "ks_pvalue": 0.00025028861619211024
+    },
+    "II_P27": {
+      "psi": 0.1361302336088172,
+      "ks_statistic": 0.09835279197407047,
+      "ks_pvalue": 0.011341342210630493
+    },
+    "II_P28": {
+      "psi": 0.10620144992970323,
+      "ks_statistic": 0.09217432445086221,
+      "ks_pvalue": 0.02121381885779978
+    },
+    "II_P29": {
+      "psi": 0.11181998733065628,
+      "ks_statistic": 0.10822092662227896,
+      "ks_pvalue": 0.0038342454552692355
+    },
+    "II_P30": {
+      "psi": 0.015585828440033901,
+      "ks_statistic": 0.04142908068805885,
+      "ks_pvalue": 0.7386379717333341
+    },
+    "II_P31": {
+      "psi": 0.06885142400816302,
+      "ks_statistic": 0.08582829412856667,
+      "ks_pvalue": 0.03867463434504862
+    },
+    "II_P32": {
+      "psi": 0.04419012918758161,
+      "ks_statistic": 0.03970909783860417,
+      "ks_pvalue": 0.7834614518089796
+    },
+    "II_P33": {
+      "psi": 0.04531698979282517,
+      "ks_statistic": 0.08874585815973335,
+      "ks_pvalue": 0.029506562038556675
+    },
+    "II_P34": {
+      "psi": 0.06525756909663122,
+      "ks_statistic": 0.06241878543255022,
+      "ks_pvalue": 0.2449519340533557
+    },
+    "II_P35": {
+      "psi": 0.03807135477029502,
+      "ks_statistic": 0.05849091628923968,
+      "ks_pvalue": 0.31485692826050726
+    },
+    "II_P36": {
+      "psi": 0.16498949697451148,
+      "ks_statistic": 0.11405605468461232,
+      "ks_pvalue": 0.001923211437458444
+    },
+    "II_P37": {
+      "psi": 0.1692666692730528,
+      "ks_statistic": 0.07241012802126405,
+      "ks_pvalue": 0.119698980728511
+    },
+    "II_P38": {
+      "psi": 0.11863229520651901,
+      "ks_statistic": 0.09700079017359177,
+      "ks_pvalue": 0.01305283902441216
+    },
+    "II_P39": {
+      "psi": 0.15068491064891723,
+      "ks_statistic": 0.05716684162194218,
+      "ks_pvalue": 0.3412516615388146
+    },
+    "II_P40": {
+      "psi": 0.12456571793389333,
+      "ks_statistic": 0.05964578538490982,
+      "ks_pvalue": 0.29299003525879397
+    },
+    "II_P41": {
+      "psi": 0.10169016273838674,
+      "ks_statistic": 0.0788760807389848,
+      "ks_pvalue": 0.07114959657225775
+    },
+    "II_P42": {
+      "psi": 0.15182272602277488,
+      "ks_statistic": 0.11751573365400253,
+      "ks_pvalue": 0.0012554319055759797
+    },
+    "II_P43": {
+      "psi": 0.03566113828956263,
+      "ks_statistic": 0.0892009061533331,
+      "ks_pvalue": 0.028261228607459412
+    },
+    "II_P44": {
+      "psi": 0.07533043230015408,
+      "ks_statistic": 0.05882439911487416,
+      "ks_pvalue": 0.30844256140812537
+    },
+    "II_P45": {
+      "psi": 0.10180256863498995,
+      "ks_statistic": 0.1043045568867489,
+      "ks_pvalue": 0.005970688876345943
+    },
+    "II_P67": {
+      "psi": 0.10687564231140521,
+      "ks_statistic": 0.08415759445531412,
+      "ks_pvalue": 0.04499945794545701
+    },
+    "II_P68": {
+      "psi": 0.03484421852310819,
+      "ks_statistic": 0.0389567080152515,
+      "ks_pvalue": 0.8023834859737289
+    },
+    "II_P69": {
+      "psi": 0.1343347593389963,
+      "ks_statistic": 0.06704319013285101,
+      "ks_pvalue": 0.17822497918941152
+    },
+    "II_P70": {
+      "psi": 0.05745735920491096,
+      "ks_statistic": 0.1008547345525991,
+      "ks_pvalue": 0.008700281982897181
+    },
+    "II_P71": {
+      "psi": 0.027327333008283525,
+      "ks_statistic": 0.04861949609595106,
+      "ks_pvalue": 0.5439098101440024
+    },
+    "II_P72": {
+      "psi": 0.11588116563004375,
+      "ks_statistic": 0.12247526395247788,
+      "ks_pvalue": 0.0006663343516908645
+    },
+    "II_P73": {
+      "psi": 0.13209118028572273,
+      "ks_statistic": 0.08294358554820142,
+      "ks_pvalue": 0.050125308067334645
+    },
+    "II_P74": {
+      "psi": 0.05897739002895894,
+      "ks_statistic": 0.08172300555092842,
+      "ks_pvalue": 0.055784645412582594
+    },
+    "II_P75": {
+      "psi": 0.0685161538089377,
+      "ks_statistic": 0.0669643370509276,
+      "ks_pvalue": 0.1792567034941685
+    },
+    "II_P76": {
+      "psi": 0.028919627536897273,
+      "ks_statistic": 0.04946716672662786,
+      "ks_pvalue": 0.5216769772285467
+    },
+    "II_P77": {
+      "psi": 0.08473514464545322,
+      "ks_statistic": 0.043567970535231725,
+      "ks_pvalue": 0.6808851881994623
+    },
+    "II_P78": {
+      "psi": 0.11193708746762773,
+      "ks_statistic": 0.13000409050362477,
+      "ks_pvalue": 0.0002422015538431066
+    },
+    "II_P79": {
+      "psi": 0.13819535365010835,
+      "ks_statistic": 0.12260340021060344,
+      "ks_pvalue": 0.0006553899583418108
+    },
+    "II_P80": {
+      "psi": 0.09904262950223847,
+      "ks_statistic": 0.08346434444340402,
+      "ks_pvalue": 0.04787027550038816
+    },
+    "II_P81": {
+      "psi": 0.07035919950181523,
+      "ks_statistic": 0.09478469001703554,
+      "ks_pvalue": 0.01636237769488034
+    },
+    "II_P86": {
+      "psi": 0.05752302442620837,
+      "ks_statistic": 0.10384293780298887,
+      "ks_pvalue": 0.006281922360781538
+    },
+    "II_P87": {
+      "psi": 0.09099560519420936,
+      "ks_statistic": 0.09278050751814854,
+      "ks_pvalue": 0.019986010459998756
+    },
+    "II_P88": {
+      "psi": 0.07487970050768765,
+      "ks_statistic": 0.0870981573020418,
+      "ks_pvalue": 0.03441976197855901
+    },
+    "II_P90": {
+      "psi": 0.11440752622689146,
+      "ks_statistic": 0.10653708476870584,
+      "ks_pvalue": 0.004646835180110739
+    },
+    "II_P91": {
+      "psi": 0.06077104975970964,
+      "ks_statistic": 0.09159442574421703,
+      "ks_pvalue": 0.022443833752713152
+    },
+    "II_P92": {
+      "psi": 0.12128138789969775,
+      "ks_statistic": 0.060319322126339066,
+      "ks_pvalue": 0.2807527209001119
+    },
+    "II_P96": {
+      "psi": 0.09715574391090058,
+      "ks_statistic": 0.10244493837138816,
+      "ks_pvalue": 0.007325997091662393
+    },
+    "II_IT1": {
+      "psi": 0.03837057967190822,
+      "ks_statistic": 0.06425869067743012,
+      "ks_pvalue": 0.2164638231886526
+    },
+    "II_IT4": {
+      "psi": 0.035464843189411926,
+      "ks_statistic": 0.04061919382580369,
+      "ks_pvalue": 0.7599813613978053
+    },
+    "II_IT7": {
+      "psi": 0.06556519892503887,
+      "ks_statistic": 0.05375151751113389,
+      "ks_pvalue": 0.4159508747413177
+    },
+    "II_ST1": {
+      "psi": 0.0841337637459506,
+      "ks_statistic": 0.099308885592392,
+      "ks_pvalue": 0.010254361544198915
+    },
+    "II_ST2": {
+      "psi": 0.18915047674618965,
+      "ks_statistic": 0.10326632464142382,
+      "ks_pvalue": 0.006696289741002522
+    },
+    "II_ST3": {
+      "psi": 0.08011898669390799,
+      "ks_statistic": 0.09451691809300393,
+      "ks_pvalue": 0.016803544475161587
+    },
+    "II_ST5": {
+      "psi": 0.06565890763824828,
+      "ks_statistic": 0.06960427252282221,
+      "ks_pvalue": 0.14799078806055213
+    },
+    "II_ST16": {
+      "psi": 0.009899334897795459,
+      "ks_statistic": 0.043017641734307825,
+      "ks_pvalue": 0.6958715177624104
+    },
+    "II_ST17": {
+      "psi": 0.02335247128904558,
+      "ks_statistic": 0.07369477614759982,
+      "ks_pvalue": 0.10834427296692101
+    },
+    "II_ST18": {
+      "psi": 0.03211164442304553,
+      "ks_statistic": 0.039099629226237706,
+      "ks_pvalue": 0.798818322969797
+    },
+    "II_ST24": {
+      "psi": 0.03265724097610859,
+      "ks_statistic": 0.05649987597067323,
+      "ks_pvalue": 0.3551259786292921
+    },
+    "II_ST25": {
+      "psi": 0.04892027315961668,
+      "ks_statistic": 0.08989415616524321,
+      "ks_pvalue": 0.026452594138113572
+    },
+    "II_ST27": {
+      "psi": 0.00836180002918534,
+      "ks_statistic": 0.030176088788570244,
+      "ks_pvalue": 0.9635034385184649
+    },
+    "II_ST28": {
+      "psi": 0.0847957475499104,
+      "ks_statistic": 0.11496450789927176,
+      "ks_pvalue": 0.0017217385344646633
+    },
+    "II_ST30": {
+      "psi": 0.014238098749335492,
+      "ks_statistic": 0.01799821594902148,
+      "ks_pvalue": 0.999988155857305
+    },
+    "II_ST33": {
+      "psi": 0.05438948161792569,
+      "ks_statistic": 0.0818330713111132,
+      "ks_pvalue": 0.05524404486488263
+    },
+    "II_PF3": {
+      "psi": 0.16324543256151802,
+      "ks_statistic": 0.13927754149232743,
+      "ks_pvalue": 6.40382561286361e-05
+    },
+    "II_PF4": {
+      "psi": 0.08075674446561505,
+      "ks_statistic": 0.09516088492871189,
+      "ks_pvalue": 0.015753193006860674
+    },
+    "II_PF5": {
+      "psi": 0.09910916670582441,
+      "ks_statistic": 0.0891664079299916,
+      "ks_pvalue": 0.028355701894156066
+    },
+    "II_PF6": {
+      "psi": 0.05391509965123886,
+      "ks_statistic": 0.06593596144084293,
+      "ks_pvalue": 0.19276298211412052
+    },
+    "II_PF7": {
+      "psi": 0.041379725140805804,
+      "ks_statistic": 0.08370418923425443,
+      "ks_pvalue": 0.04685511428311371
+    },
+    "II_PF8": {
+      "psi": 0.0018707831940362697,
+      "ks_statistic": 0.01860111347122766,
+      "ks_pvalue": 0.9999736148829899
+    },
+    "II_A3": {
+      "psi": 0.09594227785660779,
+      "ks_statistic": 0.061206419297977585,
+      "ks_pvalue": 0.2651929224714878
+    },
+    "II_A8": {
+      "psi": 0.05135809818443772,
+      "ks_statistic": 0.10522450950918885,
+      "ks_pvalue": 0.005388883962482149
+    },
+    "II_E3": {
+      "psi": 0.1502139347472996,
+      "ks_statistic": 0.1220727846801604,
+      "ks_pvalue": 0.0007022565910741635
+    },
+    "ISC_Sez21": {
+      "psi": 0.09638149692085875,
+      "ks_statistic": 0.06121463316067794,
+      "ks_pvalue": 0.26503935892295816
+    },
+    "ISC_CodTipoS": {
+      "psi": 0.0,
+      "ks_statistic": 0.03649912029530479,
+      "ks_pvalue": 0.8597896860091183
+    },
+    "ISC_Loc21Id": {
+      "psi": 0.0029665454340787986,
+      "ks_statistic": 0.014628889469335186,
+      "ks_pvalue": 0.9999999804693961
+    },
+    "ISC_ShapeLeng": {
+      "psi": 0.05758958195987063,
+      "ks_statistic": 0.060122189421530504,
+      "ks_pvalue": 0.2842951414626092
+    },
+    "ISC_ShapeArea": {
+      "psi": 0.06025143882738999,
+      "ks_statistic": 0.0634685170856558,
+      "ks_pvalue": 0.22837506418568124
+    },
+    "OV_ValoreMercatoMin_normale": {
+      "psi": 0.07061313412943415,
+      "ks_statistic": 0.10232008765834273,
+      "ks_pvalue": 0.007422566145273559
+    },
+    "OV_ValoreMercatoMin_ottimo": {
+      "psi": 0.026630296032982493,
+      "ks_statistic": 0.11632308078991074,
+      "ks_pvalue": 0.001455879272357362
+    },
+    "OV_ValoreLocazioneMin_normale": {
+      "psi": 0.3823413999488723,
+      "ks_statistic": 0.26976953544035337,
+      "ks_pvalue": 2.1689215433445976e-17
+    },
+    "OV_ValoreLocazioneMin_ottimo": {
+      "psi": 0.28288330393876854,
+      "ks_statistic": 0.1326374548853591,
+      "ks_pvalue": 0.00016747610315356515
+    },
+    "OV_ValoreLocazioneMax_normale": {
+      "psi": 0.17394728780632635,
+      "ks_statistic": 0.15531428702850375,
+      "ks_pvalue": 5.156594077545402e-06
+    },
+    "OV_ValoreLocazioneMax_ottimo": {
+      "psi": 0.04409840484546949,
+      "ks_statistic": 0.09826736780198676,
+      "ks_pvalue": 0.011444054495601494
+    },
+    "PC_ParticellaNumerica": {
+      "psi": 0.13871871148775505,
+      "ks_statistic": 0.14832428987050025,
+      "ks_pvalue": 1.599931208330323e-05
+    },
+    "PC_Area": {
+      "psi": 0.1527894326173096,
+      "ks_statistic": 0.12466179420331282,
+      "ks_pvalue": 0.0004996480640964958
+    },
+    "PC_Perimetro": {
+      "psi": 0.10969945094956093,
+      "ks_statistic": 0.14398737036471193,
+      "ks_pvalue": 3.1444870045668715e-05
+    },
+    "PC_IdQuartiere": {
+      "psi": 0.06934739340519093,
+      "ks_statistic": 0.059083957176205425,
+      "ks_pvalue": 0.30350360272286947
+    },
+    "C1_FOGLIO": {
+      "psi": 0.0947416389857398,
+      "ks_statistic": 0.09905918416630115,
+      "ks_pvalue": 0.01052963261556725
+    },
+    "C1_SUPERFICIE_LORDA": {
+      "psi": 0.12198230398806632,
+      "ks_statistic": 0.041458650593780136,
+      "ks_pvalue": 0.7378683655131317
+    },
+    "C1_SUPERFICIE_DISPERDENTE": {
+      "psi": 0.11826859253909158,
+      "ks_statistic": 0.07867073417147588,
+      "ks_pvalue": 0.07238487265598299
+    },
+    "C1_SUPERFICIE_VETRATA_OPACA": {
+      "psi": 0.06397065635324233,
+      "ks_statistic": 0.04507110740939699,
+      "ks_pvalue": 0.6397559375681278
+    },
+    "C1_TRASMITTANZA_MEDIA_INVOLUCRO": {
+      "psi": 0.07029753199009425,
+      "ks_statistic": 0.09728170427794397,
+      "ks_pvalue": 0.012678859593683004
+    },
+    "C1_TRASMITTANZA_MEDIA_COPERTURA": {
+      "psi": 0.06532785581252025,
+      "ks_statistic": 0.06176824750668198,
+      "ks_pvalue": 0.25567043627238717
+    },
+    "C1_TRASMITTANZA_MEDIA_BASAMENTO": {
+      "psi": 0.08583503758991756,
+      "ks_statistic": 0.09379738372045268,
+      "ks_pvalue": 0.01806696836701767
+    },
+    "C1_TRASMITTANZA_MEDIA_SERRAMENTO": {
+      "psi": 0.059400842653966786,
+      "ks_statistic": 0.04813487819663002,
+      "ks_pvalue": 0.5567594963225297
+    },
+    "C1_EPH": {
+      "psi": 0.08978868872391979,
+      "ks_statistic": 0.10721719260029537,
+      "ks_pvalue": 0.00430224841490383
+    },
+    "C1_ETH": {
+      "psi": 0.09231601415519498,
+      "ks_statistic": 0.10572391236137053,
+      "ks_pvalue": 0.005095206534870295
+    },
+    "C1_ETC": {
+      "psi": 0.056275159939573605,
+      "ks_statistic": 0.04977272241908113,
+      "ks_pvalue": 0.5137345448152938
+    },
+    "C1_EFER": {
+      "psi": 0.0,
+      "ks_statistic": 0.0029865604778496766,
+      "ks_pvalue": 1.0
+    },
+    "C1_EMISSIONI_DI_CO2": {
+      "psi": 0.08951996077094414,
+      "ks_statistic": 0.10721719260029537,
+      "ks_pvalue": 0.00430224841490383
+    },
+    "C1_EPW": {
+      "psi": 0.057287692769767085,
+      "ks_statistic": 0.03708559009211026,
+      "ks_pvalue": 0.8467874366754461
+    },
+    "C1_EPT": {
+      "psi": 0.019927538115518617,
+      "ks_statistic": 0.07359456702265547,
+      "ks_pvalue": 0.10920347406081075
+    },
+    "C1_EF_GLOB_MEDIA_RISCALDAMENTO": {
+      "psi": 0.11944753723080002,
+      "ks_statistic": 0.05124300384244497,
+      "ks_pvalue": 0.4763878524087379
+    },
+    "C1_EF_GLOB_MEDIA_ACQUA_CALDA_SAN": {
+      "psi": 0.06564819174265754,
+      "ks_statistic": 0.04208454693154731,
+      "ks_pvalue": 0.7211316268115225
+    },
+    "C1_EGHW": {
+      "psi": 0.06560107424518635,
+      "ks_statistic": 0.03203570730393099,
+      "ks_pvalue": 0.9407022373124141
+    },
+    "C1_POTENZA_GENERATORE": {
+      "psi": 0.06410959006233097,
+      "ks_statistic": 0.06753602189487241,
+      "ks_pvalue": 0.17209015060719204
+    },
+    "C2_COD_APE": {
+      "psi": 0.1144628288713685,
+      "ks_statistic": 0.0804974972360352,
+      "ks_pvalue": 0.06200287244189218
+    },
+    "C2_FOGLIO": {
+      "psi": 0.09659766525555831,
+      "ks_statistic": 0.05859605373180424,
+      "ks_pvalue": 0.31281626372665294
+    },
+    "C2_PARTICELLA": {
+      "psi": 0.07330370170844973,
+      "ks_statistic": 0.08404752869512934,
+      "ks_pvalue": 0.04544335059052283
+    },
+    "C2_NUMERO_UNITA_IMMOBILIARI": {
+      "psi": 0.07486186383918919,
+      "ks_statistic": 0.0839818177935265,
+      "ks_pvalue": 0.04570782979402803
+    },
+    "C2_SUPERF_UTILE_RISCALDATA": {
+      "psi": 0.04184266879562443,
+      "ks_statistic": 0.07960054342915626,
+      "ks_pvalue": 0.06693220580406489
+    },
+    "C2_SUPERF_UTILE_RAFFRESCATA": {
+      "psi": 0.048322750985685746,
+      "ks_statistic": 0.08111517971110202,
+      "ks_pvalue": 0.058800200613119
+    },
+    "C2_VOLUME_LORDO_RISCALDATO": {
+      "psi": 0.0832638515878102,
+      "ks_statistic": 0.11513535624343918,
+      "ks_pvalue": 0.0016857686667671036
+    },
+    "C2_EP_GL_NREN": {
+      "psi": 0.1154538299623725,
+      "ks_statistic": 0.05952586298948461,
+      "ks_pvalue": 0.29519239460559915
+    },
+    "C2_EP_GL_REN": {
+      "psi": 0.03083333919566021,
+      "ks_statistic": 0.06597703075434472,
+      "ks_pvalue": 0.19221911921768026
+    },
+    "C2_EMISSIONI_CO2": {
+      "psi": 0.1422815472084429,
+      "ks_statistic": 0.0625124234673343,
+      "ks_pvalue": 0.24341818592327755
+    },
+    "C2_CONSUMI_ENERGIA_ELETTRICA": {
+      "psi": 0.05398841209472046,
+      "ks_statistic": 0.07045687147111923,
+      "ks_pvalue": 0.1388908544489308
+    },
+    "C2_CONSUMI_GAS_NATURALE": {
+      "psi": 0.04516434772808257,
+      "ks_statistic": 0.04814473483187044,
+      "ks_pvalue": 0.5565019445416428
+    },
+    "C2_CONSUMI_GASOLIO": {
+      "psi": 0.0,
+      "ks_statistic": 0.0024888003982080635,
+      "ks_pvalue": 1.0
+    },
+    "C2_CONSUMI_BIOMASSE_SOLIDE": {
+      "psi": 0.0,
+      "ks_statistic": 0.0004977600796416127,
+      "ks_pvalue": 1.0
+    },
+    "C2_CONSUMI_SOLARE_TERMICO": {
+      "psi": 0.0,
+      "ks_statistic": 0.0004977600796416127,
+      "ks_pvalue": 1.0
+    },
+    "C2_CONSUMI_TELERISCALDAMENTO": {
+      "psi": 0.017952868426904144,
+      "ks_statistic": 0.0233947237431558,
+      "ks_pvalue": 0.9980302773233277
+    },
+    "C2_CONSUMI_ALTRO": {
+      "psi": 0.0,
+      "ks_statistic": 0.030655778370271072,
+      "ks_pvalue": 0.9582633392612371
+    },
+    "C2_RIQ_EP_GL_NREN_RAGG": {
+      "psi": 0.11056955610782343,
+      "ks_statistic": 0.10316940106155961,
+      "ks_pvalue": 0.006768031439248129
+    },
+    "C2_NM_TEMPO_RITORNO_INVESTIM_1": {
+      "psi": 0.05792774557050305,
+      "ks_statistic": 0.09223839257992499,
+      "ks_pvalue": 0.021079141281470367
+    },
+    "C2_DS_CLASSE_RAGGIUNGIBILE_1": {
+      "psi": 0.1022575405722367,
+      "ks_statistic": 0.10518015465060693,
+      "ks_pvalue": 0.005415044947169794
+    },
+    "C2_NM_EP_GL_NREN_RAGGIUNG_1": {
+      "psi": 0.21792982746927902,
+      "ks_statistic": 0.10070031393383241,
+      "ks_pvalue": 0.008844724568739892
+    },
+    "C2_NM_TEMPO_RITORNO_INVESTIM_2": {
+      "psi": 0.040484566112916995,
+      "ks_statistic": 0.039617102576360176,
+      "ks_pvalue": 0.7858252748471117
+    },
+    "C2_DS_CLASSE_RAGGIUNGIBILE_2": {
+      "psi": 0.07621166414272654,
+      "ks_statistic": 0.06257813436893714,
+      "ks_pvalue": 0.24237246573834825
+    },
+    "C2_NM_EP_GL_NREN_RAGGIUNG_2": {
+      "psi": 0.062297059222519754,
+      "ks_statistic": 0.05263771772896553,
+      "ks_pvalue": 0.4422398991464895
+    },
+    "C2_NM_TEMPO_RITORNO_INVESTIM_3": {
+      "psi": 0.03199946424067239,
+      "ks_statistic": 0.054116213015029724,
+      "ks_pvalue": 0.4075406860817058
+    },
+    "C2_DS_CLASSE_RAGGIUNGIBILE_3": {
+      "psi": 0.002695170093514277,
+      "ks_statistic": 0.013505233051926397,
+      "ks_pvalue": 0.9999999992402191
+    },
+    "C2_NM_EP_GL_NREN_RAGGIUNG_3": {
+      "psi": 0.010410136348289935,
+      "ks_statistic": 0.038095895204254125,
+      "ks_pvalue": 0.8232923519982078
+    },
+    "C2_NM_TEMPO_RITORNO_INVESTIM_6": {
+      "psi": 0.0021584567560139645,
+      "ks_statistic": 0.02667369773313817,
+      "ks_pvalue": 0.9892472360534807
+    },
+    "C2_DS_CLASSE_RAGGIUNGIBILE_6": {
+      "psi": 0.002529084479143399,
+      "ks_statistic": 0.01301404406244507,
+      "ks_pvalue": 0.9999999998588841
+    },
+    "C2_NM_EP_GL_NREN_RAGGIUNG_6": {
+      "psi": 0.0029311744954575985,
+      "ks_statistic": 0.027171457812779784,
+      "ks_pvalue": 0.98681240925611
+    },
+    "C2_NM_TEMPO_RITORNO_INVESTIM_7": {
+      "psi": 0.03466566131986248,
+      "ks_statistic": 0.07064086199560722,
+      "ks_pvalue": 0.13698623555200679
+    },
+    "C2_DS_CLASSE_RAGGIUNGIBILE_7": {
+      "psi": 0.08244401685595705,
+      "ks_statistic": 0.09678394419830236,
+      "ks_pvalue": 0.013347372973560047
+    },
+    "C2_NM_EP_GL_NREN_RAGGIUNG_7": {
+      "psi": 0.10646692420294404,
+      "ks_statistic": 0.04108081290956373,
+      "ks_pvalue": 0.7478818439424993
+    },
+    "C2_SUPERFICIE_DISPERDENTE": {
+      "psi": 0.082309620573281,
+      "ks_statistic": 0.11569882722468364,
+      "ks_pvalue": 0.001573188333582583
+    },
+    "C2_RAPPORTO_SV": {
+      "psi": 0.026604299134390802,
+      "ks_statistic": 0.08516297124983778,
+      "ks_pvalue": 0.041104200929155135
+    },
+    "C2_EP_H_ND": {
+      "psi": 0.1124590967676803,
+      "ks_statistic": 0.05952586298948461,
+      "ks_pvalue": 0.29519239460559915
+    },
+    "C2_A_SOL_EST_A_SUP_UTILE": {
+      "psi": 0.04980163611395895,
+      "ks_statistic": 0.061454477951528357,
+      "ks_pvalue": 0.2609583359779735
+    },
+    "C2_Y_IE": {
+      "psi": 0.12759295894904266,
+      "ks_statistic": 0.10922794618934267,
+      "ks_pvalue": 0.0034128673414143716
+    },
+    "C2_CI_ANNO_INSTALLAZIONE_1": {
+      "psi": 0.05135355639441193,
+      "ks_statistic": 0.0822848337596328,
+      "ks_pvalue": 0.053117422747284086
+    },
+    "C2_CI_POTENZA_NOMINALE_1": {
+      "psi": 0.09838352838113919,
+      "ks_statistic": 0.05909381381144585,
+      "ks_pvalue": 0.3033010780642291
+    },
+    "C2_CI_ANNO_INSTALLAZIONE_2": {
+      "psi": 0.014323815100279568,
+      "ks_statistic": 0.054116213015029724,
+      "ks_pvalue": 0.4075406860817058
+    },
+    "C2_CI_POTENZA_NOMINALE_2": {
+      "psi": 0.05131080543472216,
+      "ks_statistic": 0.04369117847573707,
+      "ks_pvalue": 0.6774907237914546
+    },
+    "C2_CI_EFFICIENZA_MEDIA": {
+      "psi": 0.2087804746557877,
+      "ks_statistic": 0.11072122642826751,
+      "ks_pvalue": 0.0028656742478608884
+    },
+    "C2_CI_EPREN": {
+      "psi": 0.0663096520288003,
+      "ks_statistic": 0.10468239457096531,
+      "ks_pvalue": 0.005724487435690043
+    },
+    "C2_CI_EPNREN": {
+      "psi": 0.11318311151081595,
+      "ks_statistic": 0.05952586298948461,
+      "ks_pvalue": 0.29519239460559915
+    },
+    "C2_CE_ANNO_INSTALLAZIONE_1": {
+      "psi": 0.05776428726796628,
+      "ks_statistic": 0.06056738077988984,
+      "ks_pvalue": 0.2763391563597642
+    },
+    "C2_CE_POTENZA_NOMINALE_1": {
+      "psi": 0.06859183853618821,
+      "ks_statistic": 0.08178543090745112,
+      "ks_pvalue": 0.055478776585699593
+    },
+    "C2_CE_ANNO_INSTALLAZIONE_2": {
+      "psi": 0.0006704961797887161,
+      "ks_statistic": 0.014628889469335186,
+      "ks_pvalue": 0.9999999804693961
+    },
+    "C2_CE_EFFICIENZA_MEDIA": {
+      "psi": 0.11119031842529273,
+      "ks_statistic": 0.10368687441168209,
+      "ks_pvalue": 0.006392364800992986
+    },
+    "C2_CE_EPREN": {
+      "psi": 0.06842005131396936,
+      "ks_statistic": 0.09055126518127174,
+      "ks_pvalue": 0.02483910101819218
+    },
+    "C2_PA_ANNO_INSTALLAZIONE": {
+      "psi": 0.04419661220359592,
+      "ks_statistic": 0.08066177449004233,
+      "ks_pvalue": 0.061142751041425455
+    },
+    "C2_PA_POTENZA_NOMINALE": {
+      "psi": 0.14834573287142788,
+      "ks_statistic": 0.04695372474031873,
+      "ks_pvalue": 0.5884718781168589
+    },
+    "C2_PA_EFFICIENZA_MEDIA": {
+      "psi": 0.12189542380329228,
+      "ks_statistic": 0.060588736822910765,
+      "ks_pvalue": 0.2759633323232929
+    },
+    "C2_PA_EPREN": {
+      "psi": 0.0,
+      "ks_statistic": 0.062014663387692674,
+      "ks_pvalue": 0.2515462300516466
+    },
+    "C2_PA_EPNREN": {
+      "psi": 0.3379273318783234,
+      "ks_statistic": 0.0799997371563936,
+      "ks_pvalue": 0.06469518900664072
+    },
+    "C2_PFR_ANNO_INSTALLAZIONE_1": {
+      "psi": 0.029539504397746795,
+      "ks_statistic": 0.05611546719629654,
+      "ks_pvalue": 0.363225404255157
+    },
+    "C2_PFR_POTENZA_NOMINALE_1": {
+      "psi": 0.03341074830356294,
+      "ks_statistic": 0.04067669086470618,
+      "ks_pvalue": 0.7585124491192693
+    },
+    "C2_PFR_ANNO_INSTALLAZIONE_2": {
+      "psi": 0.0021584567560139645,
+      "ks_statistic": 0.025678177573854946,
+      "ks_pvalue": 0.9931138228824798
+    },
+    "C2_PFR_POTENZA_NOMINALE_2": {
+      "psi": 0.002448852741909935,
+      "ks_statistic": 0.02617593765349656,
+      "ks_pvalue": 0.9913384792493666
+    },
+    "C2_VM_POTENZA_NOMINALE": {
+      "psi": 0.0,
+      "ks_statistic": 0.012018523903161844,
+      "ks_pvalue": 0.9999999999975355
+    },
+    "C2_ILL_POTENZA_NOMINALE": {
+      "psi": 0.0,
+      "ks_statistic": 0.006968641114982578,
+      "ks_pvalue": 1.0
+    },
+    "C2_ILL_EPREN": {
+      "psi": 0.0,
+      "ks_statistic": 0.007964161274265804,
+      "ks_pvalue": 1.0
+    },
+    "POI_lodging_count": {
+      "psi": 0.05568915395385196,
+      "ks_statistic": 0.05618446364297953,
+      "ks_pvalue": 0.36181341435397757
+    },
+    "POI_tourist_attraction_count": {
+      "psi": 0.084830389270323,
+      "ks_statistic": 0.058617409774825165,
+      "ks_pvalue": 0.31239807420796756
+    },
+    "POI_cafe_count": {
+      "psi": 0.07732102148607012,
+      "ks_statistic": 0.07395433420893109,
+      "ks_pvalue": 0.10615848760700033
+    },
+    "POI_shopping_mall_count": {
+      "psi": 0.01759780501878556,
+      "ks_statistic": 0.043533472311890226,
+      "ks_pvalue": 0.6818265704131609
+    },
+    "POI_pharmacy_count": {
+      "psi": 0.02379133912182393,
+      "ks_statistic": 0.02652256265945161,
+      "ks_pvalue": 0.989918107362396
+    },
+    "POI_bus_station_count": {
+      "psi": 0.0,
+      "ks_statistic": 0.006881574170358798,
+      "ks_pvalue": 1.0
+    },
+    "POI_museum_count": {
+      "psi": 0.008524277860648846,
+      "ks_statistic": 0.029109929410063955,
+      "ks_pvalue": 0.9736055374718392
+    },
+    "POI_hospital_count": {
+      "psi": 0.009882862391171754,
+      "ks_statistic": 0.048957907239205754,
+      "ks_pvalue": 0.5349889257811196
+    },
+    "POI_gym_count": {
+      "psi": 0.049786975736575985,
+      "ks_statistic": 0.07490878505471255,
+      "ks_pvalue": 0.09841254760196237
+    },
+    "POI_park_count": {
+      "psi": 0.030344235262282512,
+      "ks_statistic": 0.061260630791799935,
+      "ks_pvalue": 0.2642620691599919
+    },
+    "POI_restaurant_count": {
+      "psi": 0.04621383721416526,
+      "ks_statistic": 0.04463741545881816,
+      "ks_pvalue": 0.6516274582237558
+    },
+    "POI_school_count": {
+      "psi": 0.04408101104835767,
+      "ks_statistic": 0.05065653404563951,
+      "ks_pvalue": 0.49115885826148875
+    },
+    "POI_gas_station_count": {
+      "psi": 0.19202746087678477,
+      "ks_statistic": 0.16338687129041427,
+      "ks_pvalue": 1.3058659919452147e-06
+    },
+    "POI_transit_station_count": {
+      "psi": 0.15729670623355224,
+      "ks_statistic": 0.11773257962929194,
+      "ks_pvalue": 0.0012218723767900947
+    },
+    "POI_supermarket_count": {
+      "psi": 0.027592393039932595,
+      "ks_statistic": 0.046326185630011486,
+      "ks_pvalue": 0.605490657974258
+    },
+    "POI_university_count": {
+      "psi": 0.007361994070406915,
+      "ks_statistic": 0.032991800922252505,
+      "ks_pvalue": 0.9263741688315831
+    },
+    "InZTL": {
+      "psi": 0.0,
+      "ks_statistic": 0.015713119345782265,
+      "ks_pvalue": 0.9999997599481081
+    },
+    "zone_price_mean": {
+      "psi": 0.06144134572155127,
+      "ks_statistic": 0.08219119572484875,
+      "ks_pvalue": 0.0535386106437977
+    },
+    "zone_price_median": {
+      "psi": 0.03703740801850797,
+      "ks_statistic": 0.05361845293538811,
+      "ks_pvalue": 0.4190447827507367
+    },
+    "zone_price_std": {
+      "psi": 0.06144134572155126,
+      "ks_statistic": 0.08219119572484875,
+      "ks_pvalue": 0.0535386106437977
+    },
+    "zone_price_min": {
+      "psi": 0.034530134561317496,
+      "ks_statistic": 0.06803378197451403,
+      "ks_pvalue": 0.16602615524879782
+    },
+    "zone_price_max": {
+      "psi": 0.052748462821797085,
+      "ks_statistic": 0.07173987682491495,
+      "ks_pvalue": 0.12601063644980867
+    },
+    "zone_price_q25": {
+      "psi": 0.023062567679123982,
+      "ks_statistic": 0.04159992903222627,
+      "ks_pvalue": 0.7340998165274998
+    },
+    "zone_price_q75": {
+      "psi": 0.06144134572155126,
+      "ks_statistic": 0.08219119572484875,
+      "ks_pvalue": 0.0535386106437977
+    },
+    "zone_count": {
+      "psi": 0.04650370382683192,
+      "ks_statistic": 0.06852497096399536,
+      "ks_pvalue": 0.16017647398183496
+    },
+    "zone_surface_mean": {
+      "psi": 0.04419295145782625,
+      "ks_statistic": 0.05310097958526565,
+      "ks_pvalue": 0.4312087707009783
+    },
+    "zone_surface_median": {
+      "psi": 0.08531921624261085,
+      "ks_statistic": 0.08007201914815673,
+      "ks_pvalue": 0.06428229371633956
+    },
+    "type_zone_price_mean": {
+      "psi": 0.037050755099475856,
+      "ks_statistic": 0.03128167470803825,
+      "ks_pvalue": 0.9507551221424279
+    },
+    "type_zone_price_median": {
+      "psi": 0.04680106495081402,
+      "ks_statistic": 0.05080438357424592,
+      "ks_pvalue": 0.48739978696376285
+    },
+    "type_zone_price_std": {
+      "psi": 0.06411602457316036,
+      "ks_statistic": 0.04828108495269637,
+      "ks_pvalue": 0.5528234201806024
+    },
+    "type_zone_count": {
+      "psi": 0.0883158677742649,
+      "ks_statistic": 0.09729813200334468,
+      "ks_pvalue": 0.012651560655964523
+    },
+    "type_zone_rarity": {
+      "psi": 0.10342904849100648,
+      "ks_statistic": 0.09729813200334468,
+      "ks_pvalue": 0.012651560655964523
+    },
+    "type_price_mean": {
+      "psi": 0.0063050395216023795,
+      "ks_statistic": 0.035639950256847484,
+      "ks_pvalue": 0.8779806740404864
+    },
+    "type_zone_surface_mean": {
+      "psi": 0.054122788933225134,
+      "ks_statistic": 0.0759371606647972,
+      "ks_pvalue": 0.090612825847869
+    },
+    "surface_vs_type_zone_mean": {
+      "psi": 0.0811501831782473,
+      "ks_statistic": 0.06605752660880822,
+      "ks_pvalue": 0.19110334318747757
+    },
+    "log_superficie": {
+      "psi": 0.05295274026145841,
+      "ks_statistic": 0.06322210120464511,
+      "ks_pvalue": 0.2321627529627716
+    },
+    "superficie_x_categoria": {
+      "psi": 0.04451912662333621,
+      "ks_statistic": 0.07834710798108183,
+      "ks_pvalue": 0.07436573695495517
+    },
+    "temporal_price_mean": {
+      "psi": 5.1677453869107435,
+      "ks_statistic": 0.37759455388047514,
+      "ks_pvalue": 4.121962789018052e-34
+    },
+    "temporal_price_median": {
+      "psi": 4.967739222763505,
+      "ks_statistic": 0.3820743945972497,
+      "ks_pvalue": 6.117601398742932e-35
+    },
+    "temporal_count": {
+      "psi": 6.424243790583228,
+      "ks_statistic": 0.38682529278313593,
+      "ks_pvalue": 7.885360650034368e-36
+    },
+    "quarter": {
+      "psi": 4.282934008200193,
+      "ks_statistic": 0.5022399203583873,
+      "ks_pvalue": 1.685558190356125e-61
+    }
+  },
+  "alerts": [
+    {
+      "feature": "A_AnnoStipula",
+      "method": "psi",
+      "value": 4.166822955854074,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "A_AnnoStipula",
+      "method": "ks_test",
+      "statistic": 0.9616724738675958,
+      "pvalue": 6.748663295466024e-307,
+      "severity": "high"
+    },
+    {
+      "feature": "A_MeseStipula",
+      "method": "psi",
+      "value": 4.95136018204153,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "A_MeseStipula",
+      "method": "ks_test",
+      "statistic": 0.6276754604280737,
+      "pvalue": 2.1638975274728847e-99,
+      "severity": "high"
+    },
+    {
+      "feature": "A_RegPart",
+      "method": "psi",
+      "value": 1.4095955196714238,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "A_RegPart",
+      "method": "ks_test",
+      "statistic": 0.11315581533265323,
+      "pvalue": 0.002144228919726548,
+      "severity": "high"
+    },
+    {
+      "feature": "A_Numero",
+      "method": "psi",
+      "value": 6.900930639851229,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "A_Numero",
+      "method": "ks_test",
+      "statistic": 1.0,
+      "pvalue": 1e-323,
+      "severity": "high"
+    },
+    {
+      "feature": "AI_Foglio",
+      "method": "ks_test",
+      "statistic": 0.14922452922245932,
+      "pvalue": 1.386673337748876e-05,
+      "severity": "high"
+    },
+    {
+      "feature": "AI_Latitudine",
+      "method": "ks_test",
+      "statistic": 0.11013968494908226,
+      "pvalue": 0.003068050982103194,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P1",
+      "method": "ks_test",
+      "statistic": 0.11290775667910245,
+      "pvalue": 0.0022093672291195725,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P17",
+      "method": "ks_test",
+      "statistic": 0.10600482646572273,
+      "pvalue": 0.004936681716989729,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P19",
+      "method": "ks_test",
+      "statistic": 0.10348317061671324,
+      "pvalue": 0.006538564415464632,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P21",
+      "method": "psi",
+      "value": 0.19189626915073327,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P21",
+      "method": "ks_test",
+      "statistic": 0.09961936960246548,
+      "pvalue": 0.009925694134734821,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P22",
+      "method": "ks_test",
+      "statistic": 0.08310786280220854,
+      "pvalue": 0.04940572945956192,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P25",
+      "method": "ks_test",
+      "statistic": 0.1055596351073634,
+      "pvalue": 0.005189953231761464,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P26",
+      "method": "ks_test",
+      "statistic": 0.1297675312578545,
+      "pvalue": 0.00025028861619211024,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P27",
+      "method": "ks_test",
+      "statistic": 0.09835279197407047,
+      "pvalue": 0.011341342210630493,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P28",
+      "method": "ks_test",
+      "statistic": 0.09217432445086221,
+      "pvalue": 0.02121381885779978,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P29",
+      "method": "ks_test",
+      "statistic": 0.10822092662227896,
+      "pvalue": 0.0038342454552692355,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P31",
+      "method": "ks_test",
+      "statistic": 0.08582829412856667,
+      "pvalue": 0.03867463434504862,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P33",
+      "method": "ks_test",
+      "statistic": 0.08874585815973335,
+      "pvalue": 0.029506562038556675,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P36",
+      "method": "psi",
+      "value": 0.16498949697451148,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P36",
+      "method": "ks_test",
+      "statistic": 0.11405605468461232,
+      "pvalue": 0.001923211437458444,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P37",
+      "method": "psi",
+      "value": 0.1692666692730528,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P38",
+      "method": "ks_test",
+      "statistic": 0.09700079017359177,
+      "pvalue": 0.01305283902441216,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P39",
+      "method": "psi",
+      "value": 0.15068491064891723,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P42",
+      "method": "psi",
+      "value": 0.15182272602277488,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P42",
+      "method": "ks_test",
+      "statistic": 0.11751573365400253,
+      "pvalue": 0.0012554319055759797,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P43",
+      "method": "ks_test",
+      "statistic": 0.0892009061533331,
+      "pvalue": 0.028261228607459412,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P45",
+      "method": "ks_test",
+      "statistic": 0.1043045568867489,
+      "pvalue": 0.005970688876345943,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P67",
+      "method": "ks_test",
+      "statistic": 0.08415759445531412,
+      "pvalue": 0.04499945794545701,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P70",
+      "method": "ks_test",
+      "statistic": 0.1008547345525991,
+      "pvalue": 0.008700281982897181,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P72",
+      "method": "ks_test",
+      "statistic": 0.12247526395247788,
+      "pvalue": 0.0006663343516908645,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P78",
+      "method": "ks_test",
+      "statistic": 0.13000409050362477,
+      "pvalue": 0.0002422015538431066,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P79",
+      "method": "ks_test",
+      "statistic": 0.12260340021060344,
+      "pvalue": 0.0006553899583418108,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P80",
+      "method": "ks_test",
+      "statistic": 0.08346434444340402,
+      "pvalue": 0.04787027550038816,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P81",
+      "method": "ks_test",
+      "statistic": 0.09478469001703554,
+      "pvalue": 0.01636237769488034,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P86",
+      "method": "ks_test",
+      "statistic": 0.10384293780298887,
+      "pvalue": 0.006281922360781538,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P87",
+      "method": "ks_test",
+      "statistic": 0.09278050751814854,
+      "pvalue": 0.019986010459998756,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P88",
+      "method": "ks_test",
+      "statistic": 0.0870981573020418,
+      "pvalue": 0.03441976197855901,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P90",
+      "method": "ks_test",
+      "statistic": 0.10653708476870584,
+      "pvalue": 0.004646835180110739,
+      "severity": "high"
+    },
+    {
+      "feature": "II_P91",
+      "method": "ks_test",
+      "statistic": 0.09159442574421703,
+      "pvalue": 0.022443833752713152,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_P96",
+      "method": "ks_test",
+      "statistic": 0.10244493837138816,
+      "pvalue": 0.007325997091662393,
+      "severity": "high"
+    },
+    {
+      "feature": "II_ST1",
+      "method": "ks_test",
+      "statistic": 0.099308885592392,
+      "pvalue": 0.010254361544198915,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_ST2",
+      "method": "psi",
+      "value": 0.18915047674618965,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_ST2",
+      "method": "ks_test",
+      "statistic": 0.10326632464142382,
+      "pvalue": 0.006696289741002522,
+      "severity": "high"
+    },
+    {
+      "feature": "II_ST3",
+      "method": "ks_test",
+      "statistic": 0.09451691809300393,
+      "pvalue": 0.016803544475161587,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_ST25",
+      "method": "ks_test",
+      "statistic": 0.08989415616524321,
+      "pvalue": 0.026452594138113572,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_ST28",
+      "method": "ks_test",
+      "statistic": 0.11496450789927176,
+      "pvalue": 0.0017217385344646633,
+      "severity": "high"
+    },
+    {
+      "feature": "II_PF3",
+      "method": "psi",
+      "value": 0.16324543256151802,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_PF3",
+      "method": "ks_test",
+      "statistic": 0.13927754149232743,
+      "pvalue": 6.40382561286361e-05,
+      "severity": "high"
+    },
+    {
+      "feature": "II_PF4",
+      "method": "ks_test",
+      "statistic": 0.09516088492871189,
+      "pvalue": 0.015753193006860674,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_PF5",
+      "method": "ks_test",
+      "statistic": 0.0891664079299916,
+      "pvalue": 0.028355701894156066,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_PF7",
+      "method": "ks_test",
+      "statistic": 0.08370418923425443,
+      "pvalue": 0.04685511428311371,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_A8",
+      "method": "ks_test",
+      "statistic": 0.10522450950918885,
+      "pvalue": 0.005388883962482149,
+      "severity": "high"
+    },
+    {
+      "feature": "II_E3",
+      "method": "psi",
+      "value": 0.1502139347472996,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "II_E3",
+      "method": "ks_test",
+      "statistic": 0.1220727846801604,
+      "pvalue": 0.0007022565910741635,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_ValoreMercatoMin_normale",
+      "method": "ks_test",
+      "statistic": 0.10232008765834273,
+      "pvalue": 0.007422566145273559,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_ValoreMercatoMin_ottimo",
+      "method": "ks_test",
+      "statistic": 0.11632308078991074,
+      "pvalue": 0.001455879272357362,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_ValoreLocazioneMin_normale",
+      "method": "psi",
+      "value": 0.3823413999488723,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_ValoreLocazioneMin_normale",
+      "method": "ks_test",
+      "statistic": 0.26976953544035337,
+      "pvalue": 2.1689215433445976e-17,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_ValoreLocazioneMin_ottimo",
+      "method": "psi",
+      "value": 0.28288330393876854,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_ValoreLocazioneMin_ottimo",
+      "method": "ks_test",
+      "statistic": 0.1326374548853591,
+      "pvalue": 0.00016747610315356515,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_ValoreLocazioneMax_normale",
+      "method": "psi",
+      "value": 0.17394728780632635,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "OV_ValoreLocazioneMax_normale",
+      "method": "ks_test",
+      "statistic": 0.15531428702850375,
+      "pvalue": 5.156594077545402e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "OV_ValoreLocazioneMax_ottimo",
+      "method": "ks_test",
+      "statistic": 0.09826736780198676,
+      "pvalue": 0.011444054495601494,
+      "severity": "moderate"
+    },
+    {
+      "feature": "PC_ParticellaNumerica",
+      "method": "ks_test",
+      "statistic": 0.14832428987050025,
+      "pvalue": 1.599931208330323e-05,
+      "severity": "high"
+    },
+    {
+      "feature": "PC_Area",
+      "method": "psi",
+      "value": 0.1527894326173096,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "PC_Area",
+      "method": "ks_test",
+      "statistic": 0.12466179420331282,
+      "pvalue": 0.0004996480640964958,
+      "severity": "high"
+    },
+    {
+      "feature": "PC_Perimetro",
+      "method": "ks_test",
+      "statistic": 0.14398737036471193,
+      "pvalue": 3.1444870045668715e-05,
+      "severity": "high"
+    },
+    {
+      "feature": "C1_FOGLIO",
+      "method": "ks_test",
+      "statistic": 0.09905918416630115,
+      "pvalue": 0.01052963261556725,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C1_TRASMITTANZA_MEDIA_INVOLUCRO",
+      "method": "ks_test",
+      "statistic": 0.09728170427794397,
+      "pvalue": 0.012678859593683004,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C1_TRASMITTANZA_MEDIA_BASAMENTO",
+      "method": "ks_test",
+      "statistic": 0.09379738372045268,
+      "pvalue": 0.01806696836701767,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C1_EPH",
+      "method": "ks_test",
+      "statistic": 0.10721719260029537,
+      "pvalue": 0.00430224841490383,
+      "severity": "high"
+    },
+    {
+      "feature": "C1_ETH",
+      "method": "ks_test",
+      "statistic": 0.10572391236137053,
+      "pvalue": 0.005095206534870295,
+      "severity": "high"
+    },
+    {
+      "feature": "C1_EMISSIONI_DI_CO2",
+      "method": "ks_test",
+      "statistic": 0.10721719260029537,
+      "pvalue": 0.00430224841490383,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_PARTICELLA",
+      "method": "ks_test",
+      "statistic": 0.08404752869512934,
+      "pvalue": 0.04544335059052283,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_NUMERO_UNITA_IMMOBILIARI",
+      "method": "ks_test",
+      "statistic": 0.0839818177935265,
+      "pvalue": 0.04570782979402803,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_VOLUME_LORDO_RISCALDATO",
+      "method": "ks_test",
+      "statistic": 0.11513535624343918,
+      "pvalue": 0.0016857686667671036,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_RIQ_EP_GL_NREN_RAGG",
+      "method": "ks_test",
+      "statistic": 0.10316940106155961,
+      "pvalue": 0.006768031439248129,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_NM_TEMPO_RITORNO_INVESTIM_1",
+      "method": "ks_test",
+      "statistic": 0.09223839257992499,
+      "pvalue": 0.021079141281470367,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_DS_CLASSE_RAGGIUNGIBILE_1",
+      "method": "ks_test",
+      "statistic": 0.10518015465060693,
+      "pvalue": 0.005415044947169794,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_NM_EP_GL_NREN_RAGGIUNG_1",
+      "method": "psi",
+      "value": 0.21792982746927902,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_NM_EP_GL_NREN_RAGGIUNG_1",
+      "method": "ks_test",
+      "statistic": 0.10070031393383241,
+      "pvalue": 0.008844724568739892,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_DS_CLASSE_RAGGIUNGIBILE_7",
+      "method": "ks_test",
+      "statistic": 0.09678394419830236,
+      "pvalue": 0.013347372973560047,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_SUPERFICIE_DISPERDENTE",
+      "method": "ks_test",
+      "statistic": 0.11569882722468364,
+      "pvalue": 0.001573188333582583,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_RAPPORTO_SV",
+      "method": "ks_test",
+      "statistic": 0.08516297124983778,
+      "pvalue": 0.041104200929155135,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_Y_IE",
+      "method": "ks_test",
+      "statistic": 0.10922794618934267,
+      "pvalue": 0.0034128673414143716,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CI_EFFICIENZA_MEDIA",
+      "method": "psi",
+      "value": 0.2087804746557877,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_CI_EFFICIENZA_MEDIA",
+      "method": "ks_test",
+      "statistic": 0.11072122642826751,
+      "pvalue": 0.0028656742478608884,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CI_EPREN",
+      "method": "ks_test",
+      "statistic": 0.10468239457096531,
+      "pvalue": 0.005724487435690043,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CE_EFFICIENZA_MEDIA",
+      "method": "ks_test",
+      "statistic": 0.10368687441168209,
+      "pvalue": 0.006392364800992986,
+      "severity": "high"
+    },
+    {
+      "feature": "C2_CE_EPREN",
+      "method": "ks_test",
+      "statistic": 0.09055126518127174,
+      "pvalue": 0.02483910101819218,
+      "severity": "moderate"
+    },
+    {
+      "feature": "C2_PA_EPNREN",
+      "method": "psi",
+      "value": 0.3379273318783234,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "POI_gas_station_count",
+      "method": "psi",
+      "value": 0.19202746087678477,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "POI_gas_station_count",
+      "method": "ks_test",
+      "statistic": 0.16338687129041427,
+      "pvalue": 1.3058659919452147e-06,
+      "severity": "high"
+    },
+    {
+      "feature": "POI_transit_station_count",
+      "method": "psi",
+      "value": 0.15729670623355224,
+      "threshold": 0.15,
+      "severity": "moderate"
+    },
+    {
+      "feature": "POI_transit_station_count",
+      "method": "ks_test",
+      "statistic": 0.11773257962929194,
+      "pvalue": 0.0012218723767900947,
+      "severity": "high"
+    },
+    {
+      "feature": "type_zone_count",
+      "method": "ks_test",
+      "statistic": 0.09729813200334468,
+      "pvalue": 0.012651560655964523,
+      "severity": "moderate"
+    },
+    {
+      "feature": "type_zone_rarity",
+      "method": "ks_test",
+      "statistic": 0.09729813200334468,
+      "pvalue": 0.012651560655964523,
+      "severity": "moderate"
+    },
+    {
+      "feature": "temporal_price_mean",
+      "method": "psi",
+      "value": 5.1677453869107435,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "temporal_price_mean",
+      "method": "ks_test",
+      "statistic": 0.37759455388047514,
+      "pvalue": 4.121962789018052e-34,
+      "severity": "high"
+    },
+    {
+      "feature": "temporal_price_median",
+      "method": "psi",
+      "value": 4.967739222763505,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "temporal_price_median",
+      "method": "ks_test",
+      "statistic": 0.3820743945972497,
+      "pvalue": 6.117601398742932e-35,
+      "severity": "high"
+    },
+    {
+      "feature": "temporal_count",
+      "method": "psi",
+      "value": 6.424243790583228,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "temporal_count",
+      "method": "ks_test",
+      "statistic": 0.38682529278313593,
+      "pvalue": 7.885360650034368e-36,
+      "severity": "high"
+    },
+    {
+      "feature": "quarter",
+      "method": "psi",
+      "value": 4.282934008200193,
+      "threshold": 0.15,
+      "severity": "high"
+    },
+    {
+      "feature": "quarter",
+      "method": "ks_test",
+      "statistic": 0.5022399203583873,
+      "pvalue": 1.685558190356125e-61,
+      "severity": "high"
+    }
+  ],
+  "summary": {
+    "total_features_checked": 226,
+    "psi_alerts": 25,
+    "ks_alerts": 85,
+    "total_alerts": 110
+  }
+}
