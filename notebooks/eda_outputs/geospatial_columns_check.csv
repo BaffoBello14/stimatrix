@@ -1,7 +1,0 @@
-Colonna,Tipo,Pattern,NonNull,Esempio
-AI_Latitudine,float64,lat,5733,45.149932861328125
-AI_Longitudine,float64,lon,5733,10.783458709716797
-AI_Posizione,object,posizione,5733,POINT (10.7835 45.1499)
-AI_SuperficieCalcolata,float64,lat,5730,12.0
-ISC_Geometry,object,geometry,5733,MULTIPOLYGON (((10.783887942194134 45.150017769836
-PC_PoligonoGeoJson,object,geojson,5733,"{""type"": ""FeatureCollection"", ""features"": [{""type"""
