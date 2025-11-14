@@ -15,7 +15,7 @@
 # ⏱️ Tempo stimato: ~2-3 ore
 # 🎯 Uso: Training finale, production deployment, benchmark
 #
-# Per test rapidi: usa config_fast.yaml (20 trial, ~20 minuti)
+# Per test rapidi: usa config_fast.yaml (5 trial, ~5 minuti)
 # ==========================================
 
 # Logging Configuration
@@ -60,7 +60,7 @@ paths:
 # Usa per testare modelli specializzati su sottoinsiemi specifici.
 data_filters:
   # Anno stipula
-  anno_min: 2022  # Anno minimo (null = no limit)
+  anno_min: null  # Anno minimo (null = no limit)
   anno_max: null  # Anno massimo (null = no limit)
   
   # Prezzo (€) - usare con cautela, limita generalizzazione
@@ -76,6 +76,7 @@ data_filters:
   
   # Tipologie edilizie da escludere
   tipologie_escluse:  # Lista tipologie da escludere (null = tutte incluse)
+    - '1'  
     - '4'  # Ville
 
 # Database Configuration (se usi step schema/dataset)

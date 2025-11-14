@@ -1,0 +1,91 @@
+{
+  "dataset": {
+    "raw_rows": 5680,
+    "raw_cols": 465,
+    "filtered_rows": 5499,
+    "filtered_cols": 465,
+    "rows_removed": 181,
+    "rows_removed_pct": 3.186619718309859
+  },
+  "target_raw": {
+    "count": 5680,
+    "mean": 62428.259154929576,
+    "median": 42000.0,
+    "std": 79616.6601966064,
+    "skewness": 5.186085543422489,
+    "kurtosis": 54.48336740648204
+  },
+  "target_filtered": {
+    "count": 5499,
+    "mean": 61661.76969853556,
+    "median": 41755.0,
+    "std": 78928.57544465743,
+    "skewness": 5.272039926933217,
+    "kurtosis": 56.378987967126626
+  },
+  "filters_applied": {
+    "anno_min": null,
+    "zone_escluse": [
+      "E1",
+      "E2",
+      "E3",
+      "R1"
+    ],
+    "tipologie_escluse": [
+      "1",
+      "4"
+    ]
+  },
+  "top_correlations": [
+    {
+      "Feature": "C2_TPC_POTENZA_NOMINALE_1",
+      "Correlation": -1.0,
+      "Abs_Correlation": 1.0
+    },
+    {
+      "Feature": "C2_NM_EP_GL_NREN_RAGGIUNG_5",
+      "Correlation": 0.8896262900036199,
+      "Abs_Correlation": 0.8896262900036199
+    },
+    {
+      "Feature": "AI_SuperficieVisuraTotaleAttuale",
+      "Correlation": 0.673312585857022,
+      "Abs_Correlation": 0.673312585857022
+    },
+    {
+      "Feature": "AI_Superficie",
+      "Correlation": 0.6683313847505084,
+      "Abs_Correlation": 0.6683313847505084
+    },
+    {
+      "Feature": "AI_SuperficieVisuraTotaleEAttuale",
+      "Correlation": 0.6654042306024255,
+      "Abs_Correlation": 0.6654042306024255
+    },
+    {
+      "Feature": "C2_PFR_ANNO_INSTALLAZIONE_2",
+      "Correlation": 0.6578201397481351,
+      "Abs_Correlation": 0.6578201397481351
+    },
+    {
+      "Feature": "AI_SuperficieCalcolata",
+      "Correlation": 0.6539569154477566,
+      "Abs_Correlation": 0.6539569154477566
+    },
+    {
+      "Feature": "AI_SuperficieVisuraTotale",
+      "Correlation": 0.6322231498301003,
+      "Abs_Correlation": 0.6322231498301003
+    },
+    {
+      "Feature": "C2_NM_TEMPO_RITORNO_INVESTIM_5",
+      "Correlation": -0.6074927922729604,
+      "Abs_Correlation": 0.6074927922729604
+    },
+    {
+      "Feature": "C2_DS_CLASSE_RAGGIUNGIBILE_5",
+      "Correlation": 0.590990888742803,
+      "Abs_Correlation": 0.590990888742803
+    }
+  ]
+}
