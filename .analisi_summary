@@ -1,0 +1,18 @@
+================================================================================
+ANALISI COMPLETATA - 2025-11-14
+================================================================================
+
+6 file generati (54.6 KB totale):
+
+1. RIEPILOGO_FINALE.txt (4.2 KB) ← LEGGI PRIMA QUESTO
+2. INDICE_ANALISI.md (8.5 KB)
+3. QUICKSTART_ANALYSIS.md (2.8 KB)
+4. EXECUTIVE_SUMMARY_FILTERS.md (9.3 KB)
+5. ANALISI_SUBSET_CONFIG_2022.md (21 KB)
+6. analyze_filters_impact.py (13 KB)
+
+README.md aggiornato con link alle nuove analisi.
+
+================================================================================
+NEXT STEP: python analyze_filters_impact.py
+================================================================================

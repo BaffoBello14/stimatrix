@@ -4,6 +4,16 @@
 
 ---
 
+## 🔍 ANALISI RECENTI
+
+📊 **[EXECUTIVE SUMMARY: Filtri Dataset 2022+](./EXECUTIVE_SUMMARY_FILTERS.md)** - Sintesi esecutiva configurazione subset sperimentale  
+📖 **[ANALISI APPROFONDITA: Subset Configuration](./ANALISI_SUBSET_CONFIG_2022.md)** - Analisi completa (654 righe) del codice e risultati con filtri
+
+**Branch corrente**: `cursor/analyze-and-test-data-subset-176c`  
+**Status**: ✅ Architettura verificata leak-free, filtri applicati correttamente
+
+---
+
 ## 📋 Table of Contents
 
 - [Features](#-features)
