@@ -1,290 +1,283 @@
-# 📊 Notebooks EDA - StiMatrix
+# 📊 Notebooks - Stimatrix EDA
 
-Questa directory contiene i notebook Jupyter per l'Exploratory Data Analysis (EDA) del progetto StiMatrix.
-
-## 📁 Struttura
-
-```
-notebooks/
-├── eda_utils.py                   # Modulo utilities condiviso
-├── eda_basic.ipynb                # ✨ Analisi esplorativa di base
-├── eda_advanced.ipynb             # 🚀 Analisi esplorativa avanzata
-├── eda_analysis.py                # Script Python standalone (legacy)
-├── eda_raw.ipynb                  # 📦 Notebook originale (da deprecare)
-├── eda_comprehensive.ipynb        # 📦 Notebook originale avanzato (da deprecare)
-├── eda_outputs/                   # Output analisi base
-└── eda_comprehensive_outputs/     # Output analisi avanzata
-```
-
-## 🎯 Quali Notebook Usare?
-
-### eda_basic.ipynb ✨ (RACCOMANDATO)
-**Usa questo per**: Analisi esplorativa veloce e completa
-
-**Contenuto**:
-- Overview dataset (dimensioni, tipi, memoria)
-- Analisi missingness
-- Distribuzione target principale
-- Top correlazioni con target
-- Visualizzazioni base
-- Summary per gruppi chiave
-- Check geospaziale
-
-**Tempo esecuzione**: ~2-5 minuti
-
-**Output**: `eda_outputs/`
+**Notebook unico allineato alle scelte del progetto**
 
 ---
 
-### eda_advanced.ipynb 🚀 (PER ANALISI APPROFONDITE)
-**Usa questo per**: Analisi multi-target e correlazioni sofisticate
+## 📓 Notebook Disponibile
 
-**Contenuto**:
-- Analisi comparativa multi-target
-- Correlazioni multiple (Pearson, Spearman, Kendall)
-- Associazioni categoriche (Cramér's V)
-- Correlation Ratio per relazioni miste
-- Matrici di correlazione complete
-- Feature importance comparativa
-- Visualizzazioni avanzate
+### `eda_project_analysis.ipynb` ⭐
 
-**Tempo esecuzione**: ~5-15 minuti
+**Analisi esplorativa completa del progetto Stimatrix**
 
-**Output**: `eda_comprehensive_outputs/`
+#### Contenuto
 
----
+1. **Dataset Raw Overview**
+   - Dimensioni, tipi di dato, missing values
+   - Statistiche descrittive complete
 
-### eda_analysis.py (LEGACY)
-Script Python standalone - mantiene le stesse funzionalità di `eda_basic.ipynb` ma eseguibile da command line.
+2. **Target Analysis**
+   - Distribuzione AI_Prezzo_Ridistribuito
+   - Statistiche (mean, median, skewness, kurtosis)
+   - Visualizzazioni (histogram, boxplot, Q-Q plot)
 
-**Esecuzione**:
-```bash
-cd notebooks/
-python eda_analysis.py
+3. **Analisi Temporale**
+   - Distribuzione transazioni per anno
+   - Trend prezzi nel tempo
+   - Identificazione pattern stagionali
+
+4. **Analisi Zone OMI**
+   - Distribuzione transazioni per zona
+   - Statistiche prezzo per zona
+   - Highlight zone da escludere (config)
+
+5. **Analisi Tipologie**
+   - Distribuzione per tipologia edilizia
+   - Identificazione tipologie da escludere
+
+6. **⭐ EFFETTO FILTRI - Confronto Pre/Post**
+   - Applicazione filtri da config (anno>=2022, zone, tipologie)
+   - Confronto statistiche raw vs filtered
+   - Visualizzazioni comparative
+   - Analisi impatto su distribuzioni
+
+7. **Correlazioni**
+   - Top 30 feature correlate con target
+   - Visualizzazione barplot
+   - Export CSV completo
+
+8. **Feature Pruning**
+   - Verifica colonne droppate dalla config
+   - Categorie di feature rimosse
+
+9. **Summary Report**
+   - Report JSON completo
+   - Metriche chiave
+   - Top correlazioni
+
+#### Output
+
+Tutti i file vengono salvati in `eda_project_outputs/`:
+
+```
+eda_project_outputs/
+├── 00_summary_report.json
+├── 01_missing_values_raw.csv
+├── 02_target_statistics_raw.csv
+├── 03_target_distribution_raw.png
+├── 04_temporal_distribution.csv
+├── 05_temporal_analysis.png
+├── 06_zone_statistics_raw.csv
+├── 07_zone_analysis.png
+├── 08_target_comparison_raw_vs_filtered.csv
+├── 09_distribution_comparison_raw_vs_filtered.png
+├── 10_zone_comparison_raw_vs_filtered.csv
+├── 11_correlations_with_target.csv
+└── 12_top_correlations.png
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Installazione Dipendenze
+### Esecuzione
 
 ```bash
-# Assicurati di essere nell'environment corretto
-pip install -r ../requirements.txt
+# In Jupyter
+cd notebooks
+jupyter notebook eda_project_analysis.ipynb
+
+# O con JupyterLab
+jupyter lab eda_project_analysis.ipynb
 ```
 
-### 2. Esecuzione Notebook Base
+### Esecuzione Completa
 
 ```bash
-cd notebooks/
-jupyter notebook eda_basic.ipynb
-```
+# Esegui tutte le celle e genera HTML
+jupyter nbconvert --to html --execute eda_project_analysis.ipynb
 
-Oppure con JupyterLab:
-```bash
-jupyter lab eda_basic.ipynb
-```
-
-### 3. Esecuzione da Command Line
-
-```bash
-# Esegui tutto il notebook e genera HTML
-jupyter nbconvert --to html --execute eda_basic.ipynb
-
-# Esegui e aggiorna il notebook con gli output
-jupyter nbconvert --to notebook --execute --inplace eda_basic.ipynb
+# Esegui e aggiorna notebook con output
+jupyter nbconvert --to notebook --execute --inplace eda_project_analysis.ipynb
 ```
 
 ---
 
-## 📦 Modulo `eda_utils.py`
+## 🎯 Caratteristiche Chiave
 
-I nuovi notebook (`eda_basic.ipynb` e `eda_advanced.ipynb`) utilizzano il modulo `eda_utils.py` per:
-- ✅ Evitare duplicazione di codice
-- ✅ Migliorare manutenibilità
-- ✅ Centralizzare best practices
-- ✅ Facilitare testing
+### ✅ Allineato al Progetto
 
-**Funzioni principali**:
-- `load_config_and_data()`: Carica config e dataset con error handling
-- `analyze_missingness()`: Analisi completa valori mancanti
-- `analyze_target_distribution()`: Statistiche descrittive target
-- `analyze_correlations()`: Calcolo correlazioni con target
-- `plot_target_distribution()`: Visualizzazione distribuzione
-- `create_correlation_heatmap()`: Heatmap correlazioni
-- `save_plot()`: Salvataggio ottimizzato dei grafici
-- `cramers_v()`: Associazione variabili categoriche
-- `correlation_ratio()`: Relazione categorica-numerica
+- Usa **stesse funzioni** della pipeline (`apply_data_filters`)
+- Legge **stesso config** del training (`config.yaml`)
+- Analizza **esattamente i dati** che vede il modello
+- Mostra **effetto reale dei filtri** con confronti
 
-**Test del modulo**:
-```bash
-python eda_utils.py
+### ✅ Interattivo
+
+- Celle separate per ogni analisi
+- Output chiari e leggibili
+- Grafici informativi
+- Export automatico CSV/PNG
+
+### ✅ Production-Ready
+
+- Gestione errori robusta
+- Helper functions riutilizzabili
+- Output directory organizzata
+- Report JSON strutturato
+
+---
+
+## 📖 Esempio Output
+
+### Confronto Raw vs Filtered
+
+```
+CONFRONTO TARGET: RAW vs FILTERED
+================================================================================
+
+             Raw    Filtered    Delta  Delta_Pct
+Count      5733        3421    -2312      -40.3%
+Mean      62592       58234    -4358       -7.0%
+Median    42000       41500     -500       -1.2%
+Std       79533       71245    -8288      -10.4%
+Skewness   5.16        4.82    -0.34       -6.6%
+Kurtosis  54.18       48.21    -5.97      -11.0%
+```
+
+### Zone Comparison
+
+```
+CONFRONTO ZONE: RAW vs FILTERED
+================================================================================
+
+      Raw  Filtered  Removed  Removed_Pct
+B1   1797      1797        0         0.0%
+C4   1105      1105        0         0.0%
+D2    718       718        0         0.0%
+E3     59         0       59       100.0%  ← ESCLUSA
+E2     49         0       49       100.0%  ← ESCLUSA
+E1     37         0       37       100.0%  ← ESCLUSA
+R1      8         0        8       100.0%  ← ESCLUSA
 ```
 
 ---
 
-## 🎨 Best Practices
+## 🔄 Workflow Tipico
 
-### ✅ Prima del Commit
-**IMPORTANTE**: Pulire sempre gli output dai notebook prima di committare per ridurre le dimensioni del repository.
+1. **Prima del Training**
+   ```bash
+   # Esegui EDA per capire dati
+   jupyter notebook eda_project_analysis.ipynb
+   ```
 
-```bash
-# Pulisci output da tutti i notebook
-jupyter nbconvert --clear-output --inplace *.ipynb
+2. **Dopo Modifica Config**
+   ```bash
+   # Ri-esegui per vedere effetto nuovi filtri
+   jupyter nbconvert --to notebook --execute --inplace eda_project_analysis.ipynb
+   ```
 
-# Oppure solo da uno specifico
-jupyter nbconvert --clear-output --inplace eda_basic.ipynb
-```
-
-### ✅ Configurazione Git Hook (Opzionale)
-
-Puoi creare un pre-commit hook per pulire automaticamente i notebook:
-
-```bash
-# Crea il file .git/hooks/pre-commit
-cat > ../.git/hooks/pre-commit << 'EOF'
-#!/bin/bash
-# Pulisci automaticamente output dai notebook
-jupyter nbconvert --clear-output --inplace notebooks/*.ipynb
-git add notebooks/*.ipynb
-EOF
-
-# Rendi eseguibile
-chmod +x ../.git/hooks/pre-commit
-```
-
-### ✅ Grafici Ottimizzati
-
-I nuovi notebook salvano i grafici con:
-- **DPI = 100** (invece di 300) per dimensioni ragionevoli
-- **Optimize = True** per compressione PNG
-- **Nessun `plt.show()`** per evitare output nelle celle
-
-**Dimensioni target per immagini**:
-- Grafici semplici: < 300 KB
-- Heatmap: < 1 MB
-- Grafici complessi: < 500 KB
-
----
-
-## 📊 Output Generati
-
-### eda_outputs/ (da eda_basic.ipynb)
-```
-eda_outputs/
-├── missingness_analysis.csv           # Analisi valori mancanti
-├── target_statistics.csv              # Statistiche target
-├── correlations_with_target.csv       # Correlazioni complete
-├── group_summary_AI_ZonaOmi.csv      # Summary per zona
-├── group_summary_AI_IdCategoriaCatastale.csv  # Summary per categoria
-├── geospatial_columns_check.csv       # Check colonne geospaziali
-├── target_distribution.png            # Distribuzione target
-└── correlation_heatmap_top20.png      # Heatmap top 20 correlazioni
-```
-
-### eda_comprehensive_outputs/ (da eda_advanced.ipynb)
-```
-eda_comprehensive_outputs/
-├── multi_target_comparison.csv                    # Confronto target
-├── advanced_correlations_AI_Prezzo_Ridistribuito.csv  # Correlazioni multiple
-├── advanced_correlations_AI_Prezzo_MQ.csv         # Correlazioni multiple
-├── correlation_matrix_pearson.csv                 # Matrice Pearson
-├── correlation_matrix_spearman.csv                # Matrice Spearman
-├── correlation_matrix_mixed.csv                   # Matrice mista
-├── target_distributions_comparison.png            # Confronto distribuzioni
-├── targets_scatter_plot.png                       # Scatter tra target
-├── correlation_heatmap_complete.png               # Heatmap completa (ottimizzata)
-├── correlation_methods_comparison.png             # Confronto metodi
-└── feature_importance_comparison.png              # Feature importance
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Problema: ModuleNotFoundError per eda_utils
-```python
-# Soluzione: Assicurati di essere nella directory notebooks/
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path.cwd()))
-from eda_utils import *
-```
-
-### Problema: FileNotFoundError per config/data
-```python
-# Soluzione: Verifica i path relativi
-config, df = load_config_and_data(
-    config_path='../config/config.yaml',  # Un livello sopra
-    data_path='../data/raw/raw.parquet'
-)
-```
-
-### Problema: Notebook troppo lento
-- Usa `eda_basic.ipynb` invece di `eda_advanced.ipynb`
-- Riduci il numero di feature nelle analisi avanzate
-- Filtra il dataset se troppo grande
-
-### Problema: Immagini troppo grandi
-```python
-# Usa DPI ridotto quando salvi
-save_plot('myplot', output_dir, dpi=100)  # invece di 300
-
-# Oppure usa JPEG per grafici complessi
-plt.savefig('plot.jpg', dpi=100, quality=85)
-```
-
----
-
-## 📚 Riferimenti
-
-- **Pandas**: https://pandas.pydata.org/
-- **Matplotlib**: https://matplotlib.org/
-- **Seaborn**: https://seaborn.pydata.org/
-- **SciPy Stats**: https://docs.scipy.org/doc/scipy/reference/stats.html
-- **Jupyter**: https://jupyter.org/
-
----
-
-## 🔄 Migration Guide
-
-### Da eda_raw.ipynb → eda_basic.ipynb
-I vecchi notebook `eda_raw.ipynb` e `eda_comprehensive.ipynb` sono deprecati ma mantenuti per compatibilità.
-
-**Cosa è cambiato**:
-1. ✅ Codice refactorizzato in `eda_utils.py`
-2. ✅ Output puliti dai notebook
-3. ✅ Grafici ottimizzati (DPI ridotto)
-4. ✅ Logging migliorato
-5. ✅ Error handling robusto
-6. ✅ Nessun `plt.show()` nelle celle
-
-**Migrazione consigliata**:
-- Usa `eda_basic.ipynb` per analisi quotidiane
-- Usa `eda_advanced.ipynb` per analisi approfondite
-- Considera di deprecare i vecchi notebook dopo verifica
+3. **Dopo Training**
+   ```bash
+   # Confronta EDA con metriche modello
+   # Itera su filtri se necessario
+   ```
 
 ---
 
 ## 📝 Note
 
-- **Versione Python**: 3.8+
-- **Memoria raccomandata**: 8 GB+ per dataset completi
-- **Tempo esecuzione**: 
-  - Basic: 2-5 minuti
-  - Advanced: 5-15 minuti
+### Dipendenze
 
-**Ultimo aggiornamento**: 2025-10-06
+```bash
+pip install pandas numpy matplotlib seaborn scipy jupyter
+```
+
+### Config Required
+
+Il notebook richiede:
+- `config/config.yaml` con sezione `data_filters`
+- `data/raw/raw.parquet` con il dataset
+
+### Memory Usage
+
+- Dataset ~5,000 righe: ~50 MB RAM
+- Con tutti i plot: ~200 MB RAM
 
 ---
 
-## 🤝 Contribuire
+## 🎓 Spiegazione Tecnica
 
-Per migliorare i notebook:
-1. Segui le best practices sopra elencate
-2. Testa le modifiche prima del commit
-3. Pulisci gli output con `nbconvert`
-4. Documenta nuove analisi nel README
+### Perché un Notebook Unico?
 
-**Domande?** Contatta il team Data Science.
+1. **Semplicità**: Un solo file da eseguire
+2. **Coerenza**: Stesso flow per tutte le analisi
+3. **Confronti**: Facile confrontare raw vs filtered
+4. **Manutenibilità**: Un solo file da aggiornare
+
+### Perché Celle Separate?
+
+- Debugging più facile (esegui solo celle specifiche)
+- Output progressivo (vedi risultati step-by-step)
+- Flessibilità (salta celle non necessarie)
+
+---
+
+## 🚧 Possibili Estensioni Future
+
+### Notebook Aggiuntivi
+
+Se necessario, si possono aggiungere:
+
+1. **`eda_preprocessed_features.ipynb`**
+   - Analisi feature dopo preprocessing
+   - Target transformation (Yeo-Johnson)
+   - Feature contestuali aggiunte
+   - Encoding analysis
+
+2. **`eda_model_results.ipynb`**
+   - Analisi predizioni modelli
+   - Error analysis per gruppo
+   - SHAP importance
+   - Residual plots
+
+### Estensioni Notebook Corrente
+
+- Analisi correlazioni tra feature (matrice completa)
+- Feature importance preliminare (RandomForest)
+- Outlier detection visualization
+- PCA analysis per esplorare varianza
+
+---
+
+## ✅ Checklist Esecuzione
+
+Prima di eseguire il notebook:
+
+- [ ] Config aggiornato (`config/config.yaml`)
+- [ ] Dataset presente (`data/raw/raw.parquet`)
+- [ ] Jupyter installato (`pip install jupyter`)
+- [ ] Spazio su disco per output (~10-20 MB)
+
+Dopo esecuzione:
+
+- [ ] Verifica output in `eda_project_outputs/`
+- [ ] Controlla confronto raw vs filtered
+- [ ] Valida che filtri siano applicati correttamente
+- [ ] Documenta osservazioni per iterazioni future
+
+---
+
+## 📞 Supporto
+
+Per domande o problemi:
+1. Controlla log delle celle (errori Python)
+2. Verifica path dei file (config, data)
+3. Controlla dipendenze installate
+4. Leggi documentazione inline nelle celle
+
+---
+
+**Ultimo aggiornamento**: 2025-11-14  
+**Versione notebook**: 1.0  
+**Compatibile con**: Python 3.10+, Stimatrix pipeline v1.0
