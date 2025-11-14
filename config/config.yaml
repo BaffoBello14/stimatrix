@@ -346,7 +346,6 @@ training:
       trials: *trials_advanced
       base_params:
         allow_writing_files: false
-        iterations: 800
         verbose: False
       fit_params:
         cat_features: __categorical_indices__
