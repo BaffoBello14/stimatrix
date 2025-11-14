@@ -750,7 +750,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         plan = plan_encodings(X_tr, profile_config)
         X_tr, encoders = fit_apply_encoders(X_tr, y_train, plan, profile_config)
         
-        # FIX BUG1: Track OHE columns for exclusion from correlation pruning
         # sklearn OneHotEncoder names columns as: originalname_value (e.g., AI_ZonaOmi_B1)
         # We need to identify them to preserve them from correlation pruning
         ohe_generated_cols = []
@@ -794,7 +793,6 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
             if _df is not None and _df.isnull().any().any():
                 logger.warning(f"[tree] Residual NaN detected after fills in {name}")
         
-        # FIX A: Correlation pruning ONLY on continuous numeric features (exclude OHE)
         # OHE features are binary (0/1) and should NOT be pruned based on correlation
         # They represent categorical information and high correlation is expected
         corr_thr = float(profiles_cfg.get("tree", {}).get("correlation", {}).get("numeric_threshold", config.get("correlation", {}).get("numeric_threshold", 0.98)))
@@ -854,11 +852,7 @@ def run_preprocessing(config: Dict[str, Any]) -> Path:
         # Coerce numeric-like strings to numeric
         X_tr, [X_te, X_va] = coerce_numeric_like(X_tr, [X_te, X_va])
         
-        # FIX B: Drop extreme high-cardinality categorical features
-        # Even CatBoost has limits - extreme cardinality (>500-1000) can cause:
-        # 1. Overfitting (memorization instead of generalization)
-        # 2. Training slowdown and memory overhead
-        # 3. Poor performance on unseen categories
+        # Drop extreme high-cardinality categorical features
         extreme_card_threshold = int(config.get("encoding", {}).get("catboost_max_cardinality", 500))
         cat_cols = X_tr.select_dtypes(include=['object', 'category']).columns
         extreme_high_card = []

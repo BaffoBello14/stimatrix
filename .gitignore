@@ -150,7 +150,6 @@ credentials/
 # Test artifacts
 **/test_output/
 **/test_temp_*
-test_lightgbm_fix.py
 tmp/
 temp/
 
