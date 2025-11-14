@@ -1,0 +1,43 @@
+{
+  "dataset": {
+    "n_samples": 3026,
+    "original_mean": 65913.47164041363,
+    "original_median": 45974.5712596097,
+    "original_std": 82132.31405077499,
+    "original_skew": 4.7581797831287584,
+    "original_kurtosis": 48.54270815269151
+  },
+  "methods_tested": 9,
+  "outlier_counts": {
+    "IQR (1.5)": 165,
+    "IQR (1.0) \u2190 Project": 248,
+    "Z-Score (3.0)": 42,
+    "Z-Score (2.5) \u2190 Project": 61,
+    "Modified Z-Score": 127,
+    "Isolation Forest \u2190 Project": 242,
+    "LOF": 242,
+    "Elliptic Envelope": 242,
+    "ENSEMBLE \u2190 Project": 253
+  },
+  "ensemble_config": {
+    "methods": [
+      "IQR (factor=1.0)",
+      "Z-Score (threshold=2.5)",
+      "Isolation Forest (contamination=0.08)"
+    ],
+    "outliers_detected": 253,
+    "outliers_pct": 8.360872438863186
+  },
+  "impact_after_removal": {
+    "n_samples": 2773,
+    "mean": 48403.23356742322,
+    "median": 40000.0,
+    "std": 41444.06601330137,
+    "skew": 0.7961960732169553,
+    "kurtosis": -0.281353426336838,
+    "mean_change_pct": -26.565492056792717,
+    "std_change_pct": -49.53987782728215,
+    "skew_change": -3.961983709911803
+  },
+  "recommendation": "Configurazione ENSEMBLE attuale \u00e8 equilibrata. Rimuove 8.4% outlier e migliora normalit\u00e0 (skew: 4.76 \u2192 0.80)"
+}

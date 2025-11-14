@@ -1,0 +1,26 @@
+{
+  "dataset": {
+    "n_samples": 3026,
+    "original_mean": 65913.47164041363,
+    "original_median": 45974.5712596097,
+    "original_std": 82132.31405077499,
+    "original_skew": 4.7581797831287584,
+    "original_kurtosis": 48.54270815269151
+  },
+  "transformations_tested": 9,
+  "best_transformation": {
+    "name": "Quantile (Normal)",
+    "skewness": -0.0006237381186397617,
+    "kurtosis": 0.30345619158660897,
+    "shapiro_p": 0.01353224235382309,
+    "score": 1.2905476873514257
+  },
+  "current_transformation": {
+    "name": "Yeo-Johnson (\u03bb=0.211)",
+    "skewness": -0.050088199219209574,
+    "kurtosis": -0.3185763611951522,
+    "shapiro_p": 1.1772361041995862e-14,
+    "score": 1.36866456041435
+  },
+  "recommendation": "Consider switching to Quantile (Normal)"
+}

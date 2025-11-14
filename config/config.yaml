@@ -76,6 +76,7 @@ data_filters:
   
   # Tipologie edilizie da escludere
   tipologie_escluse:  # Lista tipologie da escludere (null = tutte incluse)
+    - '1'  
     - '4'  # Ville
 
 # Database Configuration (se usi step schema/dataset)
@@ -202,16 +203,16 @@ feature_pruning:
     - 'AI_SuperficieVisuraTotaleEAttuale'
     
     # Indicatori Istat ridondanti (7 colonne - correlazione > 0.95)
-    - 'II_ST2_B'
-    - 'II_ST21'
-    - 'II_ST29'
-    - 'II_ST31'
-    - 'II_ST32'
-    - 'II_ST22'
-    - 'II_ST26'
+    #- 'II_ST2_B'
+    #- 'II_ST21'
+    #- 'II_ST29'
+    #- 'II_ST31'
+    #- 'II_ST32'
+    #- 'II_ST22'
+    #- 'II_ST26'
     
     # OmiValori ridondanti (4 colonne)
-    - 'OV_ValoreMercatoMax_normale'
+    - 'OV_ValoreMercatoMin_ottimo'
     - 'OV_ValoreMercatoMax_ottimo'
     - 'OV_ValoreMercatoMin_scadente'
     - 'OV_ValoreMercatoMax_scadente'

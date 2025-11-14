@@ -1,0 +1,52 @@
+{
+  "categorical_features": 159,
+  "encoding_strategies": {
+    "onehot": {
+      "threshold": "\u2264 10 unique",
+      "features_count": 116,
+      "dimensions": 262
+    },
+    "target": {
+      "threshold": "11-50 unique",
+      "features_count": 10,
+      "dimensions": 10
+    },
+    "frequency": {
+      "threshold": "> 50 unique",
+      "features_count": 33,
+      "dimensions": 33
+    }
+  },
+  "dimensionality": {
+    "before": 159,
+    "after": 305,
+    "expansion_factor": 1.9182389937106918
+  },
+  "unseen_categories": {
+    "features_with_unseen": 43,
+    "max_unseen_pct": 100.0
+  },
+  "top_predictive_features": [
+    {
+      "feature": "AI_Id",
+      "eta_squared": 0.9999999999999989
+    },
+    {
+      "feature": "AI_Posizione",
+      "eta_squared": 0.557923732413991
+    },
+    {
+      "feature": "PC_Isodistanza",
+      "eta_squared": 0.5208584764081227
+    },
+    {
+      "feature": "PC_Centroide",
+      "eta_squared": 0.5208584764081224
+    },
+    {
+      "feature": "PC_PuntoInterno",
+      "eta_squared": 0.5208584764081224
+    }
+  ],
+  "recommendation": "Config attuale OK: 159 features \u2192 305 dims (expansion 1.9x). Soglie (10, 50) sono appropriate."
+}

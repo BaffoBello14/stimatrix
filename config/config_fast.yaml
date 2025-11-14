@@ -69,6 +69,7 @@ data_filters:
   
   # Tipologie edilizie da escludere
   tipologie_escluse:  # Lista tipologie da escludere (null = tutte incluse)
+    - '1'
     - '4'  # Ville
 
 # Database Configuration (se usi step schema/dataset)

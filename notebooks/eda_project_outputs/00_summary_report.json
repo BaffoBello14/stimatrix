@@ -1,0 +1,91 @@
+{
+  "dataset": {
+    "raw_rows": 5680,
+    "raw_cols": 464,
+    "filtered_rows": 3026,
+    "filtered_cols": 464,
+    "rows_removed": 2654,
+    "rows_removed_pct": 46.725352112676056
+  },
+  "target_raw": {
+    "count": 5680,
+    "mean": 62428.259154929576,
+    "median": 42000.0,
+    "std": 79616.6601966064,
+    "skewness": 5.186085543422488,
+    "kurtosis": 54.48336740648204
+  },
+  "target_filtered": {
+    "count": 3026,
+    "mean": 65913.47164041363,
+    "median": 45974.5712596097,
+    "std": 82145.8885181102,
+    "skewness": 4.76053992634575,
+    "kurtosis": 48.62499848757043
+  },
+  "filters_applied": {
+    "anno_min": 2022,
+    "zone_escluse": [
+      "E1",
+      "E2",
+      "E3",
+      "R1"
+    ],
+    "tipologie_escluse": [
+      "1",
+      "4"
+    ]
+  },
+  "top_correlations": [
+    {
+      "Feature": "AI_SuperficieVisuraTotaleAttuale",
+      "Correlation": 0.6652995849451429,
+      "Abs_Correlation": 0.6652995849451429
+    },
+    {
+      "Feature": "AI_SuperficieVisuraTotaleEAttuale",
+      "Correlation": 0.6560635766013232,
+      "Abs_Correlation": 0.6560635766013232
+    },
+    {
+      "Feature": "AI_Superficie",
+      "Correlation": 0.6369390991762104,
+      "Abs_Correlation": 0.6369390991762104
+    },
+    {
+      "Feature": "AI_SuperficieCalcolata",
+      "Correlation": 0.6368282595297369,
+      "Abs_Correlation": 0.6368282595297369
+    },
+    {
+      "Feature": "AI_ConsistenzaValore",
+      "Correlation": 0.6339148738759294,
+      "Abs_Correlation": 0.6339148738759294
+    },
+    {
+      "Feature": "C2_VM_POTENZA_NOMINALE",
+      "Correlation": -0.609186538783966,
+      "Abs_Correlation": 0.609186538783966
+    },
+    {
+      "Feature": "C2_DS_CLASSE_RAGGIUNGIBILE_3",
+      "Correlation": -0.5915822462946663,
+      "Abs_Correlation": 0.5915822462946663
+    },
+    {
+      "Feature": "C2_PFR_ANNO_INSTALLAZIONE_1",
+      "Correlation": 0.5805277491311318,
+      "Abs_Correlation": 0.5805277491311318
+    },
+    {
+      "Feature": "AI_SuperficieVisuraTotaleE",
+      "Correlation": 0.5687511062667697,
+      "Abs_Correlation": 0.5687511062667697
+    },
+    {
+      "Feature": "C2_CE_POTENZA_NOMINALE_2",
+      "Correlation": -0.5658265887467064,
+      "Abs_Correlation": 0.5658265887467064
+    }
+  ]
+}
